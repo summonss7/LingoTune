@@ -1,0 +1,182 @@
+{
+  "title": "03-Greetings-Song",
+  "artist": "LingoTune Arabic Learning",
+  "originalLanguage": "ar",
+  "translations": [
+    {
+      "language": "ru",
+      "languageName": "Русский",
+      "type": "",
+      "lines": [
+        {
+          "startTime": 0.0,
+          "text": "Ас-саляму алейкум",
+          "translatedText": null,
+          "transcript": "/æs sæˈlɑːmu ʔæˈleɪkʊm/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 5.0,
+          "text": "Ас-саляму алейкум - кувейс (мир вам - хорошо)",
+          "translatedText": null,
+          "transcript": "/æs sæˈlɑːmu ʔæˈleɪkʊm - kuˈwejs/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 10.0,
+          "text": "Ахлян",
+          "translatedText": null,
+          "transcript": "/ʔæħˈlæn/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 15.0,
+          "text": "Ахлян - ахлян бейкум (добро пожаловать - добро пожаловать вам)",
+          "translatedText": null,
+          "transcript": "/ʔæħˈlæn - ʔæħˈlæn beɪˈkuːm/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 20.0,
+          "text": "Мархабан",
+          "translatedText": null,
+          "transcript": "/mɑrħæˈbɑːn/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 25.0,
+          "text": "Мархабан - мархабан бик (добро пожаловать - добро пожаловать тебе)",
+          "translatedText": null,
+          "transcript": "/mɑrħæˈbɑːn - mɑrħæˈbɑːn biːk/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 30.0,
+          "text": "Сабах эль-хейр",
+          "translatedText": null,
+          "transcript": "/sæˈbɑːħ ælˈxejr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 35.0,
+          "text": "Сабах эль-хейр - ас-сабах шамс (доброе утро - утро солнце)",
+          "translatedText": null,
+          "transcript": "/sæˈbɑːħ ælˈxejr - æs sæˈbɑːħ ʃæms/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 40.0,
+          "text": "Сабах ан-нур",
+          "translatedText": null,
+          "transcript": "/sæˈbɑːħ ænˈnuːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 45.0,
+          "text": "Сабах ан-нур - аль-йаум нур (доброе утро - день свет)",
+          "translatedText": null,
+          "transcript": "/sæˈbɑːħ ænˈnuːr - ælˈjɑːʊm nuːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 50.0,
+          "text": "Маса эль-хейр",
+          "translatedText": null,
+          "transcript": "/mæˈsɑːʔ ælˈxejr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 55.0,
+          "text": "Маса эль-хейр - аль-маса хаду (добрый вечер - вечер спокойствие)",
+          "translatedText": null,
+          "transcript": "/mæˈsɑːʔ ælˈxejr - ælˈmæsɑːʔ xæˈduːʔ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 60.0,
+          "text": "Таслям",
+          "translatedText": null,
+          "transcript": "/tæsˈlæm/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 65.0,
+          "text": "Таслям - таслям иди-к (спасибо - спасибо тебе за руку)",
+          "translatedText": null,
+          "transcript": "/tæsˈlæm - tæsˈlæm ˈiːdi k/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 70.0,
+          "text": "Шукур-ран",
+          "translatedText": null,
+          "transcript": "/ʃʊˈkuːræn/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 75.0,
+          "text": "Шукур-ран - шукур-ран джазиля (спасибо - большое спасибо)",
+          "translatedText": null,
+          "transcript": "/ʃʊˈkuːræn - ʃʊˈkuːræn dʒæˈziːlæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 80.0,
+          "text": "Биль-акс",
+          "translatedText": null,
+          "transcript": "/biːlˈʔæks/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 85.0,
+          "text": "Биль-акс - ль-акс (наоборот - наоборот)",
+          "translatedText": null,
+          "transcript": "/biːlˈʔæks - lˈʔæks/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 90.0,
+          "text": "Яни",
+          "translatedText": null,
+          "transcript": "/jɑːˈniː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 95.0,
+          "text": "Яни - яни кеда (то есть - то есть так)",
+          "translatedText": null,
+          "transcript": "/jɑːˈniː - jɑːˈniː keɪdæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 100.0,
+          "text": "Маляш",
+          "translatedText": null,
+          "transcript": "/mæˈlæːʃ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 105.0,
+          "text": "Маляш - маляш я сахиби (извини - извини, друг)",
+          "translatedText": null,
+          "transcript": "/mæˈlæːʃ - mæˈlæːʃ jɑː sæˈhiːbiː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 110.0,
+          "text": "Сабах эль-фул",
+          "translatedText": null,
+          "transcript": "/sæˈbɑːħ ælˈfuːl/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 115.0,
+          "text": "Сабах эль-фул - эль-фуль джамиль (доброе утро - жасмин красивый)",
+          "translatedText": null,
+          "transcript": "/sæˈbɑːħ ælˈfuːl - ælˈfuːl dʒæˈmiːl/",
+          "originalStartTime": null
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+  @override
+  String get loadText => 'Load Text';
+  @override
+  String get loadTextTitle => 'Load Text';
+  @override
+  String get loadOriginalText => 'Original Text';
+  @override
+  String get loadTranslation => 'Translation';
+  @override
+  String get noOriginalTextWarning => 'Cannot load translation without original text!';
+  @override
+  String get selectLanguageOriginal => 'Original language';
+  @override
+  String get selectLanguageTranslation => 'Translation language';
+  @override
+  String get startTimestampMinutes => 'Start time (min)';
+  @override
+  String get loadFromFile => 'Load from file';
+  @override
+  String get pasteFromClipboard => 'Paste from clipboard';
+  @override
+  String linesMismatchError(Object translationLines, Object originalLines) {
+    return 'Number of lines in translation ($translationLines) doesn'\''t match original text ($originalLines)!';
+  }
+  @override
+  String get originalTextLoaded => 'Original text loaded!';
+  @override
+  String get translationLoaded => 'Translation loaded!';
+  @override
+  String get importZipArchive => 'Import ZIP archive';
+}

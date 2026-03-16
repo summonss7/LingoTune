@@ -1,0 +1,280 @@
+{
+  "title": "02-Numbers-Song",
+  "artist": "LingoTune Arabic Learning",
+  "originalLanguage": "ar",
+  "translations": [
+    {
+      "language": "ru",
+      "languageName": "Русский",
+      "type": "",
+      "lines": [
+        {
+          "startTime": 0.0,
+          "text": "Вахид",
+          "translatedText": null,
+          "transcript": "/wæˈħæd/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 5.0,
+          "text": "Вахид - ана вахид (один)",
+          "translatedText": null,
+          "transcript": "/wæˈħæd - ˈʔænæ wæˈħæd/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 10.0,
+          "text": "Итнейн",
+          "translatedText": null,
+          "transcript": "/itˈniːn/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 15.0,
+          "text": "Итнейн - энди итнейн (у меня два)",
+          "translatedText": null,
+          "transcript": "/itˈniːn - ˈʔændi itˈniːn/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 20.0,
+          "text": "Талата",
+          "translatedText": null,
+          "transcript": "/tæˈlɑːtæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 25.0,
+          "text": "Талата - талата кутуб (три книги)",
+          "translatedText": null,
+          "transcript": "/tæˈlɑːtæ - tæˈlɑːtæ kuˈtuːb/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 30.0,
+          "text": "Арба",
+          "translatedText": null,
+          "transcript": "/ʔærˈbɑːʔæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 35.0,
+          "text": "Арба - арба караси (четыре стула)",
+          "translatedText": null,
+          "transcript": "/ʔærˈbɑːʔæ - ʔærˈbɑːʔæ kæˈrɑːsiː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 40.0,
+          "text": "Хамса",
+          "translatedText": null,
+          "transcript": "/χæmˈsɑː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 45.0,
+          "text": "Хамса - хамса туфах (пять яблок)",
+          "translatedText": null,
+          "transcript": "/χæmˈsɑː - χæmˈsɑː tuˈfæħ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 50.0,
+          "text": "Ситта",
+          "translatedText": null,
+          "transcript": "/sitˈtɑː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 55.0,
+          "text": "Ситта - ситта биют (шесть домов)",
+          "translatedText": null,
+          "transcript": "/sitˈtɑː - sitˈtɑː biˈjuːt/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 60.0,
+          "text": "Саба",
+          "translatedText": null,
+          "transcript": "/sæbˈʔɑː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 65.0,
+          "text": "Саба - саба аям (семь дней)",
+          "translatedText": null,
+          "transcript": "/sæbˈʔɑː - sæbˈʔɑː ʔæˈjɑːm/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 70.0,
+          "text": "Тамания",
+          "translatedText": null,
+          "transcript": "/tæˈmɑːnijæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 75.0,
+          "text": "Тамания - тамания нуджум (восемь звезд)",
+          "translatedText": null,
+          "transcript": "/tæˈmɑːnijæ - tæˈmɑːnijæ nʊˈdʒuːm/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 80.0,
+          "text": "Тис",
+          "translatedText": null,
+          "transcript": "/tisˈʔɑː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 85.0,
+          "text": "Тис - тис атфаль (девять детей)",
+          "translatedText": null,
+          "transcript": "/tisˈʔɑː - tisˈʔɑː ʔætˈfɑːl/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 90.0,
+          "text": "Ашара",
+          "translatedText": null,
+          "transcript": "/ʔæʃˈɑːræ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 95.0,
+          "text": "Ашара - ашара асаби (десять пальцев)",
+          "translatedText": null,
+          "transcript": "/ʔæʃˈɑːræ - ʔæʃˈɑːræ ʔæsɑːˈbiː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 100.0,
+          "text": "Ихда ашар",
+          "translatedText": null,
+          "transcript": "/ʔiħˈdæː ʔæʃˈɑːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 105.0,
+          "text": "Ихда ашар - а-саха ихда ашар (час одиннадцать)",
+          "translatedText": null,
+          "transcript": "/ʔiħˈdæː ʔæʃˈɑːr - æsˈsɑːʔɑː ʔiħˈdæː ʔæʃˈɑːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 110.0,
+          "text": "Итни ашар",
+          "translatedText": null,
+          "transcript": "/itˈniː ʔæʃˈɑːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 115.0,
+          "text": "Итни ашар - итни ашар раджуль (двенадцать мужчин)",
+          "translatedText": null,
+          "transcript": "/itˈniː ʔæʃˈɑːr - itˈniː ʔæʃˈɑːr ræˈdʒuːl/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 120.0,
+          "text": "Талаташар",
+          "translatedText": null,
+          "transcript": "/tælætæˈʃɑːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 125.0,
+          "text": "Талаташар - талаташар шахр (тринадцать месяцев)",
+          "translatedText": null,
+          "transcript": "/tælætæˈʃɑːr - tælætæˈʃɑːr ʃæhɾ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 130.0,
+          "text": "Арбаташар",
+          "translatedText": null,
+          "transcript": "/ʔærbætæˈʃɑːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 135.0,
+          "text": "Арбаташар - арбаташар сана (четырнадцать лет)",
+          "translatedText": null,
+          "transcript": "/ʔærbætæˈʃɑːr - ʔærbætæˈʃɑːr sæˈnæː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 140.0,
+          "text": "Хамсташар",
+          "translatedText": null,
+          "transcript": "/χæmsætæˈʃɑːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 145.0,
+          "text": "Хамсташар - хамсташар йом (пятнадцать дней)",
+          "translatedText": null,
+          "transcript": "/χæmsætæˈʃɑːr - χæmsætæˈʃɑːr jɔːm/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 150.0,
+          "text": "Талатин",
+          "translatedText": null,
+          "transcript": "/tælæˈtiːn/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 155.0,
+          "text": "Талатин - талатин дерхем (тридцать дирхамов)",
+          "translatedText": null,
+          "transcript": "/tælæˈtiːn - tælæˈtiːn dærˈheːm/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 160.0,
+          "text": "Арбин",
+          "translatedText": null,
+          "transcript": "/ʔærˈbiːn/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 165.0,
+          "text": "Арбин - арбин доллар (сорок долларов)",
+          "translatedText": null,
+          "transcript": "/ʔærˈbiːn - ʔærˈbiːn dɔˈlɑːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 170.0,
+          "text": "Мия",
+          "translatedText": null,
+          "transcript": "/ˈmiːjæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 175.0,
+          "text": "Мия - мия гинеях (сто египетских фунтов)",
+          "translatedText": null,
+          "transcript": "/ˈmiːjæ - ˈmiːjæ ɡiˈnæjæh/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 180.0,
+          "text": "Альф",
+          "translatedText": null,
+          "transcript": "/ˈʔælæf/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 185.0,
+          "text": "Альф - альф китаб (тысяча книг)",
+          "translatedText": null,
+          "transcript": "/ˈʔælæf - ˈʔælæf kiˈtɑːb/",
+          "originalStartTime": null
+        }
+      ]
+    }
+  ]
+}

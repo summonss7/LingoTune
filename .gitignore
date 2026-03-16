@@ -1,0 +1,62 @@
+# Flutter
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.packages
+app/.dart_tool
+app/.pub-cache/
+app/.pub/
+app/build/
+app/*.apk
+app/*.aab
+app/.metadata
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temp files
+temp/*
+!temp/.gitkeep
+
+# Build artifacts
+builds/*.apk
+builds/*.aab
+!builds/.gitkeep
+
+# Windows artifacts
+app/nul
+nul
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+Facut.txt
+planul.txt
+
+# Gradle
+app/android/.gradle/
+app/android/local.properties
+app/android/.gradle/# Test push check

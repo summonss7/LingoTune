@@ -1,0 +1,406 @@
+{
+  "title": "01-Alphabet-Song",
+  "artist": "LingoTune Arabic Learning",
+  "originalLanguage": "ar",
+  "translations": [
+    {
+      "language": "ru",
+      "languageName": "Русский",
+      "type": "",
+      "lines": [
+        {
+          "startTime": 0.0,
+          "text": "Алиф - ард",
+          "translatedText": null,
+          "transcript": "/ˈʔælf - ˈʔærd/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 5.0,
+          "text": "Алиф - ард джамиля (земля красивая)",
+          "translatedText": null,
+          "transcript": "/ˈʔælf - ˈʔærd dʒæˈmiːlæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 10.0,
+          "text": "Ба - бахр",
+          "translatedText": null,
+          "transcript": "/bɑː - ˈbæħr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 15.0,
+          "text": "Ба - бахр кебир (море большое)",
+          "translatedText": null,
+          "transcript": "/bɑː - ˈbæħr keˈbiːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 20.0,
+          "text": "Та - талим",
+          "translatedText": null,
+          "transcript": "/tɑː - tælˈmiːð/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 25.0,
+          "text": "Та - талим муджтахид (ученик старательный)",
+          "translatedText": null,
+          "transcript": "/tɑː - tælˈmiːθ mudʒæˈtiːd/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 30.0,
+          "text": "Са - сабаан",
+          "translatedText": null,
+          "transcript": "/θɑː - θʊbˈbɑːn/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 35.0,
+          "text": "Са - сабаан сагир (змея маленькая)",
+          "translatedText": null,
+          "transcript": "/θɑː - θʊbˈbɑːn sæˈɣiːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 40.0,
+          "text": "Джим - джамаль",
+          "translatedText": null,
+          "transcript": "/dʒiːm - dʒæˈmæl/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 45.0,
+          "text": "Джим - джамаль фи-ль-сахра (верблюд в пустыне)",
+          "translatedText": null,
+          "transcript": "/dʒiːm - dʒæˈmæl fiːlˈsæħræː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 50.0,
+          "text": "Ха - хисаан",
+          "translatedText": null,
+          "transcript": "/ħɑː - ħɪˈsɑːn/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 55.0,
+          "text": "Ха - хисаан сари (лошадь быстрая)",
+          "translatedText": null,
+          "transcript": "/ħɑː - ħɪˈsɑːn sæˈriː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 60.0,
+          "text": "Ха - хубз",
+          "translatedText": null,
+          "transcript": "/χɑː - χʊbz/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 65.0,
+          "text": "Ха - хубз тазидж (хлеб свежий)",
+          "translatedText": null,
+          "transcript": "/χɑː - χʊbz tæˈziːdʒ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 70.0,
+          "text": "Даль - даджаджа",
+          "translatedText": null,
+          "transcript": "/dɑːl - dædʒæˈdʒæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 75.0,
+          "text": "Даль - даджаджа фи-ль-бейт (курица в доме)",
+          "translatedText": null,
+          "transcript": "/dɑːl - dædʒæˈdʒæ fiːlˈbejt/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 80.0,
+          "text": "Заль - захаб",
+          "translatedText": null,
+          "transcript": "/ðɑː - ˈzæhæb/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 85.0,
+          "text": "Заль - захаб асфар (золото желтое)",
+          "translatedText": null,
+          "transcript": "/ðɑː - ˈzæhæb ʔæsˈfær/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 90.0,
+          "text": "Ра - раджуль",
+          "translatedText": null,
+          "transcript": "/rɑː - ræˈdʒuːl/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 95.0,
+          "text": "Ра - раджуль тайиб (мужчина хороший)",
+          "translatedText": null,
+          "transcript": "/rɑː - ræˈdʒuːl tæˈjiːb/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 100.0,
+          "text": "Зай - захра",
+          "translatedText": null,
+          "transcript": "/zɑː - ˈzæhɾæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 105.0,
+          "text": "Зай - захра хамра (цветок красный)",
+          "translatedText": null,
+          "transcript": "/zɑː - ˈzæhɾæ ˈħæmɾɑː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 110.0,
+          "text": "Син - шамс",
+          "translatedText": null,
+          "transcript": "/siːn - ʃæms/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 115.0,
+          "text": "Син - шамс мушрика (солнце сияющее)",
+          "translatedText": null,
+          "transcript": "/siːn - ʃæms mʊˈʃriːkæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 120.0,
+          "text": "Шин - шаджара",
+          "translatedText": null,
+          "transcript": "/ʃiːn - ʃæˈdʒɑːræ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 125.0,
+          "text": "Шин - шаджара алия (дерево высокое)",
+          "translatedText": null,
+          "transcript": "/ʃiːn - ʃæˈdʒɑːræ ʔæˈliːjæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 130.0,
+          "text": "Сад - самма",
+          "translatedText": null,
+          "transcript": "/sɑːd - sʊmˈmɑːʔ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 135.0,
+          "text": "Сад - самма зрака (небо голубое)",
+          "translatedText": null,
+          "transcript": "/sɑːd - sʊmˈmɑːʔ zæˈrækɑː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 140.0,
+          "text": "Дад - дифу",
+          "translatedText": null,
+          "transcript": "/dɑːd - dʊˈfuːʔ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 145.0,
+          "text": "Дад - дифу сагир (лягушка маленькая)",
+          "translatedText": null,
+          "transcript": "/dɑːd - dʊˈfuːʔ sæˈɣiːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 150.0,
+          "text": "Та - таир",
+          "translatedText": null,
+          "transcript": "/tɑːʔ - tɑːˈʔiːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 155.0,
+          "text": "Та - таир ятир (птица летает)",
+          "translatedText": null,
+          "transcript": "/tɑːʔ - tɑːˈʔiːr jæˈtiːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 160.0,
+          "text": "За - захр",
+          "translatedText": null,
+          "transcript": "/zɑːʔ - ˈzæhɾ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 165.0,
+          "text": "За - захр аль-камар (спина луны - полная луна)",
+          "translatedText": null,
+          "transcript": "/zɑːʔ - ˈzæhɾ ælˈqɑːmɑːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 170.0,
+          "text": "Айн - айн",
+          "translatedText": null,
+          "transcript": "/ʔajn - ʔajn/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 175.0,
+          "text": "Айн - айн джамиля (глаз красивый)",
+          "translatedText": null,
+          "transcript": "/ʔajn - ʔajn dʒæˈmiːlæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 180.0,
+          "text": "Гайн - гайма",
+          "translatedText": null,
+          "transcript": "/ɣajn - ˈɣajmæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 185.0,
+          "text": "Гайн - гайма судна (туча черная)",
+          "translatedText": null,
+          "transcript": "/ɣajn - ˈɣajmæ sʊdˈnæː/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 190.0,
+          "text": "Фа - факиха",
+          "translatedText": null,
+          "transcript": "/fɑː - fɑːˈkiːhæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 195.0,
+          "text": "Фа - факиха лазида (фрукт вкусный)",
+          "translatedText": null,
+          "transcript": "/fɑː - fɑːˈkiːhæ læˈziːðæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 200.0,
+          "text": "Каф - калам",
+          "translatedText": null,
+          "transcript": "/qɑːf - ˈqælæm/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 205.0,
+          "text": "Каф - калам расаас (карандаш)",
+          "translatedText": null,
+          "transcript": "/qɑːf - ˈqælæm ræsˈsɑːs/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 210.0,
+          "text": "Каф - китаб",
+          "translatedText": null,
+          "transcript": "/kɑːf - kiːˈtɑːb/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 215.0,
+          "text": "Каф - китаб джадид (книга новая)",
+          "translatedText": null,
+          "transcript": "/kɑːf - kiːˈtɑːb dʒæˈdiːd/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 220.0,
+          "text": "Лям - лаймун",
+          "translatedText": null,
+          "transcript": "/lɑːm - lajˈmuːn/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 225.0,
+          "text": "Лям - лаймун хамид (лимон кислый)",
+          "translatedText": null,
+          "transcript": "/lɑːm - lajˈmuːn ħæˈmiːd/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 230.0,
+          "text": "Мим - манзиль",
+          "translatedText": null,
+          "transcript": "/miːm - mænˈziːl/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 235.0,
+          "text": "Мим - манзиль кебир (дом большой)",
+          "translatedText": null,
+          "transcript": "/miːm - mænˈziːl keˈbiːr/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 240.0,
+          "text": "Нун - наджм",
+          "translatedText": null,
+          "transcript": "/nuːn - nædʒm/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 245.0,
+          "text": "Нун - наджм лями (звезда светящаяся)",
+          "translatedText": null,
+          "transcript": "/nuːn - nædʒm læˈmiːʔ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 250.0,
+          "text": "Ха - хилаал",
+          "translatedText": null,
+          "transcript": "/hɑː - xɪˈlɑːl/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 255.0,
+          "text": "Ха - хилааль мудий (месяц светящийся - полумесяц)",
+          "translatedText": null,
+          "transcript": "/hɑː - xɪˈlɑːl mʊˈdiːʔ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 260.0,
+          "text": "Вау - вард",
+          "translatedText": null,
+          "transcript": "/wɑːw - wɑːrd/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 265.0,
+          "text": "Вау - вард джамиль (роза красивая)",
+          "translatedText": null,
+          "transcript": "/wɑːw - wɑːrd dʒæˈmiːl/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 270.0,
+          "text": "Йя - ядайя",
+          "translatedText": null,
+          "transcript": "/jɑː - ˈjɑːdijːjæ/",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 275.0,
+          "text": "Йя - ядайя сагира (рука маленькая)",
+          "translatedText": null,
+          "transcript": "/jɑː - ˈjɑːdijːjæ sæˈɣiːræ/",
+          "originalStartTime": null
+        }
+      ]
+    }
+  ]
+}

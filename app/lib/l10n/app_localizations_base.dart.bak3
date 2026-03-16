@@ -1,0 +1,1944 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
+
+import 'app_localizations_ar.dart';
+import 'app_localizations_de.dart';
+import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
+import 'app_localizations_fr.dart';
+import 'app_localizations_it.dart';
+import 'app_localizations_pt.dart';
+import 'app_localizations_ro.dart';
+import 'app_localizations_ru.dart';
+import 'app_localizations_uk.dart';
+import 'app_localizations_zh.dart';
+
+// ignore_for_file: type=lint
+
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'l10n/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale)
+      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+
+  final String localeName;
+
+  static AppLocalizations? of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations);
+  }
+
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
+
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
+
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('ar'),
+    Locale('de'),
+    Locale('en'),
+    Locale('es'),
+    Locale('fr'),
+    Locale('it'),
+    Locale('pt'),
+    Locale('ro'),
+    Locale('ru'),
+    Locale('uk'),
+    Locale('zh')
+  ];
+
+  /// No description provided for @appTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'LingoTune'**
+  String get appTitle;
+
+  /// No description provided for @library.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get library;
+
+  /// No description provided for @playlists.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlists'**
+  String get playlists;
+
+  /// No description provided for @settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
+
+  /// No description provided for @allSongs.
+  ///
+  /// In en, this message translates to:
+  /// **'All Songs'**
+  String get allSongs;
+
+  /// No description provided for @favorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get favorites;
+
+  /// No description provided for @createPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Playlist'**
+  String get createPlaylist;
+
+  /// No description provided for @playlistName.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist Name'**
+  String get playlistName;
+
+  /// No description provided for @iconOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon (optional)'**
+  String get iconOptional;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @create.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get create;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get search;
+
+  /// No description provided for @filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get filter;
+
+  /// No description provided for @sort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get sort;
+
+  /// No description provided for @addToFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Favorites'**
+  String get addToFavorites;
+
+  /// No description provided for @removeFromFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from Favorites'**
+  String get removeFromFavorites;
+
+  /// No description provided for @addToPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Playlist'**
+  String get addToPlaylist;
+
+  /// No description provided for @removeFromPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from Playlist'**
+  String get removeFromPlaylist;
+
+  /// No description provided for @addSongsToLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Add songs from Library'**
+  String get addSongsToLibrary;
+
+  /// No description provided for @noSongsToAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'No songs to add'**
+  String get noSongsToAdd;
+
+  /// No description provided for @addButtonText.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {count}'**
+  String addButtonText(Object count);
+
+  /// No description provided for @selected.
+  ///
+  /// In en, this message translates to:
+  /// **'selected'**
+  String get selected;
+
+  /// No description provided for @darkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark Mode'**
+  String get darkMode;
+
+  /// No description provided for @lightMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Light Mode'**
+  String get lightMode;
+
+  /// No description provided for @autoScroll.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto Scroll'**
+  String get autoScroll;
+
+  /// No description provided for @autoScrollSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically scroll to current line'**
+  String get autoScrollSubtitle;
+
+  /// No description provided for @highlightNextLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight Next Line'**
+  String get highlightNextLine;
+
+  /// No description provided for @highlightNextLineSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show next line with subtle highlight'**
+  String get highlightNextLineSubtitle;
+
+  /// No description provided for @fontSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Font Size'**
+  String get fontSize;
+
+  /// No description provided for @scrollOffset.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll Offset'**
+  String get scrollOffset;
+
+  /// No description provided for @scrollOffsetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance from top of screen in pixels'**
+  String get scrollOffsetSubtitle;
+
+  /// No description provided for @defaultTranslationLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Translation Language'**
+  String get defaultTranslationLanguage;
+
+  /// No description provided for @russian.
+  ///
+  /// In en, this message translates to:
+  /// **'Russian'**
+  String get russian;
+
+  /// No description provided for @english.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get english;
+
+  /// No description provided for @romanian.
+  ///
+  /// In en, this message translates to:
+  /// **'Romanian'**
+  String get romanian;
+
+  /// No description provided for @french.
+  ///
+  /// In en, this message translates to:
+  /// **'French'**
+  String get french;
+
+  /// No description provided for @german.
+  ///
+  /// In en, this message translates to:
+  /// **'German'**
+  String get german;
+
+  /// No description provided for @spanish.
+  ///
+  /// In en, this message translates to:
+  /// **'Spanish'**
+  String get spanish;
+
+  /// No description provided for @italian.
+  ///
+  /// In en, this message translates to:
+  /// **'Italian'**
+  String get italian;
+
+  /// No description provided for @portuguese.
+  ///
+  /// In en, this message translates to:
+  /// **'Portuguese'**
+  String get portuguese;
+
+  /// No description provided for @lyricsFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics Folder'**
+  String get lyricsFolder;
+
+  /// No description provided for @useLyricsFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Lyrics Folder'**
+  String get useLyricsFolder;
+
+  /// No description provided for @useLyricsFolderDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled - files must be selected with audio'**
+  String get useLyricsFolderDisabled;
+
+  /// No description provided for @setLyricsFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Lyrics Folder'**
+  String get setLyricsFolder;
+
+  /// No description provided for @selectFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Folder'**
+  String get selectFolder;
+
+  /// No description provided for @folderPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder path'**
+  String get folderPath;
+
+  /// No description provided for @examples.
+  ///
+  /// In en, this message translates to:
+  /// **'Examples:'**
+  String get examples;
+
+  /// No description provided for @defaultFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Default: /LingoTune_Lyrics'**
+  String get defaultFolder;
+
+  /// No description provided for @currentFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Current folder:'**
+  String get currentFolder;
+
+  /// No description provided for @folderSetSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder set: {path}'**
+  String folderSetSuccessfully(Object path);
+
+  /// No description provided for @folderSetFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder does not exist or no access'**
+  String get folderSetFailed;
+
+  /// No description provided for @resetToDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to default'**
+  String get resetToDefault;
+
+  /// No description provided for @showCurrentFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Show current folder'**
+  String get showCurrentFolder;
+
+  /// No description provided for @changeFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Change folder'**
+  String get changeFolder;
+
+  /// No description provided for @resetToDefaultFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to default folder'**
+  String get resetToDefaultFolder;
+
+  /// No description provided for @folderReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to default folder'**
+  String get folderReset;
+
+  /// No description provided for @clearCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Cache'**
+  String get clearCache;
+
+  /// No description provided for @clearCacheSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear temporary files'**
+  String get clearCacheSubtitle;
+
+  /// No description provided for @cacheCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache cleared'**
+  String get cacheCleared;
+
+  /// No description provided for @resetSongLanguages.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Song Languages'**
+  String get resetSongLanguages;
+
+  /// No description provided for @resetSongLanguagesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use default language from settings'**
+  String get resetSongLanguagesSubtitle;
+
+  /// No description provided for @songLanguagesReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Song languages reset'**
+  String get songLanguagesReset;
+
+  /// No description provided for @about.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get about;
+
+  /// No description provided for @translationsLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Translations loaded successfully!'**
+  String get translationsLoaded;
+
+  /// No description provided for @failedToLoadTranslations.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load translations: {error}'**
+  String failedToLoadTranslations(Object error);
+
+  /// No description provided for @editTranslations.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit translations'**
+  String get editTranslations;
+
+  /// No description provided for @loadTranslationsFromFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Load translations from file'**
+  String get loadTranslationsFromFile;
+
+  /// No description provided for @loadTranslations.
+  ///
+  /// In en, this message translates to:
+  /// **'Load Translations'**
+  String get loadTranslations;
+
+  /// No description provided for @noFileSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No file selected'**
+  String get noFileSelected;
+
+  /// No description provided for @noLrcFileAssociated.
+  ///
+  /// In en, this message translates to:
+  /// **'No LRC file associated with this song'**
+  String get noLrcFileAssociated;
+
+  /// No description provided for @lrcFileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'LRC file saved successfully!'**
+  String get lrcFileSaved;
+
+  /// No description provided for @failedToSaveLrcFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save LRC file: {error}'**
+  String failedToSaveLrcFile(Object error);
+
+  /// No description provided for @exitEditMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit edit mode'**
+  String get exitEditMode;
+
+  /// No description provided for @editTimestamps.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit timestamps'**
+  String get editTimestamps;
+
+  /// No description provided for @saveChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get saveChanges;
+
+  /// No description provided for @language.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
+
+  /// No description provided for @loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get loading;
+
+  /// No description provided for @noSongsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No songs found'**
+  String get noSongsFound;
+
+  /// No description provided for @noPlaylistsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No playlists found'**
+  String get noPlaylistsFound;
+
+  /// No description provided for @selectSong.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a song to play'**
+  String get selectSong;
+
+  /// No description provided for @song.
+  ///
+  /// In en, this message translates to:
+  /// **'Song'**
+  String get song;
+
+  /// No description provided for @artist.
+  ///
+  /// In en, this message translates to:
+  /// **'Artist'**
+  String get artist;
+
+  /// No description provided for @duration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get duration;
+
+  /// No description provided for @actions.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get actions;
+
+  /// No description provided for @play.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get play;
+
+  /// No description provided for @pause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get pause;
+
+  /// No description provided for @stop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get stop;
+
+  /// No description provided for @previous.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get previous;
+
+  /// No description provided for @next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get next;
+
+  /// No description provided for @rewind10.
+  ///
+  /// In en, this message translates to:
+  /// **'-10s'**
+  String get rewind10;
+
+  /// No description provided for @forward10.
+  ///
+  /// In en, this message translates to:
+  /// **'+10s'**
+  String get forward10;
+
+  /// No description provided for @repeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat'**
+  String get repeat;
+
+  /// No description provided for @shuffle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle'**
+  String get shuffle;
+
+  /// No description provided for @volume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get volume;
+
+  /// No description provided for @speed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get speed;
+
+  /// No description provided for @lyrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics'**
+  String get lyrics;
+
+  /// No description provided for @translations.
+  ///
+  /// In en, this message translates to:
+  /// **'Translations'**
+  String get translations;
+
+  /// No description provided for @originalText.
+  ///
+  /// In en, this message translates to:
+  /// **'Original Text'**
+  String get originalText;
+
+  /// No description provided for @translatedText.
+  ///
+  /// In en, this message translates to:
+  /// **'Translated Text'**
+  String get translatedText;
+
+  /// No description provided for @showTranscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Transcription'**
+  String get showTranscription;
+
+  /// No description provided for @showTranscriptionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Display pronunciation guide'**
+  String get showTranscriptionSubtitle;
+
+  /// No description provided for @showTranslationFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation First'**
+  String get showTranslationFirst;
+
+  /// No description provided for @showTranslationFirstSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show translation before original text'**
+  String get showTranslationFirstSubtitle;
+
+  /// No description provided for @italianLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Italiano'**
+  String get italianLang;
+
+  /// No description provided for @portugueseLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Português'**
+  String get portugueseLang;
+
+  /// No description provided for @lyricsEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics Editor'**
+  String get lyricsEditor;
+
+  /// No description provided for @addLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Line'**
+  String get addLine;
+
+  /// No description provided for @updateLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Line'**
+  String get updateLine;
+
+  /// No description provided for @deleteLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Line'**
+  String get deleteLine;
+
+  /// No description provided for @clearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear All'**
+  String get clearAll;
+
+  /// No description provided for @moveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Up'**
+  String get moveUp;
+
+  /// No description provided for @moveDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Down'**
+  String get moveDown;
+
+  /// No description provided for @autoSyncLyrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto Sync Lyrics'**
+  String get autoSyncLyrics;
+
+  /// No description provided for @exportLrc.
+  ///
+  /// In en, this message translates to:
+  /// **'Export LRC (Original)'**
+  String get exportLrc;
+
+  /// No description provided for @exportJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Export JSON (Translations)'**
+  String get exportJson;
+
+  /// No description provided for @markTimestamp.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark Timestamp (Enter)'**
+  String get markTimestamp;
+
+  /// No description provided for @original.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get original;
+
+  /// No description provided for @translation.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation'**
+  String get translation;
+
+  /// No description provided for @audioFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio File'**
+  String get audioFile;
+
+  /// No description provided for @songTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Song Title'**
+  String get songTitle;
+
+  /// No description provided for @browse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse'**
+  String get browse;
+
+  /// No description provided for @audioControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio Controls'**
+  String get audioControls;
+
+  /// No description provided for @addEditLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Add/Edit Line'**
+  String get addEditLine;
+
+  /// No description provided for @instructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Instructions'**
+  String get instructions;
+
+  /// No description provided for @lyricsEditorInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'LRC Synchronizer Instructions:\n\n1. Select an audio file using Browse button\n2. Enter song title and artist (optional)\n3. Click Play to start audio\n4. When a line is sung, type original text in \'Original\' field\n5. Press Enter or click \'Mark Timestamp\' to record timestamp\n6. Optionally add a translation in \'Translation\' field\n7. Repeat steps 4-6 for each line\n8. Use \'Export LRC\' to save original lyrics with timestamps\n9. Use \'Export JSON\' to save translations\n\nTips:\n- Use -10s/+10s to navigate quickly through the song\n- You can reorder lines using Move Up/Down\n- Load previously saved JSON files to edit translations'**
+  String get lyricsEditorInstructions;
+
+  /// No description provided for @welcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome'**
+  String get welcome;
+
+  /// No description provided for @welcomeMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Start your language learning journey with music!'**
+  String get welcomeMessage;
+
+  /// No description provided for @importSongs.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Songs'**
+  String get importSongs;
+
+  /// No description provided for @importSongsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add audio files from your device'**
+  String get importSongsSubtitle;
+
+  /// No description provided for @manageLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Library'**
+  String get manageLibrary;
+
+  /// No description provided for @manageLibrarySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Organize your songs and playlists'**
+  String get manageLibrarySubtitle;
+
+  /// No description provided for @syncLyrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync Lyrics'**
+  String get syncLyrics;
+
+  /// No description provided for @syncLyricsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically sync lyrics with audio'**
+  String get syncLyricsSubtitle;
+
+  /// No description provided for @languageLearning.
+  ///
+  /// In en, this message translates to:
+  /// **'Language Learning • Music • Translations'**
+  String get languageLearning;
+
+  /// No description provided for @version.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get version;
+
+  /// No description provided for @developer.
+  ///
+  /// In en, this message translates to:
+  /// **'Developed by'**
+  String get developer;
+
+  /// No description provided for @website.
+  ///
+  /// In en, this message translates to:
+  /// **'Website'**
+  String get website;
+
+  /// No description provided for @failedToCreatePlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create playlist: {error}'**
+  String failedToCreatePlaylist(Object error);
+
+  /// No description provided for @playlistCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist created successfully!'**
+  String get playlistCreated;
+
+  /// No description provided for @playlistDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist deleted successfully!'**
+  String get playlistDeleted;
+
+  /// No description provided for @playlistUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist updated successfully!'**
+  String get playlistUpdated;
+
+  /// No description provided for @songAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Song added successfully!'**
+  String get songAdded;
+
+  /// No description provided for @songRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Song removed successfully!'**
+  String get songRemoved;
+
+  /// No description provided for @songDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Song deleted successfully!'**
+  String get songDeleted;
+
+  /// No description provided for @error.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get error;
+
+  /// No description provided for @warning.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning'**
+  String get warning;
+
+  /// No description provided for @info.
+  ///
+  /// In en, this message translates to:
+  /// **'Info'**
+  String get info;
+
+  /// No description provided for @success.
+  ///
+  /// In en, this message translates to:
+  /// **'Success'**
+  String get success;
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
+  /// No description provided for @areYouSure.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure?'**
+  String get areYouSure;
+
+  /// No description provided for @unsavedChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'You have unsaved changes. Continue?'**
+  String get unsavedChanges;
+
+  /// No description provided for @selectLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Language'**
+  String get selectLanguage;
+
+  /// No description provided for @appLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'App Language'**
+  String get appLanguage;
+
+  /// No description provided for @englishLang.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get englishLang;
+
+  /// No description provided for @russianLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Русский'**
+  String get russianLang;
+
+  /// No description provided for @romanianLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Română'**
+  String get romanianLang;
+
+  /// No description provided for @frenchLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Français'**
+  String get frenchLang;
+
+  /// No description provided for @germanLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Deutsch'**
+  String get germanLang;
+
+  /// No description provided for @spanishLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Español'**
+  String get spanishLang;
+
+  /// No description provided for @chineseLang.
+  ///
+  /// In en, this message translates to:
+  /// **'中文'**
+  String get chineseLang;
+
+  /// No description provided for @arabicLang.
+  ///
+  /// In en, this message translates to:
+  /// **'العربية'**
+  String get arabicLang;
+
+  /// No description provided for @welcomeToLingoTune.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to LingoTune'**
+  String get welcomeToLingoTune;
+
+  /// No description provided for @folderSetupMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a folder to store lyrics and translations (LRC and JSON files). This makes it easy to organize your music library.'**
+  String get folderSetupMessage;
+
+  /// No description provided for @selectFolderNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Folder Now'**
+  String get selectFolderNow;
+
+  /// No description provided for @goToSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Settings'**
+  String get goToSettings;
+
+  /// No description provided for @setupLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup Later'**
+  String get setupLater;
+
+  /// No description provided for @useDefaultFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Default Folder'**
+  String get useDefaultFolder;
+
+  /// No description provided for @databaseFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Database found in import file'**
+  String get databaseFound;
+
+  /// No description provided for @importDatabaseQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to import the database too?'**
+  String get importDatabaseQuestion;
+
+  /// No description provided for @mergeDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge'**
+  String get mergeDatabase;
+
+  /// No description provided for @replaceDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get replaceDatabase;
+
+  /// No description provided for @importDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Database'**
+  String get importDatabase;
+
+  /// No description provided for @skipDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip Database'**
+  String get skipDatabase;
+
+  /// No description provided for @mergeDatabaseDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge imported songs with your library (adds new items only)'**
+  String get mergeDatabaseDescription;
+
+  /// No description provided for @replaceDatabaseDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace your entire library with the imported database (you will lose all existing data)'**
+  String get replaceDatabaseDescription;
+
+  /// No description provided for @exporting.
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting...'**
+  String get exporting;
+
+  /// No description provided for @exportingProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting {current} of {total} songs'**
+  String exportingProgress(Object current, Object total);
+
+  /// No description provided for @exportDatabaseIncluded.
+  ///
+  /// In en, this message translates to:
+  /// **'Database included in export'**
+  String get exportDatabaseIncluded;
+
+  /// No description provided for @importSuccessWithDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {fileCount} file(s) and database'**
+  String importSuccessWithDatabase(Object fileCount);
+
+  /// No description provided for @importSuccessNoDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {fileCount} file(s)'**
+  String importSuccessNoDatabase(Object fileCount);
+
+  /// No description provided for @chinese.
+  ///
+  /// In en, this message translates to:
+  /// **'Chinese'**
+  String get chinese;
+
+  /// No description provided for @arabic.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic'**
+  String get arabic;
+
+  /// No description provided for @colorTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Color Theme'**
+  String get colorTheme;
+
+  /// No description provided for @themeColorPurple.
+  ///
+  /// In en, this message translates to:
+  /// **'Purple'**
+  String get themeColorPurple;
+
+  /// No description provided for @themeColorBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get themeColorBlue;
+
+  /// No description provided for @themeColorGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get themeColorGreen;
+
+  /// No description provided for @themeColorOrange.
+  ///
+  /// In en, this message translates to:
+  /// **'Orange'**
+  String get themeColorOrange;
+
+  /// No description provided for @themeColorRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get themeColorRed;
+
+  /// No description provided for @themeColorPink.
+  ///
+  /// In en, this message translates to:
+  /// **'Pink'**
+  String get themeColorPink;
+
+  /// No description provided for @themeColorDeepOrange.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep Orange'**
+  String get themeColorDeepOrange;
+
+  /// No description provided for @themeColorDarkRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark Red'**
+  String get themeColorDarkRed;
+
+  /// No description provided for @themeColorTeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Teal'**
+  String get themeColorTeal;
+
+  /// No description provided for @themeColorCyan.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyan'**
+  String get themeColorCyan;
+
+  /// No description provided for @themeColorAmber.
+  ///
+  /// In en, this message translates to:
+  /// **'Amber'**
+  String get themeColorAmber;
+
+  /// No description provided for @themeColorLime.
+  ///
+  /// In en, this message translates to:
+  /// **'Lime'**
+  String get themeColorLime;
+
+  /// No description provided for @ukrainianLang.
+  ///
+  /// In en, this message translates to:
+  /// **'Ukrainian'**
+  String get ukrainianLang;
+
+  /// No description provided for @font.
+  ///
+  /// In en, this message translates to:
+  /// **'Font'**
+  String get font;
+
+  /// No description provided for @fontSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Font Settings'**
+  String get fontSettings;
+
+  /// No description provided for @systemFont.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get systemFont;
+
+  /// No description provided for @fontRoboto.
+  ///
+  /// In en, this message translates to:
+  /// **'Roboto'**
+  String get fontRoboto;
+
+  /// No description provided for @fontOpenSans.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Sans'**
+  String get fontOpenSans;
+
+  /// No description provided for @fontLato.
+  ///
+  /// In en, this message translates to:
+  /// **'Lato'**
+  String get fontLato;
+
+  /// No description provided for @mainTextSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Main Text Size'**
+  String get mainTextSize;
+
+  /// No description provided for @mainTextBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold Main Text'**
+  String get mainTextBold;
+
+  /// No description provided for @translationSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation Size'**
+  String get translationSize;
+
+  /// No description provided for @translationBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold Translation'**
+  String get translationBold;
+
+  /// No description provided for @transcriptSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcript Size'**
+  String get transcriptSize;
+
+  /// No description provided for @transcriptBold.
+  ///
+  /// In en, this message translates to:
+  /// **'Bold Transcript'**
+  String get transcriptBold;
+
+  /// No description provided for @serviceMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Service Messages'**
+  String get serviceMessages;
+
+  /// No description provided for @serviceMessagesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show service notifications about translation and transcription'**
+  String get serviceMessagesSubtitle;
+
+  /// No description provided for @includeMp3Files.
+  ///
+  /// In en, this message translates to:
+  /// **'Include MP3 files'**
+  String get includeMp3Files;
+
+  /// No description provided for @includeMp3FilesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This will increase the archive size'**
+  String get includeMp3FilesSubtitle;
+
+  /// No description provided for @importMp3Files.
+  ///
+  /// In en, this message translates to:
+  /// **'Import MP3 files'**
+  String get importMp3Files;
+
+  /// No description provided for @importMp3FilesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add music files to library'**
+  String get importMp3FilesSubtitle;
+
+  /// No description provided for @exportSongs.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Songs'**
+  String get exportSongs;
+
+  /// No description provided for @import.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get import;
+
+  /// No description provided for @addMultiple.
+  ///
+  /// In en, this message translates to:
+  /// **'Select multiple'**
+  String get addMultiple;
+
+  /// No description provided for @addToPlaylistShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get addToPlaylistShort;
+
+  /// No description provided for @deleteShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteShort;
+
+  /// No description provided for @selectAllShort.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get selectAllShort;
+
+  /// No description provided for @deselectAllShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get deselectAllShort;
+
+  /// No description provided for @exitSelectionMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit selection mode'**
+  String get exitSelectionMode;
+
+  /// No description provided for @selectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select All'**
+  String get selectAll;
+
+  /// No description provided for @deselectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Deselect All'**
+  String get deselectAll;
+
+  /// No description provided for @deleteSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Selected'**
+  String get deleteSelected;
+
+  /// No description provided for @addMultipleToPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Playlist'**
+  String get addMultipleToPlaylist;
+
+  /// No description provided for @coverArt.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover Art'**
+  String get coverArt;
+
+  /// No description provided for @playlistCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist Cover'**
+  String get playlistCover;
+
+  /// No description provided for @selectFromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Select from Gallery'**
+  String get selectFromGallery;
+
+  /// No description provided for @removeCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Cover'**
+  String get removeCover;
+
+  /// No description provided for @coverUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover updated'**
+  String get coverUpdated;
+
+  /// No description provided for @coverRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover removed'**
+  String get coverRemoved;
+
+  /// No description provided for @errorWithMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {error}'**
+  String errorWithMessage(Object error);
+
+  /// No description provided for @importFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Folders'**
+  String get importFolders;
+
+  /// No description provided for @selectMusicFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Music Folder'**
+  String get selectMusicFolder;
+
+  /// No description provided for @folderWithAudioFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder with MP3/WAV files'**
+  String get folderWithAudioFiles;
+
+  /// No description provided for @sameFolderForLyrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Same folder for lyrics'**
+  String get sameFolderForLyrics;
+
+  /// No description provided for @selectLyricsFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Lyrics Folder'**
+  String get selectLyricsFolder;
+
+  /// No description provided for @folderWithLyricsFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder with LRC/JSON files (optional)'**
+  String get folderWithLyricsFiles;
+
+  /// No description provided for @pleaseEnterPlaylistName.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter playlist name'**
+  String get pleaseEnterPlaylistName;
+
+  /// No description provided for @pleaseSelectMusicFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select music folder'**
+  String get pleaseSelectMusicFolder;
+
+  /// No description provided for @cropImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Crop Image'**
+  String get cropImage;
+
+  /// No description provided for @photoPermissionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo access permission required'**
+  String get photoPermissionRequired;
+
+  /// No description provided for @photoPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo access denied'**
+  String get photoPermissionDenied;
+
+  /// No description provided for @imageProcessingError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to process image'**
+  String get imageProcessingError;
+
+  /// No description provided for @scanningFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning folder...'**
+  String get scanningFolder;
+
+  /// No description provided for @importingFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing files...'**
+  String get importingFiles;
+
+  /// No description provided for @importingFolderProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing {current}/{total} files... Found {songs} songs'**
+  String importingFolderProgress(Object current, Object songs, Object total);
+
+  /// No description provided for @processingFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing {file}...'**
+  String processingFile(Object file);
+
+  /// No description provided for @addToPlaylistDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Playlist'**
+  String get addToPlaylistDialogTitle;
+
+  /// No description provided for @addedToPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to \"{playlist}\"'**
+  String addedToPlaylist(Object playlist);
+
+  /// No description provided for @failedToAddToPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add to playlist: {error}'**
+  String failedToAddToPlaylist(Object error);
+
+  /// No description provided for @deleteSong.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteSong;
+
+  /// No description provided for @importSongDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Song'**
+  String get importSongDialogTitle;
+
+  /// No description provided for @audioOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio only'**
+  String get audioOnly;
+
+  /// No description provided for @addLyricsLater.
+  ///
+  /// In en, this message translates to:
+  /// **'I will add lyrics later'**
+  String get addLyricsLater;
+
+  /// No description provided for @audioWithLyricsZIP.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio + Lyrics ZIP'**
+  String get audioWithLyricsZIP;
+
+  /// No description provided for @importWithAllTranslations.
+  ///
+  /// In en, this message translates to:
+  /// **'Import with all translations'**
+  String get importWithAllTranslations;
+
+  /// No description provided for @importTranslationDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Translation'**
+  String get importTranslationDialogTitle;
+
+  /// No description provided for @loadTranslationFromZip.
+  ///
+  /// In en, this message translates to:
+  /// **'Load from ZIP archive'**
+  String get loadTranslationFromZip;
+
+  /// No description provided for @loadTranslationFromJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Load from JSON file'**
+  String get loadTranslationFromJson;
+
+  /// No description provided for @noAudioFilesSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No audio files selected'**
+  String get noAudioFilesSelected;
+
+  /// No description provided for @failedToImportSongs.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to import songs: {error}'**
+  String failedToImportSongs(Object error);
+
+  /// No description provided for @failedToImportSong.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to import song: {error}'**
+  String failedToImportSong(Object error);
+
+  /// No description provided for @musicFolderNotSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Music folder not selected'**
+  String get musicFolderNotSelected;
+
+  /// No description provided for @generateLyrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate Lyrics'**
+  String get generateLyrics;
+
+  /// No description provided for @selectTextFileOrEnterText.
+  ///
+  /// In en, this message translates to:
+  /// **'Select text file or enter text'**
+  String get selectTextFileOrEnterText;
+
+  /// No description provided for @originalLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Original language'**
+  String get originalLanguage;
+
+  /// No description provided for @translationLanguages.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation languages'**
+  String get translationLanguages;
+
+  /// No description provided for @startMinuteForTimestamps.
+  ///
+  /// In en, this message translates to:
+  /// **'Start minute for timestamps'**
+  String get startMinuteForTimestamps;
+
+  /// No description provided for @transcriptionLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcription language'**
+  String get transcriptionLanguage;
+
+  /// No description provided for @generating.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating...'**
+  String get generating;
+
+  /// No description provided for @generate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate'**
+  String get generate;
+
+  /// No description provided for @deepseekApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'DeepSeek API Key'**
+  String get deepseekApiKey;
+
+  /// No description provided for @validateKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Validate key'**
+  String get validateKey;
+
+  /// No description provided for @keyIsValid.
+  ///
+  /// In en, this message translates to:
+  /// **'Key is valid'**
+  String get keyIsValid;
+
+  /// No description provided for @keyIsInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Key is invalid'**
+  String get keyIsInvalid;
+
+  /// No description provided for @lyricsGenerationSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics generated successfully'**
+  String get lyricsGenerationSuccess;
+
+  /// No description provided for @lyricsGenerationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to generate lyrics'**
+  String get lyricsGenerationError;
+
+  /// No description provided for @savingFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving files...'**
+  String get savingFiles;
+
+  /// No description provided for @enterText.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter text'**
+  String get enterText;
+
+  /// No description provided for @transcript.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcript'**
+  String get transcript;
+
+  /// No description provided for @originalTextEditable.
+  ///
+  /// In en, this message translates to:
+  /// **'Original Text (editable)'**
+  String get originalTextEditable;
+
+  /// No description provided for @selectLanguageToEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Select language to edit'**
+  String get selectLanguageToEdit;
+
+  /// No description provided for @moveLineUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move line up'**
+  String get moveLineUp;
+
+  /// No description provided for @moveLineDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move line down'**
+  String get moveLineDown;
+
+  /// No description provided for @moveAllTranslationsUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move all translations up'**
+  String get moveAllTranslationsUp;
+
+  /// No description provided for @moveAllTranslationsDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move all translations down'**
+  String get moveAllTranslationsDown;
+
+  /// No description provided for @translationSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation saved!'**
+  String get translationSaved;
+
+  /// No description provided for @translationSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save translation'**
+  String get translationSaveFailed;
+}
+
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
+
+  @override
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
+  }
+
+  @override
+  bool isSupported(Locale locale) => <String>[
+        'ar',
+        'de',
+        'en',
+        'es',
+        'fr',
+        'it',
+        'pt',
+        'ro',
+        'ru',
+        'uk',
+        'zh'
+      ].contains(locale.languageCode);
+
+  @override
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'ar':
+      return AppLocalizationsAr();
+    case 'de':
+      return AppLocalizationsDe();
+    case 'en':
+      return AppLocalizationsEn();
+    case 'es':
+      return AppLocalizationsEs();
+    case 'fr':
+      return AppLocalizationsFr();
+    case 'it':
+      return AppLocalizationsIt();
+    case 'pt':
+      return AppLocalizationsPt();
+    case 'ro':
+      return AppLocalizationsRo();
+    case 'ru':
+      return AppLocalizationsRu();
+    case 'uk':
+      return AppLocalizationsUk();
+    case 'zh':
+      return AppLocalizationsZh();
+  }
+
+  throw FlutterError(
+      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+      'an issue with the localizations generation tool. Please file an issue '
+      'on GitHub with a reproducible sample app and the gen-l10n configuration '
+      'that was used.');
+}

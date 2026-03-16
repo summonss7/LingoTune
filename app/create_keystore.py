@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""
+Создание keystore для подписи Android APK
+Требует установленных: Java (для keytool)
+"""
+import subprocess
+import os
+import sys
+
+def create_keystore():
+    """Создает keystore для подписи APK"""
+
+    keystore_path = "/d/ProjectAI/LingoTune/app/android/app/lingotune-release.jks"
+
+    if os.path.exists(keystore_path):
+        print(f"✅ Keystore уже существует: {keystore_path}")
+        return keystore_path
+
+    # Попытка найти keytool
+    possible_paths = [
+        "/c/Program Files/Java/*/bin/keytool.exe",
+        "/c/Program Files (x86)/Java/*/bin/keytool.exe",
+    ]
+
+    keytool_path = None
+    for path_pattern in possible_paths:
+        import glob
+        matches = glob.glob(path_pattern)
+        if matches:
+            keytool_path = matches[0]
+            break
+
+    if not keytool_path:
+        print("❌ keytool не найден в стандартных директориях Java")
+        print("❌ Keystore не может быть создан")
+        return None
+
+    print(f"🔧 Используем keytool: {keytool_path}")
+
+    # Параметры для создания keystore
+    command = [
+        keytool_path,
+        "-genkey",
+        "-v",
+        "-keystore", keystore_path,
+        "-keyalg", "RSA",
+        "-keysize", "2048",
+        "-validity", "10000",
+        "-alias", "lingotune",
+        "-storepass", "lingotune123",
+        "-keypass", "lingotune123",
+        "-dname", "CN=LingoTune, OU=Development, O=LingoTune, L=City, S=State, C=US"
+    ]
+
+    try:
+        print("🔧 Создание keystore...")
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        print("✅ Keystore успешно создан!")
+        print(f"📍 Путь: {keystore_path}")
+        print(f"🔐 Пароль: lingotune123")
+        print(f"🔑 Alias: lingotune")
+        return keystore_path
+
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Ошибка при создании keystore: {e}")
+        print(f"❌ Stderr: {e.stderr}")
+        return None
+    except Exception as e:
+        print(f"❌ Неожиданная ошибка: {e}")
+        return None
+
+if __name__ == "__main__":
+    print("🚀 Создание keystore для LingoTune\n")
+    keystore = create_keystore()
+    if keystore:
+        print("\n✅ Keystore готов к использованию!")
+    else:
+        print("\n❌ Не удалось создать keystore")
+        sys.exit(1)
