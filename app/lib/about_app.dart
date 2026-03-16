@@ -30,7 +30,7 @@ class AboutApp extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'v3.40.0',
+              'v4.3.3',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],

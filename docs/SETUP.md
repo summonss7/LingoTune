@@ -260,7 +260,7 @@ flutter build apk --release
 # build/app/outputs/flutter-apk/app-release.apk
 
 # Копирование в папку builds
-copy build\app\outputs\flutter-apk\app-release.apk ..\builds\LingoTune-v4.3.2.apk
+copy build\app\outputs\flutter-apk\app-release.apk ..\builds\LingoTune-v4.3.3.apk
 ```
 
 ### Сборка App Bundle (для Google Play)
@@ -372,7 +372,7 @@ flutter test
 @echo off
 cd app
 flutter build apk --release
-copy build\app\outputs\flutter-apk\app-release.apk ..\builds\LingoTune-v4.3.2.apk
+copy build\app\outputs\flutter-apk\app-release.apk ..\builds\LingoTune-v4.3.3.apk
 echo APK built successfully!
 pause
 ```

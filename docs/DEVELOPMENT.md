@@ -359,7 +359,7 @@ if __name__ == '__main__':
    В `app/lib/app_info.dart`:
    ```dart
    static const String version = '4.3.3';
-   static const String versionCode = '144';
+    static const String versionCode = '145';
    ```
    
    В `app/pubspec.yaml`:

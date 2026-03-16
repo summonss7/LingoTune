@@ -427,7 +427,7 @@ logger.error('Error message')
 1. Проверьте текущую версию:
    ```dart
    // app/lib/app_info.dart
-   static const String version = '4.3.2';
+    static const String version = '4.3.3';
    ```
 
 2. Обновите версию:

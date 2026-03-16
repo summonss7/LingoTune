@@ -266,7 +266,7 @@ D:\ProjectAI\LingoTune\lessons\Arabic\Arabic_Alphabet_Lesson.mp3
 
 ```dart
 static const String version = '4.3.3';
-static const String versionCode = '144';
+static const String versionCode = '145';
 ```
 
 Обновите в файле `app/pubspec.yaml`:
