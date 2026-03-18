@@ -116,6 +116,12 @@ class AppLocalizationsRo extends AppLocalizations {
   String get scrollOffsetSubtitle => 'Distanța de la marginea de sus a ecranului în pixeli';
 
   @override
+  String get autoScrollFocusOffset => 'Decalaj focalizare pentru derularea automată';
+
+  @override
+  String get autoScrollFocusOffsetSubtitle => 'Poziția focalizării inițială pentru derularea automată (implicit: +50)';
+
+  @override
   String get defaultTranslationLanguage => 'Limbă traducere implicită';
 
   @override

@@ -35,6 +35,8 @@
   "fontSize": "حجم الخط",
   "scrollOffset": "إزاحة التمرير",
   "scrollOffsetSubtitle": "المسافة من أعلى الشاشة بالبكسل",
+  "autoScrollFocusOffset": "إزاحة تركيز التمرير التلقائي",
+  "autoScrollFocusOffsetSubtitle": "موضع التركيز الافتراضي للتمرير التلقائي (افتراضي: +50)",
   "defaultTranslationLanguage": "لغة الترجمة الافتراضية",
   "defaultOriginalLanguage": "اللغة الأصلية الافتراضية",
   "russian": "الروسية",

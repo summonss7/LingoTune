@@ -116,6 +116,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get scrollOffsetSubtitle => 'Abstand vom oberen Bildschirmrand in Pixel';
 
   @override
+  String get autoScrollFocusOffset => 'Auto-Scroll-Fokus-Versatz';
+
+  @override
+  String get autoScrollFocusOffsetSubtitle => 'Standard-Fokusposition für Auto-Scroll (Standard: +50)';
+
+  @override
   String get defaultTranslationLanguage => 'Standard-Übersetzungssprache';
 
   @override

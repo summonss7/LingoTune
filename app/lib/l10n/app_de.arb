@@ -35,6 +35,8 @@
   "fontSize": "Schriftgröße",
   "scrollOffset": "Scroll-Offset",
   "scrollOffsetSubtitle": "Abstand vom oberen Bildschirmrand in Pixel",
+  "autoScrollFocusOffset": "Auto-Scroll-Fokus-Versatz",
+  "autoScrollFocusOffsetSubtitle": "Standard-Fokusposition für Auto-Scroll (Standard: +50)",
   "defaultTranslationLanguage": "Standard-Übersetzungssprache",
   "defaultOriginalLanguage": "Standardsprache für Original",
   "russian": "Russisch",

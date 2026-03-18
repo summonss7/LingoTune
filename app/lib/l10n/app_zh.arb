@@ -35,6 +35,8 @@
   "fontSize": "字体大小",
   "scrollOffset": "滚动偏移",
   "scrollOffsetSubtitle": "距屏幕顶部的像素距离",
+  "autoScrollFocusOffset": "自动滚动焦点偏移",
+  "autoScrollFocusOffsetSubtitle": "自动滚动的默认焦点位置（默认: +50）",
   "defaultTranslationLanguage": "默认翻译语言",
   "defaultOriginalLanguage": "默认源语言",
   "russian": "俄语",

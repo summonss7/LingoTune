@@ -323,6 +323,18 @@ abstract class AppLocalizations {
   /// **'Distance from top of screen in pixels'**
   String get scrollOffsetSubtitle;
 
+  /// No description provided for @autoScrollFocusOffset.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto Scroll Focus Offset'**
+  String get autoScrollFocusOffset;
+
+  /// No description provided for @autoScrollFocusOffsetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Default focus position for auto-scroll (default: +50)'**
+  String get autoScrollFocusOffsetSubtitle;
+
   /// No description provided for @defaultTranslationLanguage.
   ///
   /// In en, this message translates to:

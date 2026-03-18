@@ -116,6 +116,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get scrollOffsetSubtitle => 'Distancia desde la parte superior de la pantalla en píxeles';
 
   @override
+  String get autoScrollFocusOffset => 'Desplazamiento del enfoque del auto-scroll';
+
+  @override
+  String get autoScrollFocusOffsetSubtitle => 'Posición de enfoque inicial para auto-scroll (predeterminado: +50)';
+
+  @override
   String get defaultTranslationLanguage => 'Idioma de traducción predeterminado';
 
   @override

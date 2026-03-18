@@ -116,6 +116,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get scrollOffsetSubtitle => 'Distância do topo da tela em pixels';
 
   @override
+  String get autoScrollFocusOffset => 'Deslocamento do foco da rolagem automática';
+
+  @override
+  String get autoScrollFocusOffsetSubtitle => 'Posição do foco inicial para a rolagem automática (padrão: +50)';
+
+  @override
   String get defaultTranslationLanguage => 'Idioma de tradução padrão';
 
   @override

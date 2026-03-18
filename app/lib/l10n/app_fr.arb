@@ -35,6 +35,8 @@
   "fontSize": "Taille de police",
   "scrollOffset": "Décalage du défilement",
   "scrollOffsetSubtitle": "Distance du haut de l'écran en pixels",
+  "autoScrollFocusOffset": "Décalage du focus du défilement automatique",
+  "autoScrollFocusOffsetSubtitle": "Position de focus initiale pour le défilement automatique (par défaut: +50)",
   "defaultTranslationLanguage": "Langue de traduction par défaut",
   "defaultOriginalLanguage": "Langue originale par défaut",
   "russian": "Russe",

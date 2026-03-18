@@ -35,6 +35,8 @@
   "fontSize": "Tamanho da fonte",
   "scrollOffset": "Deslocamento de rolagem",
   "scrollOffsetSubtitle": "Distância do topo da tela em pixels",
+  "autoScrollFocusOffset": "Deslocamento do foco da rolagem automática",
+  "autoScrollFocusOffsetSubtitle": "Posição do foco inicial para a rolagem automática (padrão: +50)",
   "defaultTranslationLanguage": "Idioma de tradução padrão",
   "defaultOriginalLanguage": "Idioma original padrão",
   "russian": "Russo",

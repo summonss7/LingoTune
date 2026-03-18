@@ -13,6 +13,7 @@ import '../widgets/settings/api_settings_tile.dart';
 import '../widgets/settings/text_settings_section.dart';
 import '../widgets/settings/font_size_control.dart';
 import '../widgets/settings/scroll_offset_control.dart';
+import '../widgets/settings/default_auto_scroll_focus_offset_control.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -25,14 +26,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _useCustomFolder = true;
   String _customLrcJsonFolder = '';
   double _scrollOffset = 120.0;
+  double _autoScrollFocusOffset = 50.0;
   bool _audioServiceInitialized = false;
   String _audioServiceError = '';
 
   @override
   void initState() {
     super.initState();
-    _loadFolderConfig();
-    _loadAudioServiceStatus();
+    _initAsync();
+  }
+
+  Future<void> _initAsync() async {
+    await _migrateSettings();
+    await _loadFolderConfig();
+    await _loadAudioServiceStatus();
+  }
+
+  Future<void> _migrateSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final defaultOffset = prefs.getDouble('defaultAutoScrollFocusOffset');
+
+    // Если defaultAutoScrollFocusOffset отсутствует
+    if (defaultOffset == null) {
+      final oldOffset = prefs.getDouble('autoScrollFocusOffset');
+      final newOffset = oldOffset ?? 50.0;
+      await prefs.setDouble('defaultAutoScrollFocusOffset', newOffset);
+      await prefs.remove('autoScrollFocusOffset');
+      debugPrint('=== Migrated autoScrollFocusOffset to defaultAutoScrollFocusOffset: $newOffset ===');
+    } else {
+      // Если ключ существует но значение <= 0, сбросить на 50
+      if (defaultOffset <= 0) {
+        await prefs.setDouble('defaultAutoScrollFocusOffset', 50.0);
+        await prefs.remove('autoScrollFocusOffset');
+        debugPrint('=== Reset defaultAutoScrollFocusOffset from $defaultOffset to 50.0 ===');
+      }
+    }
   }
 
   Future<void> _loadAudioServiceStatus() async {
@@ -49,6 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _useCustomFolder = prefs.getBool('useCustomFolder') ?? true;
       _customLrcJsonFolder = prefs.getString('customLrcJsonFolder') ?? '';
       _scrollOffset = prefs.getDouble('scrollOffset') ?? 50.0;
+      _autoScrollFocusOffset = prefs.getDouble('defaultAutoScrollFocusOffset') ?? 50.0;
     });
   }
 
@@ -279,6 +309,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(
                 '${l10n.scrollOffsetSubtitle}: ${_scrollOffset.toInt()} px'),
             trailing: ScrollOffsetControl(offset: _scrollOffset),
+          ),
+          ListTile(
+            leading: const Icon(Icons.center_focus_strong),
+            title: Text(l10n.autoScrollFocusOffset),
+            subtitle: Text(
+                '${l10n.autoScrollFocusOffsetSubtitle}: ${_autoScrollFocusOffset.toInt()} px'),
+            trailing: DefaultAutoScrollFocusOffsetControl(offset: _autoScrollFocusOffset),
           ),
           ListTile(
             leading: const Icon(Icons.record_voice_over),

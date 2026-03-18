@@ -35,6 +35,8 @@
   "fontSize": "Розмір шрифта",
   "scrollOffset": "Зсув прокручування",
   "scrollOffsetSubtitle": "Відстань від верху екрана в пікселях",
+  "autoScrollFocusOffset": "Фокус автоматичного прокручування",
+  "autoScrollFocusOffsetSubtitle": "Початкова позиція фокусу для автоматичного прокручування (за замовчуванням: +50)",
   "defaultTranslationLanguage": "Мова перекладу за замовчуванням",
   "defaultOriginalLanguage": "Оригінальна мова за замовчуванням",
   "russian": "Російська",

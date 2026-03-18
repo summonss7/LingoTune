@@ -35,6 +35,8 @@
   "fontSize": "Tamaño de fuente",
   "scrollOffset": "Desplazamiento de desplazamiento",
   "scrollOffsetSubtitle": "Distancia desde la parte superior de la pantalla en píxeles",
+  "autoScrollFocusOffset": "Desplazamiento del enfoque del auto-scroll",
+  "autoScrollFocusOffsetSubtitle": "Posición de enfoque inicial para auto-scroll (predeterminado: +50)",
   "defaultTranslationLanguage": "Idioma de traducción predeterminado",
   "defaultOriginalLanguage": "Idioma original por defecto",
   "russian": "Ruso",

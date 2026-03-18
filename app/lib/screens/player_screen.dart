@@ -19,6 +19,7 @@ import '../services/export_import_service.dart';
 import '../services/database_service.dart';
 import '../services/folder_config_service.dart';
 import '../widgets/lyric_line_widget.dart';
+import '../widgets/settings/vertical_focus_offset_slider.dart';
 import 'translation_editor_screen.dart';
 import 'text_loader_dialog.dart';
 import 'package:lingotune/l10n/app_localizations.dart';
@@ -66,13 +67,16 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   final PlayerImportHelper _playerImportHelper = PlayerImportHelper();
   final PlayerExportHelper _playerExportHelper = PlayerExportHelper();
 
+  double _autoScrollFocusOffset = 0.0;
+  bool _isFirstLoad = true;
+
   List<Song> get playlistSongs => widget.playlistSongs ?? [];
 
   @override
   bool get wantKeepAlive => true;
 
   @override
-  void didChangeDependencies() {
+  void didChangeDependencies() async {
     super.didChangeDependencies();
     debugPrint('=== PlayerScreen: didChangeDependencies ===');
     debugPrint('Widget song: ${widget.song.title}');
@@ -89,6 +93,14 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       debugPrint('=== Song ID changed, syncing ===');
       debugPrint('Old song: ${_currentSong.title}, New song: ${widget.song.title}');
       _currentSong = widget.song;
+      await _loadSettings();
+      
+      final prefs = await SharedPreferences.getInstance();
+      final defaultOffset = prefs.getDouble('defaultAutoScrollFocusOffset') ?? 50.0;
+      await prefs.setDouble('autoScrollFocusOffset', defaultOffset);
+      setState(() {
+        _autoScrollFocusOffset = defaultOffset;
+      });
       
       // Перезагружаем данные если нужно
       if (_currentSong.lrcPath != null && _currentSong.lrcPath!.isNotEmpty) {
@@ -459,9 +471,24 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    final defaultOffset = prefs.getDouble('defaultAutoScrollFocusOffset') ?? 50.0;
+
+    // При первом запуске - сбросить на дефолт
+    if (_isFirstLoad) {
+      await prefs.setDouble('autoScrollFocusOffset', defaultOffset);
+      _isFirstLoad = false;
+    }
+
     setState(() {
       _highlightNextLine = prefs.getBool('highlightNextLine') ?? true;
       _autoScroll = prefs.getBool('autoScroll') ?? true;
+      _autoScrollFocusOffset = prefs.getDouble('autoScrollFocusOffset') ?? 50.0;
+    });
+  }
+
+  void _onFocusOffsetChanged(double newValue) {
+    setState(() {
+      _autoScrollFocusOffset = newValue;
     });
   }
 
@@ -515,6 +542,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
           final prefs = await SharedPreferences.getInstance();
           final fontSize = prefs.getDouble('fontSize') ?? 16.0;
           final scrollOffset = prefs.getDouble('scrollOffset') ?? 120.0;
+          final focusOffset = prefs.getDouble('autoScrollFocusOffset') ?? 0.0;
 
           // Рассчитываем высоту строк ДО текущей (НЕ включая текущую)
           double estimatedHeight = 0;
@@ -549,7 +577,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
               ? scrollOffset + extraOffset + 30
               : scrollOffset;
 
-          final targetOffset = estimatedHeight - adjustedOffset;
+          final targetOffset = estimatedHeight - adjustedOffset - focusOffset;
           final maxScrollExtent = _scrollController.position.maxScrollExtent;
           final clampedOffset = targetOffset.clamp(0.0, maxScrollExtent);
 
@@ -1471,45 +1499,58 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       body: Column(
         children: [
           Expanded(
-            child: AnimatedBuilder(
-              animation: widget.lyricsService,
-              builder: (context, child) {
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isLandscape ? 8.0 : 16.0,
-                  ).copyWith(bottom: 180.0),
-                  itemCount: widget.lyricsService.lyricLines.length,
-                  itemBuilder: (context, index) {
-                    final line = widget.lyricsService.lyricLines[index];
-                    final isCurrent = index == widget.lyricsService.currentIndex;
-                    final isNext = _highlightNextLine && index == widget.lyricsService.currentIndex + 1;
+            child: Row(
+              children: [
+                Expanded(
+                  child: AnimatedBuilder(
+                    animation: widget.lyricsService,
+                    builder: (context, child) {
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isLandscape ? 4.0 : 8.0,
+                        ).copyWith(bottom: 180.0),
+                        itemCount: widget.lyricsService.lyricLines.length,
+                        itemBuilder: (context, index) {
+                          final line = widget.lyricsService.lyricLines[index];
+                          final isCurrent = index == widget.lyricsService.currentIndex;
+                          final isNext = _highlightNextLine && index == widget.lyricsService.currentIndex + 1;
 
-                    return Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isLandscape ? 4.0 : 0.0,
-                        vertical: isLandscape ? 2.0 : 4.0,
-                      ),
-                      child: LyricLineWidget(
-                        line: line,
-                        isCurrent: isCurrent,
-                        isNext: isNext,
-                        isEditMode: _isEditMode,
-                        onTap: () async {
-                          if (_isEditMode) {
-                            final currentTime = widget.audioService.position.inMilliseconds.toDouble() / 1000;
-                            widget.lyricsService.updateLineTimestamp(index, currentTime);
-                            widget.translationService.updateLineTimestamps(widget.lyricsService.lyricLines);
-                            setState(() {});
-                          } else {
-                            widget.audioService.seek(Duration(milliseconds: (line.startTime * 1000).toInt()));
-                          }
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              right: isLandscape ? 0.0 : 8.0,
+                              left: isLandscape ? 4.0 : 8.0,
+                              top: isLandscape ? 2.0 : 4.0,
+                              bottom: isLandscape ? 2.0 : 4.0,
+                            ),
+                            child: LyricLineWidget(
+                              line: line,
+                              isCurrent: isCurrent,
+                              isNext: isNext,
+                              isEditMode: _isEditMode,
+                              onTap: () async {
+                                if (_isEditMode) {
+                                  final currentTime = widget.audioService.position.inMilliseconds.toDouble() / 1000;
+                                  widget.lyricsService.updateLineTimestamp(index, currentTime);
+                                  widget.translationService.updateLineTimestamps(widget.lyricsService.lyricLines);
+                                  setState(() {});
+                                } else {
+                                  widget.audioService.seek(Duration(milliseconds: (line.startTime * 1000).toInt()));
+                                }
+                              },
+                            ),
+                          );
                         },
-                      ),
-                    );
-                  },
-                );
-              },
+                      );
+                    },
+                  ),
+                ),
+                if (_autoScroll)
+                  VerticalFocusOffsetSlider(
+                    offset: _autoScrollFocusOffset,
+                    onChanged: _onFocusOffsetChanged,
+                  ),
+              ],
             ),
           ),
           Container(

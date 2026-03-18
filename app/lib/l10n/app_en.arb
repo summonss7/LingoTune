@@ -35,6 +35,8 @@
   "fontSize": "Font Size",
   "scrollOffset": "Scroll Offset",
   "scrollOffsetSubtitle": "Distance from top of screen in pixels",
+  "autoScrollFocusOffset": "Auto Scroll Focus Offset",
+  "autoScrollFocusOffsetSubtitle": "Default focus position for auto-scroll (default: +50)",
   "defaultTranslationLanguage": "Default Translation Language",
   "defaultOriginalLanguage": "Default Original Language",
   "russian": "Russian",

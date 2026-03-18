@@ -35,6 +35,8 @@
   "fontSize": "Dimensiune font",
   "scrollOffset": "Decalaj derulare",
   "scrollOffsetSubtitle": "Distanța de la marginea de sus a ecranului în pixeli",
+  "autoScrollFocusOffset": "Decalaj focalizare pentru derularea automată",
+  "autoScrollFocusOffsetSubtitle": "Poziția focalizării inițială pentru derularea automată (implicit: +50)",
   "defaultTranslationLanguage": "Limbă traducere implicită",
   "defaultOriginalLanguage": "Limbă originală implicită",
   "russian": "Rusă",

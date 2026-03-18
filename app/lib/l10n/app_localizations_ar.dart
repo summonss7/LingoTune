@@ -116,6 +116,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get scrollOffsetSubtitle => 'المسافة من أعلى الشاشة بالبكسل';
 
   @override
+  String get autoScrollFocusOffset => 'إزاحة تركيز التمرير التلقائي';
+
+  @override
+  String get autoScrollFocusOffsetSubtitle => 'موضع التركيز الافتراضي للتمرير التلقائي (افتراضي: +50)';
+
+  @override
   String get defaultTranslationLanguage => 'لغة الترجمة الافتراضية';
 
   @override

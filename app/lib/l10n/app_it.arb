@@ -34,6 +34,8 @@
   "fontSize": "Dimensione carattere",
   "scrollOffset": "Scorrimento",
   "scrollOffsetSubtitle": "Distanza dalla parte superiore dello schermo in pixel",
+  "autoScrollFocusOffset": "Scorrimento del focus dello scroll automatico",
+  "autoScrollFocusOffsetSubtitle": "Posizione del focus iniziale per lo scroll automatico (predefinito: +50)",
   "defaultTranslationLanguage": "Lingua traduzione predefinita",
   "defaultOriginalLanguage": "Lingua originale predefinita",
   "russian": "Russo",

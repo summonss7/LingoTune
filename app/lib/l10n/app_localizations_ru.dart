@@ -116,6 +116,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get scrollOffsetSubtitle => 'Расстояние от верха экрана в пикселях';
 
   @override
+  String get autoScrollFocusOffset => 'Фокус автопрокрутки';
+
+  @override
+  String get autoScrollFocusOffsetSubtitle => 'Начальное положение фокуса для автопрокрутки (по умолчанию: +50)';
+
+  @override
   String get defaultTranslationLanguage => 'Язык перевода по умолчанию';
 
   @override
