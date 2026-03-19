@@ -66,6 +66,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
   bool _isImporting = false;
   bool _isRefreshing = false;
   String _sortBy = 'default';
+  final Map<String, Color> _buttonColorsCache = {};
 
   @override
   void initState() {
@@ -96,6 +97,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
       });
 
       _applySorting();
+      await _checkTimestampsValidity();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -110,6 +112,34 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
         );
       }
     }
+  }
+
+  Future<void> _checkTimestampsValidity() async {
+    for (final song in _songs) {
+      if (song.hasLyrics && song.lrcPath != null) {
+        final hasValidTimestamps = await LyricsService.hasValidTimestamps(song.lrcPath);
+        if (hasValidTimestamps) {
+          _buttonColorsCache[song.id] = Theme.of(context).colorScheme.primary;
+        } else {
+          _buttonColorsCache[song.id] = Colors.purple;
+        }
+      } else {
+        _buttonColorsCache[song.id] = Colors.deepOrange;
+      }
+    }
+    setState(() {});
+  }
+
+  Color _getGeneratorButtonColor(Song song) {
+    if (_buttonColorsCache.containsKey(song.id)) {
+      return _buttonColorsCache[song.id]!;
+    }
+    
+    if (!song.hasLyrics) {
+      return Colors.deepOrange;
+    }
+    
+    return Theme.of(context).colorScheme.primary;
   }
 
   void _applySorting() {
@@ -739,28 +769,28 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
                                 : !widget.playlist.isSystem
                                      ? Row(
                                            mainAxisSize: MainAxisSize.min,
-                                           children: [
-                                             IconButton(
-                                               icon: Icon(Icons.auto_awesome, color: !song.hasLyrics ? Colors.deepOrange : Theme.of(context).colorScheme.primary),
-                                               onPressed: () => _showGenerateDialog(song),
-                                               tooltip: l10n.generateLyrics,
-                                             ),
-                                             IconButton(
-                                               icon: const Icon(Icons.remove_circle),
-                                               onPressed: () => _removeSong(song),
-                                               color: Colors.red,
-                                             ),
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(Icons.auto_awesome, color: _getGeneratorButtonColor(song)),
+                                                onPressed: () => _showGenerateDialog(song),
+                                                tooltip: l10n.generateLyrics,
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.remove_circle),
+                                                onPressed: () => _removeSong(song),
+                                                color: Colors.red,
+                                              ),
                                            ],
                                          )
                                         : Row(
                                            mainAxisSize: MainAxisSize.min,
-                                           children: [
-                                             IconButton(
-                                               icon: Icon(Icons.auto_awesome, color: !song.hasLyrics ? Colors.deepOrange : Theme.of(context).colorScheme.primary),
-                                               onPressed: () => _showGenerateDialog(song),
-                                               tooltip: l10n.generateLyrics,
-                                             ),
-                                            const Icon(Icons.play_arrow),
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(Icons.auto_awesome, color: _getGeneratorButtonColor(song)),
+                                                onPressed: () => _showGenerateDialog(song),
+                                                tooltip: l10n.generateLyrics,
+                                              ),
+                                             const Icon(Icons.play_arrow),
                                           ],
                                        ),
                         onTap: _isSelectionMode ? () => _toggleSongSelection(song) : () => _playSong(song),

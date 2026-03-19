@@ -64,6 +64,7 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
   final PlaylistService _playlistService = PlaylistService();
   final Uuid _uuid = const Uuid();
   String _sortBy = 'default';
+  final Map<String, Color> _buttonColorsCache = {};
 
   final SongImportHelper _songImportHelper = SongImportHelper();
   final SongCoverHelper _songCoverHelper = SongCoverHelper();
@@ -105,6 +106,7 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
       });
 
       _applySorting();
+      await _checkTimestampsValidity();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -143,6 +145,34 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
       default:
         break;
     }
+  }
+
+  Future<void> _checkTimestampsValidity() async {
+    for (final song in _songs) {
+      if (song.hasLyrics && song.lrcPath != null) {
+        final hasValidTimestamps = await LyricsService.hasValidTimestamps(song.lrcPath);
+        if (hasValidTimestamps) {
+          _buttonColorsCache[song.id] = Theme.of(context).colorScheme.primary;
+        } else {
+          _buttonColorsCache[song.id] = Colors.purple;
+        }
+      } else {
+        _buttonColorsCache[song.id] = Colors.deepOrange;
+      }
+    }
+    setState(() {});
+  }
+
+  Color _getGeneratorButtonColor(Song song) {
+    if (_buttonColorsCache.containsKey(song.id)) {
+      return _buttonColorsCache[song.id]!;
+    }
+    
+    if (!song.hasLyrics) {
+      return Colors.deepOrange;
+    }
+    
+    return Theme.of(context).colorScheme.primary;
   }
 
   Future<void> _importSong() async {
@@ -2316,11 +2346,11 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
                                     onPressed: () => _addToPlaylist(song),
                                     tooltip: l10n.addToPlaylist,
                                   ),
-                                  IconButton(
-                                    icon: Icon(Icons.auto_awesome, color: !song.hasLyrics ? Colors.deepOrange : Theme.of(context).colorScheme.primary),
-                                    onPressed: () => _showGenerateDialog(song),
-                                    tooltip: l10n.generateLyrics,
-                                  ),
+                                   IconButton(
+                                     icon: Icon(Icons.auto_awesome, color: _getGeneratorButtonColor(song)),
+                                     onPressed: () => _showGenerateDialog(song),
+                                     tooltip: l10n.generateLyrics,
+                                   ),
                                ],
                              ),
                             onTap: _isSelectionMode ? () => _toggleSongSelection(song) : () => _openPlayer(song),

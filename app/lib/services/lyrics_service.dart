@@ -150,4 +150,40 @@ class LyricsService extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  static Future<bool> hasValidTimestamps(String? lrcPath) async {
+    if (lrcPath == null) return false;
+    
+    try {
+      final file = File(lrcPath);
+      final exists = await file.exists();
+      if (!exists) return false;
+      
+      final content = await file.readAsString();
+      final lines = content.split('\n');
+      
+      for (final line in lines) {
+        final trimmedLine = line.trim();
+        if (trimmedLine.isEmpty) continue;
+        
+        final regex = RegExp(r'\[(\d{2}):(\d{2})\.(\d{2,3})\]');
+        final match = regex.firstMatch(trimmedLine);
+        
+        if (match != null) {
+          final minutes = int.parse(match.group(1)!);
+          final seconds = int.parse(match.group(2)!);
+          
+          if (minutes == 30 && seconds == 0) {
+            return false;
+          }
+          break;
+        }
+      }
+      
+      return true;
+    } catch (e) {
+      debugPrint('Error checking timestamps validity: $e');
+      return true;
+    }
+  }
 }
