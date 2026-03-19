@@ -1545,7 +1545,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                     },
                   ),
                 ),
-                if (_autoScroll)
+                if (_autoScroll && !_isEditMode)
                   VerticalFocusOffsetSlider(
                     offset: _autoScrollFocusOffset,
                     onChanged: _onFocusOffsetChanged,
