@@ -26,13 +26,26 @@ class ImportResult {
 }
 
 class ExportImportService {
+  static String _sanitizeFileName(String name) {
+    if (name.isEmpty) return 'untitled';
+    
+    final invalidChars = RegExp(r'[<>:"/\\|?*]');
+    String sanitized = name.replaceAll(invalidChars, '_');
+    
+    sanitized = sanitized.trim();
+    if (sanitized.isEmpty) sanitized = 'untitled';
+    
+    return sanitized;
+  }
+
   static Future<File?> exportSong(Song song) async {
     try {
       debugPrint('=== Export Song: ${song.title} ===');
       debugPrint('Song ID: ${song.id}');
 
+      final sanitizedTitle = _sanitizeFileName(song.title);
       final tempDir = await getTemporaryDirectory();
-      final zipFile = File(path.join(tempDir.path, '${song.title}_export.zip'));
+      final zipFile = File(path.join(tempDir.path, '$sanitizedTitle.zip'));
 
       final archive = Archive();
 
@@ -40,9 +53,10 @@ class ExportImportService {
         final lrcFile = File(song.lrcPath!);
         if (lrcFile.existsSync()) {
           final lrcBytes = await lrcFile.readAsBytes();
-          final archiveFile = ArchiveFile(path.basename(lrcFile.path), lrcBytes.length, lrcBytes);
+          final lrcFileName = '$sanitizedTitle.lrc';
+          final archiveFile = ArchiveFile(lrcFileName, lrcBytes.length, lrcBytes);
           archive.addFile(archiveFile);
-          debugPrint('Added LRC file: ${lrcFile.path}');
+          debugPrint('Added LRC file: $lrcFileName');
         }
       }
 
@@ -60,10 +74,10 @@ class ExportImportService {
         final file = File(filePath);
         if (file.existsSync()) {
           final jsonBytes = await file.readAsBytes();
-          final fileName = path.basename(file.path);
-          final archiveFile = ArchiveFile(fileName, jsonBytes.length, jsonBytes);
+          final jsonFileName = '${sanitizedTitle}_$language.json';
+          final archiveFile = ArchiveFile(jsonFileName, jsonBytes.length, jsonBytes);
           archive.addFile(archiveFile);
-          debugPrint('  ✓ Added JSON file: $fileName');
+          debugPrint('  ✓ Added JSON file: $jsonFileName');
         } else {
           debugPrint('  ✗ File not found: $filePath');
         }
@@ -98,13 +112,17 @@ class ExportImportService {
       for (final song in songs) {
         debugPrint('=== Processing song: ${song.title} ===');
 
+        final sanitizedTitle = _sanitizeFileName(song.title);
+        final songFolder = '$sanitizedTitle/';
+
         if (song.lrcPath != null && song.lrcPath!.isNotEmpty) {
           final lrcFile = File(song.lrcPath!);
           if (lrcFile.existsSync()) {
             final lrcBytes = await lrcFile.readAsBytes();
-            final archiveFile = ArchiveFile(path.basename(lrcFile.path), lrcBytes.length, lrcBytes);
+            final lrcFileName = '$songFolder$sanitizedTitle.lrc';
+            final archiveFile = ArchiveFile(lrcFileName, lrcBytes.length, lrcBytes);
             archive.addFile(archiveFile);
-            debugPrint('  ✓ Added LRC file: ${lrcFile.path}');
+            debugPrint('  ✓ Added LRC file: $lrcFileName');
           }
         }
 
@@ -121,10 +139,10 @@ class ExportImportService {
           final file = File(filePath);
           if (file.existsSync()) {
             final jsonBytes = await file.readAsBytes();
-            final fileName = path.basename(file.path);
-            final archiveFile = ArchiveFile(fileName, jsonBytes.length, jsonBytes);
+            final jsonFileName = '$songFolder${sanitizedTitle}_$language.json';
+            final archiveFile = ArchiveFile(jsonFileName, jsonBytes.length, jsonBytes);
             archive.addFile(archiveFile);
-            debugPrint('    ✓ Added JSON file: $fileName');
+            debugPrint('    ✓ Added JSON file: $jsonFileName');
           } else {
             debugPrint('    ✗ File not found: $filePath');
           }
@@ -134,9 +152,11 @@ class ExportImportService {
           final audioFile = File(song.audioPath);
           if (audioFile.existsSync()) {
             final audioBytes = await audioFile.readAsBytes();
-            final archiveFile = ArchiveFile(path.basename(audioFile.path), audioBytes.length, audioBytes);
+            final audioFileName = path.basename(audioFile.path);
+            final archiveFileName = '$songFolder$sanitizedTitle${path.extension(audioFileName)}';
+            final archiveFile = ArchiveFile(archiveFileName, audioBytes.length, audioBytes);
             archive.addFile(archiveFile);
-            debugPrint('  ✓ Added MP3 file: ${audioFile.path}');
+            debugPrint('  ✓ Added MP3 file: $archiveFileName');
           }
         }
       }
