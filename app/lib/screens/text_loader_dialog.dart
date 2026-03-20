@@ -55,6 +55,7 @@ class _TextLoaderDialogState extends State<TextLoaderDialog> {
     super.initState();
     final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
     _selectedOriginalLanguage = settingsProvider.defaultSourceLanguage;
+    _loadExistingText();
     debugPrint('TextLoaderDialog: Initialized with default source language: $_selectedOriginalLanguage');
   }
 
@@ -66,6 +67,42 @@ class _TextLoaderDialogState extends State<TextLoaderDialog> {
   }
 
   bool get _hasOriginalText => widget.lyricsService.lyricLines.isNotEmpty;
+
+  void _loadExistingText() {
+    String? existingText;
+    
+    switch (_selectedType) {
+      case TextType.original:
+        if (_hasOriginalText) {
+          existingText = widget.lyricsService.lyricLines
+              .map((line) => line.text)
+              .join('\n');
+        }
+        break;
+        
+      case TextType.translation:
+        if (widget.translationService.currentTranslation != null) {
+          existingText = widget.translationService.currentTranslation!.lines
+              .map((line) => line.text)
+              .join('\n');
+        }
+        break;
+        
+      case TextType.transcript:
+        if (widget.translationService.currentTranslation != null) {
+          final transcriptLines = widget.translationService.currentTranslation!.lines
+              .map((line) => line.transcript)
+              .where((transcript) => transcript != null && transcript.isNotEmpty)
+              .toList();
+          existingText = transcriptLines.join('\n');
+        }
+        break;
+    }
+    
+    if (existingText != null) {
+      _textController.text = existingText;
+    }
+  }
 
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
@@ -390,6 +427,7 @@ class _TextLoaderDialogState extends State<TextLoaderDialog> {
                       _selectedType = selected.first;
                       _textController.clear();
                       _selectedFilePath = null;
+                      _loadExistingText();
                     });
                   },
                 ),
@@ -494,7 +532,7 @@ class _TextLoaderDialogState extends State<TextLoaderDialog> {
                         Text(
                           widget.song.originalLanguage == 'unknown'
                               ? 'Unknown'
-                              : (GenerationConstants.supportedLanguages[widget.song.originalLanguage] ?? widget.song.originalLanguage),
+                              : (GenerationConstants.sourceLanguageNames[widget.song.originalLanguage] ?? widget.song.originalLanguage),
                           style: const TextStyle(color: Colors.blue),
                         ),
                       ],
@@ -563,7 +601,21 @@ class _TextLoaderDialogState extends State<TextLoaderDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                if (_textController.text.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        setState(() {
+                          _textController.clear();
+                        });
+                      },
+                      tooltip: l10n.cancel,
+                    ),
+                  ),
+                ],
                 TextField(
                   controller: _textController,
                   maxLines: 10,
@@ -574,7 +626,7 @@ class _TextLoaderDialogState extends State<TextLoaderDialog> {
                     border: const OutlineInputBorder(),
                   ),
                   onChanged: (value) {
-                    setState(() {}); // Обновляем состояние при изменении текста
+                    setState(() {});
                   },
                 ),
                 const SizedBox(height: 8),
