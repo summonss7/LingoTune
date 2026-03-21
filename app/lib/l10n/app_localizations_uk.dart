@@ -243,6 +243,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get loadTranslations => 'Завантажити переклади';
 
   @override
+  String get deleteTranslation => 'Видалити переклад';
+
+  @override
   String get noFileSelected => 'Файл не вибрано';
 
   @override

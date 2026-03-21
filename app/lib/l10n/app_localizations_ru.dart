@@ -243,6 +243,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get loadTranslations => 'Загрузить переводы';
 
   @override
+  String get deleteTranslation => 'Удалить перевод';
+
+  @override
   String get noFileSelected => 'Файл не выбран';
 
   @override

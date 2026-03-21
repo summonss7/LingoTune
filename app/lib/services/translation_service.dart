@@ -591,4 +591,83 @@ class TranslationService extends ChangeNotifier {
       rethrow;
     }
   }
+
+  void removeTranslation(String language, {String? type}) {
+    final index = _translations.indexWhere((t) =>
+      t.language == language && t.type == type
+    );
+
+    if (index != -1) {
+      debugPrint('Removing translation: ${_translations[index].languageName} (${_translations[index].language}) type: ${type ?? "normal"}');
+      _translations.removeAt(index);
+
+      if (_translations.isEmpty) {
+        _currentTranslation = null;
+        _currentLanguageIndex = 0;
+      } else {
+        if (_currentLanguageIndex >= _translations.length) {
+          _currentLanguageIndex = _translations.length - 1;
+        }
+        _currentTranslation = _translations[_currentLanguageIndex];
+      }
+
+      notifyListeners();
+      debugPrint('Translation removed. Remaining: ${_translations.length}');
+    }
+  }
+
+  Future<void> removeTranslationFromFile(String language, {String? type}) async {
+    if (_translationsPath == null) {
+      debugPrint('ERROR: No translations path set, cannot remove translation from file');
+      return;
+    }
+
+    try {
+      debugPrint('=== Removing translation from file: $language, type: $type ===');
+      final file = File(_translationsPath!);
+
+      if (!await file.exists()) {
+        debugPrint('ERROR: Translations file does not exist: $_translationsPath');
+        return;
+      }
+
+      final content = await file.readAsString();
+      final data = json.decode(content) as Map<String, dynamic>;
+
+      final translations = (data['translations'] as List? ?? []) as List;
+
+      final originalCount = translations.length;
+      translations.removeWhere((t) {
+        final trans = t as Map<String, dynamic>;
+        final matchesLanguage = trans['language'] == language;
+        final matchesType = (type == null && !trans.containsKey('type')) || trans['type'] == type;
+        return matchesLanguage && matchesType;
+      });
+
+      if (translations.length == originalCount) {
+        debugPrint('WARNING: Translation not found in file: $language, type: $type');
+        return;
+      }
+
+      final newData = {
+        'title': data['title'],
+        'artist': data['artist'],
+        'originalLanguage': data['originalLanguage'],
+        'translations': translations,
+      };
+
+      final jsonString = json.encode(newData);
+      await file.writeAsString(jsonString, encoding: utf8);
+
+      debugPrint('Translation removed from file successfully');
+    } catch (e) {
+      debugPrint('ERROR: Failed to remove translation from file: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> removeAndSaveTranslation(String language, {String? type}) async {
+    await removeTranslationFromFile(language, type: type);
+    removeTranslation(language, type: type);
+  }
 }

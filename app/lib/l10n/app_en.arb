@@ -76,6 +76,7 @@
   "loadTranslationsFromFile": "Import ZIP archive",
   "loadTextMenu": "Load text",
   "loadTranslations": "Load Translations",
+  "deleteTranslation": "Delete translation",
   "noFileSelected": "No file selected",
   "noLrcFileAssociated": "No LRC file associated with this song",
   "lrcFileSaved": "LRC file saved successfully!",

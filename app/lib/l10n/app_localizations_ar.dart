@@ -243,6 +243,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get loadTranslations => 'تحميل الترجمات';
 
   @override
+  String get deleteTranslation => 'حذف الترجمة';
+
+  @override
   String get noFileSelected => 'لم يتم اختيار ملف';
 
   @override

@@ -72,6 +72,7 @@
   "translationsLoaded": "Traduzioni caricate con successo!",
   "failedToLoadTranslations": "Impossibile caricare le traduzioni: {error}",
   "loadTranslations": "Carica traduzioni",
+  "deleteTranslation": "Elimina traduzione",
   "noFileSelected": "Nessun file selezionato",
   "noLrcFileAssociated": "Nessun file LRC associato a questa canzone",
   "lrcFileSaved": "File LRC salvato con successo!",

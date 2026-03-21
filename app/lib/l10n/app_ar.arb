@@ -75,6 +75,7 @@
   "editTranslations": "تعديل الترجمات",
   "loadTranslationsFromFile": "تحميل الترجمات من ملف",
   "loadTranslations": "تحميل الترجمات",
+  "deleteTranslation": "حذف الترجمة",
   "noFileSelected": "لم يتم اختيار ملف",
   "noLrcFileAssociated": "لا يوجد ملف LRC مرتبط بهذه الأغنية",
   "lrcFileSaved": "تم حفظ ملف LRC بنجاح!",

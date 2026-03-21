@@ -243,6 +243,9 @@ class AppLocalizationsRo extends AppLocalizations {
   String get loadTranslations => 'Încarcă traduceri';
 
   @override
+  String get deleteTranslation => 'Ștergere traducere';
+
+  @override
   String get noFileSelected => 'Niciun fișier selectat';
 
   @override

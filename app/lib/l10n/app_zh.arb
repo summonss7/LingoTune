@@ -75,6 +75,7 @@
   "editTranslations": "编辑翻译",
   "loadTranslationsFromFile": "从文件加载翻译",
   "loadTranslations": "加载翻译",
+  "deleteTranslation": "删除翻译",
   "noFileSelected": "未选择文件",
   "noLrcFileAssociated": "此歌曲没有关联的LRC文件",
   "lrcFileSaved": "LRC文件保存成功！",

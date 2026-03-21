@@ -75,6 +75,7 @@
   "editTranslations": "Modifier les traductions",
   "loadTranslationsFromFile": "Charger les traductions depuis un fichier",
   "loadTranslations": "Charger les traductions",
+  "deleteTranslation": "Supprimer la traduction",
   "noFileSelected": "Aucun fichier sélectionné",
   "noLrcFileAssociated": "Aucun fichier LRC associé à cette chanson",
   "lrcFileSaved": "Fichier LRC enregistré avec succès!",

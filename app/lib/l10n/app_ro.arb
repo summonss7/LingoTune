@@ -75,6 +75,7 @@
   "editTranslations": "Editare traduceri",
   "loadTranslationsFromFile": "Încarcă traduceri din fișier",
   "loadTranslations": "Încarcă traduceri",
+  "deleteTranslation": "Ștergere traducere",
   "noFileSelected": "Niciun fișier selectat",
   "noLrcFileAssociated": "Niciun fișier LRC asociat cu această melodie",
   "lrcFileSaved": "Fișier LRC salvat cu succes!",

@@ -1347,6 +1347,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                 _loadTranslationsFromFile();
               } else if (value == 'loadText') {
                 _showTextLoaderDialog();
+              } else if (value == 'delete') {
+                await _deleteCurrentTranslation();
               }
             },
             itemBuilder: (BuildContext context) => [
@@ -1380,6 +1382,17 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                   ],
                 ),
               ),
+              if (widget.translationService.translations.isNotEmpty)
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 20),
+                      SizedBox(width: 12),
+                      Text(AppLocalizations.of(context)!.deleteTranslation),
+                    ],
+                  ),
+                ),
             ],
           ),
           if (widget.translationService.translations.isNotEmpty)
@@ -1719,5 +1732,78 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         ],
       ),
     );
+  }
+
+  Future<void> _deleteCurrentTranslation() async {
+    final currentTranslation = widget.translationService.currentTranslation;
+    if (currentTranslation == null) {
+      debugPrint('No current translation to delete');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Translation'),
+        content: Text('Are you sure you want to delete the "${currentTranslation.languageName}" translation?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      debugPrint('Deleting translation: ${currentTranslation.languageName} (${currentTranslation.language})');
+
+      final db = DatabaseService();
+      await db.removeTranslationFile(
+        _currentSong.id,
+        currentTranslation.language,
+        type: currentTranslation.type,
+      );
+
+      await widget.translationService.removeAndSaveTranslation(
+        currentTranslation.language,
+        type: currentTranslation.type,
+      );
+
+      await _updateLyricsWithTranslations();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Translation "${currentTranslation.languageName}" deleted successfully'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        setState(() {});
+      }
+
+      debugPrint('✓ Translation deleted successfully');
+    } catch (e) {
+      debugPrint('✗ Error deleting translation: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete translation: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 }

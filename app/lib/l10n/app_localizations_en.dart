@@ -243,6 +243,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loadTranslations => 'Load Translations';
 
   @override
+  String get deleteTranslation => 'Delete translation';
+
+  @override
   String get noFileSelected => 'No file selected';
 
   @override

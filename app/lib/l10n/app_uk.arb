@@ -75,6 +75,7 @@
   "editTranslations": "Редагувати переклади",
   "loadTranslationsFromFile": "Завантажити переклади з файлу",
   "loadTranslations": "Завантажити переклади",
+  "deleteTranslation": "Видалити переклад",
   "noFileSelected": "Файл не вибрано",
   "noLrcFileAssociated": "Немає пов'язаного LRC файлу з цією піснею",
   "lrcFileSaved": "LRC файл успішно збережено!",

@@ -243,6 +243,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loadTranslations => '加载翻译';
 
   @override
+  String get deleteTranslation => '删除翻译';
+
+  @override
   String get noFileSelected => '未选择文件';
 
   @override

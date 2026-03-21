@@ -569,6 +569,12 @@ abstract class AppLocalizations {
   /// **'Load Translations'**
   String get loadTranslations;
 
+  /// No description provided for @deleteTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete translation'**
+  String get deleteTranslation;
+
   /// No description provided for @noFileSelected.
   ///
   /// In en, this message translates to:
