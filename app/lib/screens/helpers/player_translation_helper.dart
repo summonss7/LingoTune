@@ -9,7 +9,7 @@ import 'package:lingotune/l10n/app_localizations.dart';
 import 'package:lingotune/models/song.dart';
 import 'package:lingotune/models/lyric_line.dart';
 import 'package:lingotune/models/translation.dart' show Translation;
-import 'package:lingotune/services/audio_service.dart' show LoopMode;
+import 'package:lingotune/models/loop_mode.dart';
 import 'package:lingotune/services/translation_service.dart';
 import 'package:lingotune/services/settings_provider.dart';
 import 'package:lingotune/services/database_service.dart';

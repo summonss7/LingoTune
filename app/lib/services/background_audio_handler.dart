@@ -3,11 +3,13 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audio_service/audio_service.dart' as audio_pkg;
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:just_audio/just_audio.dart' hide LoopMode;
 import '../models/song.dart';
+import '../models/loop_mode.dart';
 
 class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player;
+  LoopMode _loopMode = LoopMode.off;
 
   StreamSubscription? _playbackEventSubscription;
   StreamSubscription? _positionSubscription;
@@ -20,6 +22,13 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     _setupListeners();
     _initAudioSession();
     _initializeState();
+  }
+
+  LoopMode get loopMode => _loopMode;
+
+  void setLoopMode(LoopMode mode) {
+    _loopMode = mode;
+    debugPrint('✓ BackgroundAudioHandler: Loop mode set to: $mode');
   }
 
   Future<void> _initAudioSession() async {
@@ -54,7 +63,13 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   void _setupListeners() {
     _playbackEventSubscription = _player.playbackEventStream.listen((event) {
       if (event.processingState == ProcessingState.completed) {
-        skipToNext();
+        if (_loopMode == LoopMode.one) {
+          debugPrint('✓ BackgroundAudioHandler: LoopMode.one - restarting song');
+          _player.seek(Duration.zero);
+          _player.play();
+        } else {
+          skipToNext();
+        }
       }
       _syncPlaybackState();
     });

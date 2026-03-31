@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lingotune/models/song.dart';
 import 'package:lingotune/services/audio_service.dart';
+import 'package:lingotune/models/loop_mode.dart';
 
 class PlayerPlaylistHelper {
   final Random _random = Random();

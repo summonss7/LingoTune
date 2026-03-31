@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:just_audio/just_audio.dart' hide LoopMode;
 import 'package:audio_service/audio_service.dart' as audio_pkg;
 import 'background_audio_handler.dart';
 import '../models/song.dart';
-
-enum LoopMode { off, all, one }
+import '../models/loop_mode.dart';
 
 class AudioService extends ChangeNotifier {
   final AudioPlayer _player = AudioPlayer();
@@ -183,11 +182,13 @@ class AudioService extends ChangeNotifier {
         _loopMode = LoopMode.off;
         break;
     }
+    _backgroundHandler?.setLoopMode(_loopMode);
     notifyListeners();
   }
 
   void setLoopMode(LoopMode mode) {
     _loopMode = mode;
+    _backgroundHandler?.setLoopMode(_loopMode);
     notifyListeners();
   }
 
@@ -250,6 +251,7 @@ class AudioService extends ChangeNotifier {
 
   void setBackgroundHandler(BackgroundAudioHandler handler) {
     _backgroundHandler = handler;
+    _backgroundHandler?.setLoopMode(_loopMode);
     debugPrint('✓ AudioService: Background handler set from MainScreen');
   }
 

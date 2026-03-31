@@ -11,6 +11,7 @@ import 'package:audio_service/audio_service.dart' as audio_pkg;
 import '../models/song.dart';
 import '../models/lyric_line.dart';
 import '../models/translation.dart' show Translation;
+import '../models/loop_mode.dart';
 import '../services/audio_service.dart';
 import '../services/lyrics_service.dart';
 import '../services/translation_service.dart';
