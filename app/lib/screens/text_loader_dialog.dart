@@ -47,16 +47,25 @@ class _TextLoaderDialogState extends State<TextLoaderDialog> {
   String _selectedTranscriptLanguage = 'ru';
 
   bool _isLoading = false;
+  bool _initialized = false;
 
   List<LyricLine> get originalLines => widget.lyricsService.lyricLines;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+      _selectedOriginalLanguage = settingsProvider.defaultSourceLanguage;
+      _loadExistingText();
+      debugPrint('TextLoaderDialog: Initialized with default source language: $_selectedOriginalLanguage');
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    _selectedOriginalLanguage = settingsProvider.defaultSourceLanguage;
-    _loadExistingText();
-    debugPrint('TextLoaderDialog: Initialized with default source language: $_selectedOriginalLanguage');
   }
 
   @override

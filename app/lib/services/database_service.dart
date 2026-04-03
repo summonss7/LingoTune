@@ -836,7 +836,7 @@ class DatabaseService {
 
     final db = await openDatabase(
       databasePath,
-      version: 10,
+      version: 11,
       readOnly: false,
     );
 
@@ -880,7 +880,7 @@ class DatabaseService {
 
     final db = await openDatabase(
       databasePath,
-      version: 10,
+      version: 11,
       readOnly: false,
     );
 

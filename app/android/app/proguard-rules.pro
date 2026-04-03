@@ -1,0 +1,6 @@
+-keep class io.flutter.app.** { *; }
+-keep class io.flutter.plugin.** { *; }
+-keep class com.google.firebase.** { *; }
+-keep class com.squareup.okhttp.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**

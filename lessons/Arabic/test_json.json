@@ -1,0 +1,35 @@
+{
+  "title": "001-lesson",
+  "artist": "Unknown",
+  "originalLanguage": "ar",
+  "translations": [
+    {
+      "language": "ru",
+      "languageName": "Русский",
+      "type": "",
+      "lines": [
+        {
+          "startTime": 1800.0,
+          "text": "папа",
+          "translatedText": null,
+          "transcript": "bɑːbɑ",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 1805.0,
+          "text": "мама",
+          "translatedText": null,
+          "transcript": "mɑːmɑ",
+          "originalStartTime": null
+        },
+        {
+          "startTime": 1810.0,
+          "text": "баба",
+          "translatedText": null,
+          "transcript": "bɑːbɑ",
+          "originalStartTime": null
+        }
+      ]
+    }
+  ]
+}

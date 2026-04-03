@@ -57,37 +57,43 @@ class _LyricGeneratorDialogState extends State<LyricGeneratorDialog> {
 
   late LyricsGeneratorService _generatorService;
   late DeepSeekApiService _apiService;
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      _initializeServices();
+
+      if (GenerationConstants.sourceLanguages.contains(widget.song.originalLanguage) &&
+          widget.song.originalLanguage != 'unknown') {
+        _selectedSourceLanguage = widget.song.originalLanguage;
+        debugPrint('✓ Using song original language: $_selectedSourceLanguage');
+      } else {
+        final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+        _selectedSourceLanguage = settingsProvider.defaultSourceLanguage;
+        debugPrint('✓ Using settings default source language: $_selectedSourceLanguage');
+      }
+
+      final hasTranslations = widget.song.lrcPath != null && widget.song.lrcPath!.isNotEmpty;
+      _isFirstGeneration = !hasTranslations;
+
+      if (_isFirstGeneration) {
+        _selectedLanguages.addAll(['trans', 'ru']);
+        debugPrint('✓ First generation: selected default languages (trans, ru)');
+      } else {
+        _selectedLanguages.clear();
+        debugPrint('✓ Regeneration: cleared language selection, user must choose');
+      }
+
+      _loadExistingTranslationText();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _initializeServices();
-    
-    // Приоритет 1: Язык песни, если он валиден
-    if (GenerationConstants.sourceLanguages.contains(widget.song.originalLanguage) && 
-        widget.song.originalLanguage != 'unknown') {
-      _selectedSourceLanguage = widget.song.originalLanguage;
-      debugPrint('✓ Using song original language: $_selectedSourceLanguage');
-    } else {
-    // Приоритет 2: Настройки
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    _selectedSourceLanguage = settingsProvider.defaultSourceLanguage;
-    debugPrint('✓ Using settings default source language: $_selectedSourceLanguage');
-    }
-
-    // Проверяем, есть ли переводы (повторная генерация)
-    final hasTranslations = widget.song.lrcPath != null && widget.song.lrcPath!.isNotEmpty;
-    _isFirstGeneration = !hasTranslations;
-
-    if (_isFirstGeneration) {
-      _selectedLanguages.addAll(['trans', 'ru']);
-      debugPrint('✓ First generation: selected default languages (trans, ru)');
-    } else {
-      _selectedLanguages.clear();
-      debugPrint('✓ Regeneration: cleared language selection, user must choose');
-    }
-
-    _loadExistingTranslationText();
   }
 
   void _initializeServices() {

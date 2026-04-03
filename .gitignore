@@ -55,8 +55,29 @@ logs/
 .env.local
 Facut.txt
 planul.txt
+Done.txt
+
+# Backup files
+*.bak
+*.bak2
+*.bak3
+
+# Temp reference files in l10n
+app/lib/l10n/*_keys.txt
+app/lib/l10n/missing_*.txt
+app/lib/l10n/insertion.txt
+app/lib/l10n/new_methods.txt
+app/lib/l10n/*_getters.txt
+
+# Binary blobs
+driver/
+media/LingoTune/
+output/
+
+# Debug
+debug/
 
 # Gradle
 app/android/.gradle/
 app/android/local.properties
-app/android/.gradle/# Test push check
+app/android/.gradle/

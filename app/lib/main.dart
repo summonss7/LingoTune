@@ -235,23 +235,30 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
 
-    // Загружаем настройки начального экрана
     _loadInitialScreen();
 
-    // Отложим инициализацию AudioService до первого рендера
-    // чтобы MainActivity был полностью готов
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initBackgroundAudioService();
     });
   }
 
+  @override
+  void dispose() {
+    _audioService.dispose();
+    _lyricsService.dispose();
+    _translationService.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadInitialScreen() async {
     final prefs = await SharedPreferences.getInstance();
     final savedScreen = prefs.getString('defaultStartScreen') ?? 'playlists';
-    setState(() {
-      _defaultStartScreen = savedScreen;
-      _currentIndex = savedScreen == 'playlists' ? 1 : 0;
-    });
+    if (mounted) {
+      setState(() {
+        _defaultStartScreen = savedScreen;
+        _currentIndex = savedScreen == 'playlists' ? 1 : 0;
+      });
+    }
   }
 
   Widget _getCurrentScreen() {

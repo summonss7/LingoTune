@@ -27,7 +27,7 @@ import '../services/folder_config_service.dart';
 import 'package:lingotune/l10n/app_localizations.dart';
 import 'player_screen.dart';
 import 'lyric_generator_dialog.dart';
-import 'helpers/playlist_cover_helper.dart';
+import 'helpers/cover_art_helper.dart';
 import 'helpers/playlist_import_helper.dart';
 import 'helpers/song_translation_loader.dart';
 
@@ -54,7 +54,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
   final DatabaseService _databaseService = DatabaseService();
   final ImagePicker _picker = ImagePicker();
 
-  final PlaylistCoverHelper _playlistCoverHelper = PlaylistCoverHelper();
+  final CoverArtHelper _coverArtHelper = CoverArtHelper();
   final PlaylistImportHelper _playlistImportHelper = PlaylistImportHelper();
   final SongTranslationLoader _songTranslationLoader = SongTranslationLoader();
 
@@ -163,7 +163,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
   }
 
   Future<void> _editCoverArt(Song song) async {
-    await _playlistCoverHelper.editCoverArt(
+    await _coverArtHelper.editCoverArt(
       context,
       song,
       (callback) => setState(() {

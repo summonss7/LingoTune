@@ -35,7 +35,7 @@ import 'player_screen.dart';
 import '../widgets/lyrics_search_dialog.dart';
 import 'package:lingotune/services/export_import_service.dart' show ImportResult, ImportMode;
 import 'helpers/song_import_helper.dart';
-import 'helpers/song_cover_helper.dart';
+import 'helpers/cover_art_helper.dart';
 import 'helpers/song_translation_loader.dart';
 
 class SongLibraryScreen extends StatefulWidget {
@@ -67,7 +67,7 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
   final Map<String, Color> _buttonColorsCache = {};
 
   final SongImportHelper _songImportHelper = SongImportHelper();
-  final SongCoverHelper _songCoverHelper = SongCoverHelper();
+  final CoverArtHelper _coverArtHelper = CoverArtHelper();
   final SongTranslationLoader _songTranslationLoader = SongTranslationLoader();
 
   @override
@@ -1152,7 +1152,7 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
   }
 
   Future<void> _editCoverArt(Song song) async {
-    await _songCoverHelper.editCoverArt(
+    await _coverArtHelper.editCoverArt(
       context,
       song,
       (callback) => setState(() {
