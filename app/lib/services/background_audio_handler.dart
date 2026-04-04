@@ -10,6 +10,10 @@ import '../models/loop_mode.dart';
 class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player;
   LoopMode _loopMode = LoopMode.off;
+  bool _isShuffleEnabled = false;
+
+  Function(bool)? onShuffleToggled;
+  Function(LoopMode)? onLoopToggled;
 
   StreamSubscription? _playbackEventSubscription;
   StreamSubscription? _positionSubscription;
@@ -25,17 +29,40 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   }
 
   LoopMode get loopMode => _loopMode;
+  bool get isShuffleEnabled => _isShuffleEnabled;
 
   void setLoopMode(LoopMode mode) {
     _loopMode = mode;
     debugPrint('✓ BackgroundAudioHandler: Loop mode set to: $mode');
   }
 
+  void setShuffleEnabled(bool enabled) {
+    _isShuffleEnabled = enabled;
+    debugPrint('✓ BackgroundAudioHandler: Shuffle set to: $enabled');
+  }
+
+  void updateNotificationControls() {
+    _syncPlaybackState();
+  }
+
   Future<void> _initAudioSession() async {
     try {
       final session = await AudioSession.instance;
       await session.configure(const AudioSessionConfiguration.music());
-      debugPrint('✓ BackgroundAudioHandler: AudioSession configured for background playback');
+      
+      session.interruptionEventStream.listen((event) {
+        if (event.begin) {
+          pause();
+        } else {
+          play();
+        }
+      });
+      
+      session.becomingNoisyEventStream.listen((_) {
+        pause();
+      });
+      
+      debugPrint('✓ BackgroundAudioHandler: AudioSession configured with interruption handling');
     } catch (e) {
       debugPrint('✗ BackgroundAudioHandler: Error configuring AudioSession: $e');
     }
@@ -43,17 +70,13 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   void _initializeState() {
     playbackState.add(PlaybackState(
-      controls: [
-        audio_pkg.MediaControl.skipToPrevious,
-        audio_pkg.MediaControl.play,
-        audio_pkg.MediaControl.skipToNext,
-      ],
+      controls: _buildControls(false),
       systemActions: const {
         MediaAction.seek,
         MediaAction.seekForward,
         MediaAction.seekBackward,
       },
-      androidCompactActionIndices: const [0, 1, 2],
+      androidCompactActionIndices: const [1, 2, 3],
       processingState: AudioProcessingState.idle,
       playing: false,
       updatePosition: Duration.zero,
@@ -120,19 +143,32 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     }
   }
 
-  void _syncPlaybackState() {
-    final playing = _player.playing;
-    final controls = [
+  List<audio_pkg.MediaControl> _buildControls(bool playing) {
+    return [
+      audio_pkg.MediaControl(
+        androidIcon: 'drawable/ic_shuffle',
+        label: _isShuffleEnabled ? 'Shuffle on' : 'Shuffle off',
+        action: MediaAction.setShuffleMode,
+      ),
       audio_pkg.MediaControl.skipToPrevious,
       playing ? audio_pkg.MediaControl.pause : audio_pkg.MediaControl.play,
       audio_pkg.MediaControl.skipToNext,
+      audio_pkg.MediaControl(
+        androidIcon: _loopMode == LoopMode.one ? 'drawable/ic_repeat_one' : 'drawable/ic_repeat',
+        label: _loopMode == LoopMode.off ? 'Repeat off' : _loopMode == LoopMode.all ? 'Repeat all' : 'Repeat one',
+        action: MediaAction.setRepeatMode,
+      ),
     ];
+  }
+
+  void _syncPlaybackState() {
+    final playing = _player.playing;
 
     playbackState.add(playbackState.value.copyWith(
       playing: playing,
-      controls: controls,
+      controls: _buildControls(playing),
       updatePosition: _player.position,
-      androidCompactActionIndices: const [0, 1, 2],
+      androidCompactActionIndices: const [1, 2, 3],
     ));
   }
 
@@ -166,6 +202,9 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   Future<void> playSong(Song song, int index) async {
     try {
+      final session = await AudioSession.instance;
+      await session.setActive(true);
+      
       if (song.audioPath.startsWith('content://')) {
         await _player.setUrl(song.audioPath);
       } else {
@@ -212,13 +251,12 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   @override
   Future<void> play() async {
     try {
+      final session = await AudioSession.instance;
+      await session.setActive(true);
+      
       playbackState.add(playbackState.value.copyWith(
         playing: true,
-        controls: [
-          audio_pkg.MediaControl.skipToPrevious,
-          audio_pkg.MediaControl.pause,
-          audio_pkg.MediaControl.skipToNext,
-        ],
+        controls: _buildControls(true),
         processingState: AudioProcessingState.ready,
       ));
 
@@ -234,11 +272,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     try {
       playbackState.add(playbackState.value.copyWith(
         playing: false,
-        controls: [
-          audio_pkg.MediaControl.skipToPrevious,
-          audio_pkg.MediaControl.play,
-          audio_pkg.MediaControl.skipToNext,
-        ],
+        controls: _buildControls(false),
       ));
 
       await _player.pause();
@@ -251,6 +285,9 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   @override
   Future<void> stop() async {
     try {
+      final session = await AudioSession.instance;
+      await session.setActive(false);
+      
       await _playbackEventSubscription?.cancel();
       await _positionSubscription?.cancel();
       await _playingSubscription?.cancel();
@@ -346,6 +383,32 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     } catch (e) {
       debugPrint('✗ BackgroundAudioHandler: Error skipping to queue item: $e');
     }
+  }
+
+  @override
+  Future<void> setShuffleMode(AudioServiceShuffleMode shuffleMode) async {
+    _isShuffleEnabled = !_isShuffleEnabled;
+    debugPrint('✓ BackgroundAudioHandler: Shuffle toggled to: $_isShuffleEnabled');
+    onShuffleToggled?.call(_isShuffleEnabled);
+    _syncPlaybackState();
+  }
+
+  @override
+  Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {
+    switch (_loopMode) {
+      case LoopMode.off:
+        _loopMode = LoopMode.all;
+        break;
+      case LoopMode.all:
+        _loopMode = LoopMode.one;
+        break;
+      case LoopMode.one:
+        _loopMode = LoopMode.off;
+        break;
+    }
+    debugPrint('✓ BackgroundAudioHandler: Loop mode toggled to: $_loopMode');
+    onLoopToggled?.call(_loopMode);
+    _syncPlaybackState();
   }
 
   @override

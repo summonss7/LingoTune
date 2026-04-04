@@ -183,6 +183,7 @@ class AudioService extends ChangeNotifier {
         break;
     }
     _backgroundHandler?.setLoopMode(_loopMode);
+    _backgroundHandler?.updateNotificationControls();
     notifyListeners();
   }
 
@@ -194,6 +195,8 @@ class AudioService extends ChangeNotifier {
 
   void toggleShuffle() {
     _isShuffleEnabled = !_isShuffleEnabled;
+    _backgroundHandler?.setShuffleEnabled(_isShuffleEnabled);
+    _backgroundHandler?.updateNotificationControls();
     notifyListeners();
   }
 
@@ -252,6 +255,15 @@ class AudioService extends ChangeNotifier {
   void setBackgroundHandler(BackgroundAudioHandler handler) {
     _backgroundHandler = handler;
     _backgroundHandler?.setLoopMode(_loopMode);
+    _backgroundHandler?.setShuffleEnabled(_isShuffleEnabled);
+    _backgroundHandler!.onShuffleToggled = (enabled) {
+      _isShuffleEnabled = enabled;
+      notifyListeners();
+    };
+    _backgroundHandler!.onLoopToggled = (mode) {
+      _loopMode = mode;
+      notifyListeners();
+    };
     debugPrint('✓ AudioService: Background handler set from MainScreen');
   }
 

@@ -151,14 +151,9 @@ class _MainScreenState extends State<MainScreen> {
       
       final prefs = await SharedPreferences.getInstance();
       
-      debugPrint('=== MainScreen: Creating BackgroundAudioHandler ===');
-      _backgroundHandler = BackgroundAudioHandler(_audioService.player);
-      _audioService.setBackgroundHandler(_backgroundHandler!);
-      debugPrint('✓ MainScreen: BackgroundAudioHandler created and set in AudioService');
-      
       debugPrint('✓ MainScreen: Initializing AudioService with notifications...');
-      await audio_pkg.AudioService.init(
-        builder: () => _backgroundHandler!,
+      _backgroundHandler = await audio_pkg.AudioService.init(
+        builder: () => BackgroundAudioHandler(_audioService.player),
         config: audio_pkg.AudioServiceConfig(
           androidNotificationChannelId: 'com.lingotune.app.channel.audio',
           androidNotificationChannelName: 'LingoTune Music',
@@ -170,8 +165,8 @@ class _MainScreenState extends State<MainScreen> {
           androidStopForegroundOnPause: false,
         ),
       );
-      debugPrint('✓ MainScreen: AudioService initialized with notification support');
-      debugPrint('✓ MainScreen: Notifications enabled: $notificationGranted');
+      _audioService.setBackgroundHandler(_backgroundHandler!);
+      debugPrint('✓ MainScreen: AudioService initialized, handler connected');
       await prefs.setBool('audioServiceInitialized', true);
       await prefs.setBool('notificationPermissionGranted', notificationGranted);
       await prefs.setString('audioServiceError', '');
