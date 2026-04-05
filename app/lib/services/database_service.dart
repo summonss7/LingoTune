@@ -64,6 +64,7 @@ class DatabaseService {
             language TEXT,
             selectedLanguage TEXT,
             hasLyrics INTEGER DEFAULT 1,
+            isInLibrary INTEGER DEFAULT 1,
             createdAt TEXT NOT NULL
           )
         ''');
