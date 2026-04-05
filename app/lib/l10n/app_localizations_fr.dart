@@ -119,7 +119,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get autoScrollFocusOffset => 'Décalage du focus du défilement automatique';
 
   @override
-  String get autoScrollFocusOffsetSubtitle => 'Position de focus initiale pour le défilement automatique (par défaut: +50)';
+  String get autoScrollFocusOffsetSubtitle => 'Position de focus initiales pour le défilement automatique (par défaut: +50)';
+
+  @override
+  String get showVerticalSlider => 'Curseur vertical';
+
+  @override
+  String get showVerticalSliderSubtitle => 'Afficher le curseur de défilement latéral';
 
   @override
   String get defaultTranslationLanguage => 'Langue de traduction par défaut';

@@ -29,6 +29,7 @@ class SettingsProvider with ChangeNotifier {
   int _deepseekMaxTokensJson = 8000;
   String _selectedPromptPreset = 'balanced';
   bool _addToLibraryWhenAddingToPlaylist = false;
+  bool _showVerticalSlider = false;
 
   double get fontSize => _fontSize;
   String get defaultTranslationLanguage => _defaultTranslationLanguage;
@@ -56,6 +57,7 @@ class SettingsProvider with ChangeNotifier {
   int get deepseekMaxTokensJson => _deepseekMaxTokensJson;
   String get selectedPromptPreset => _selectedPromptPreset;
   bool get addToLibraryWhenAddingToPlaylist => _addToLibraryWhenAddingToPlaylist;
+  bool get showVerticalSlider => _showVerticalSlider;
 
   Future<void> loadSettings() async {
     debugPrint('=== SettingsProvider: Loading settings ===');
@@ -123,6 +125,7 @@ class SettingsProvider with ChangeNotifier {
       _deepseekMaxTokensJson = prefs.getInt('deepseekMaxTokensJson') ?? 8000;
       _selectedPromptPreset = prefs.getString('selectedPromptPreset') ?? 'balanced';
       _addToLibraryWhenAddingToPlaylist = prefs.getBool('addToLibraryWhenAddingToPlaylist') ?? false;
+      _showVerticalSlider = prefs.getBool('showVerticalSlider') ?? false;
 
       debugPrint('Font size: $_fontSize');
       debugPrint('Translation language: $_defaultTranslationLanguage');
@@ -439,6 +442,12 @@ class SettingsProvider with ChangeNotifier {
     debugPrint('Add to library when adding to playlist updated and notified listeners');
   }
 
+  Future<void> setShowVerticalSlider(bool value) async {
+    _showVerticalSlider = value;
+    await _save();
+    notifyListeners();
+  }
+
   Future<void> _save() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -468,6 +477,7 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setInt('deepseekMaxTokensJson', _deepseekMaxTokensJson);
       await prefs.setString('selectedPromptPreset', _selectedPromptPreset);
       await prefs.setBool('addToLibraryWhenAddingToPlaylist', _addToLibraryWhenAddingToPlaylist);
+      await prefs.setBool('showVerticalSlider', _showVerticalSlider);
       await prefs.setString('settingsVersion', '4.2.1');
       debugPrint('Settings saved to SharedPreferences');
     } catch (e) {

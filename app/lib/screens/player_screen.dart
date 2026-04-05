@@ -56,7 +56,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   bool _isEditMode = false;
   final ScrollController _scrollController = ScrollController();
   bool _autoScroll = true;
-  final Map<int, double> _itemHeights = {};
+  List<GlobalKey> _lineKeys = [];
+  int _lastScrolledIndex = -1;
   late Song _currentSong;
   bool _isShuffleEnabled = false;
   LoopMode _loopMode = LoopMode.off;
@@ -509,97 +510,86 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     );
   }
 
-  double _calculateItemHeight(LyricLine line, bool isCurrent, bool isNext, bool isEditMode, double fontSize) {
-    double height = 16.0;
-    height += fontSize * (isCurrent ? 1.3 : isNext ? 1.1 : 1.0);
-
-    if (line.translatedText != null) {
-      height += 4.0;
-      height += fontSize * (isCurrent ? 1.1 : isNext ? 1.0 : 0.9);
-    }
-
-    if (line.transcript != null) {
-      height += 2.0;
-      height += fontSize * 0.9;
-    }
-
-    if (isEditMode) {
-      height += 2.0;
-      height += fontSize * 0.85;
-    }
-
-    return height + 16.0;
-  }
 
   void _scrollToCurrentLine() {
     final currentIndex = widget.lyricsService.currentIndex;
     final totalLines = widget.lyricsService.lyricLines.length;
 
     if (currentIndex >= 0 && currentIndex < totalLines) {
-      final indexToScroll = currentIndex;
+      if (currentIndex == _lastScrolledIndex) return;
+      _lastScrolledIndex = currentIndex;
 
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (_scrollController.hasClients) {
-          final prefs = await SharedPreferences.getInstance();
-          final fontSize = prefs.getDouble('fontSize') ?? 16.0;
-          final scrollOffset = prefs.getDouble('scrollOffset') ?? 120.0;
-          final focusOffset = prefs.getDouble('autoScrollFocusOffset') ?? 0.0;
+        if (!mounted || !_scrollController.hasClients) return;
 
-          // Рассчитываем высоту строк ДО текущей (НЕ включая текущую)
-          double estimatedHeight = 0;
-          for (int i = 0; i < totalLines; i++) {
-            final line = widget.lyricsService.lyricLines[i];
-            final isCurrent = i == currentIndex;
-            final isNext = _highlightNextLine && i == currentIndex + 1;
-            final height = _calculateItemHeight(line, isCurrent, isNext, _isEditMode, fontSize);
+        final prefs = await SharedPreferences.getInstance();
+        final scrollOffset = prefs.getDouble('scrollOffset') ?? 50.0;
+        final focusOffset = _autoScrollFocusOffset;
 
-            if (i < indexToScroll) {
-              estimatedHeight += height;
+        if (currentIndex < _lineKeys.length) {
+          final keyContext = _lineKeys[currentIndex].currentContext;
+          if (keyContext != null) {
+            final renderBox = keyContext.findRenderObject() as RenderBox;
+            final scrollable = Scrollable.of(keyContext);
+            if (scrollable != null) {
+              final viewportBox = scrollable.context.findRenderObject() as RenderBox;
+              final itemScreenPos = renderBox.localToGlobal(Offset.zero);
+              final itemRelativeY = viewportBox.globalToLocal(itemScreenPos).dy;
+              final itemAbsolute = _scrollController.offset + itemRelativeY;
+              final maxExtent = _scrollController.position.maxScrollExtent;
+              final targetOffset = (itemAbsolute - scrollOffset + focusOffset)
+                  .clamp(0.0, maxExtent);
+
+              await _scrollController.animateTo(
+                targetOffset,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
             }
+            return;
           }
+        }
 
-          // Адаптивный offset в зависимости от количества строк
-          // Маленькие песни (< 30 строк): стандартный offset
-          // Средние песни (30-50 строк): +50px
-          // Большие песни (50-80 строк): +100px
-          // Очень большие песни (> 80 строк): +150px
-          int extraOffset = 0;
-          if (totalLines > 80) {
-            extraOffset = 150;
-          } else if (totalLines > 50) {
-            extraOffset = 100;
-          } else if (totalLines > 30) {
-            extraOffset = 50;
-          }
+        final maxExtent = _scrollController.position.maxScrollExtent;
+        if (totalLines > 1 && maxExtent > 0) {
+          final avgHeight = maxExtent / totalLines;
+          final jumpTarget = (avgHeight * currentIndex - avgHeight * 2)
+              .clamp(0.0, maxExtent);
 
-          // Для последних строк добавляем дополнительно
-          final isLastLines = currentIndex >= totalLines - 5;
-          final adjustedOffset = isLastLines
-              ? scrollOffset + extraOffset + 30
-              : scrollOffset;
-
-          final targetOffset = estimatedHeight - adjustedOffset - focusOffset;
-          final maxScrollExtent = _scrollController.position.maxScrollExtent;
-          final clampedOffset = targetOffset.clamp(0.0, maxScrollExtent);
-
-          _scrollController.animateTo(
-            clampedOffset,
-            duration: const Duration(milliseconds: 300),
+          await _scrollController.animateTo(
+            jumpTarget,
+            duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOut,
           );
+
+          if (!mounted) return;
+          if (currentIndex < _lineKeys.length) {
+            final keyContext = _lineKeys[currentIndex].currentContext;
+            if (keyContext != null) {
+              final renderBox = keyContext.findRenderObject() as RenderBox;
+              final scrollable = Scrollable.of(keyContext);
+              if (scrollable != null) {
+                final viewportBox = scrollable.context.findRenderObject() as RenderBox;
+                final itemScreenPos = renderBox.localToGlobal(Offset.zero);
+                final itemRelativeY = viewportBox.globalToLocal(itemScreenPos).dy;
+                final itemAbsolute = _scrollController.offset + itemRelativeY;
+                final maxExtent2 = _scrollController.position.maxScrollExtent;
+                final targetOffset = (itemAbsolute - scrollOffset + focusOffset)
+                    .clamp(0.0, maxExtent2);
+
+                await _scrollController.animateTo(
+                  targetOffset,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                );
+              }
+            }
+          }
         }
       });
     }
   }
 
-  double _getEstimatedItemHeight() {
-    final orientation = MediaQuery.of(context).orientation;
-    if (orientation == Orientation.portrait) {
-      return 80.0;
-    } else {
-      return 60.0;
-    }
-  }
 
   Future<void> _exportCurrentSong() async {
     await _playerExportHelper.exportCurrentSong(
@@ -1499,18 +1489,24 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                   child: AnimatedBuilder(
                     animation: widget.lyricsService,
                     builder: (context, child) {
+                      final lines = widget.lyricsService.lyricLines;
+                      while (_lineKeys.length < lines.length) {
+                        _lineKeys.add(GlobalKey());
+                      }
+
                       return ListView.builder(
                         controller: _scrollController,
                         padding: EdgeInsets.symmetric(
                           horizontal: isLandscape ? 4.0 : 8.0,
                         ).copyWith(bottom: 180.0),
-                        itemCount: widget.lyricsService.lyricLines.length,
+                        itemCount: lines.length,
                         itemBuilder: (context, index) {
-                          final line = widget.lyricsService.lyricLines[index];
+                          final line = lines[index];
                           final isCurrent = index == widget.lyricsService.currentIndex;
                           final isNext = _highlightNextLine && index == widget.lyricsService.currentIndex + 1;
 
                           return Padding(
+                            key: _lineKeys[index],
                             padding: EdgeInsets.only(
                               right: isLandscape ? 0.0 : 8.0,
                               left: isLandscape ? 4.0 : 8.0,
@@ -1529,6 +1525,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                                   widget.translationService.updateLineTimestamps(widget.lyricsService.lyricLines);
                                   setState(() {});
                                 } else {
+                                  _lastScrolledIndex = -1;
                                   widget.audioService.seek(Duration(milliseconds: (line.startTime * 1000).toInt()));
                                 }
                               },
@@ -1539,7 +1536,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                     },
                   ),
                 ),
-                if (_autoScroll && !_isEditMode)
+                if (_autoScroll && !_isEditMode && Provider.of<SettingsProvider>(context).showVerticalSlider)
                   VerticalFocusOffsetSlider(
                     offset: _autoScrollFocusOffset,
                     onChanged: _onFocusOffsetChanged,

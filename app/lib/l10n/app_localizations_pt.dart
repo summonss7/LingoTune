@@ -122,6 +122,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get autoScrollFocusOffsetSubtitle => 'Posição do foco inicial para a rolagem automática (padrão: +50)';
 
   @override
+  String get showVerticalSlider => 'Controle deslizante vertical';
+
+  @override
+  String get showVerticalSliderSubtitle => 'Mostrar controle deslizante de rolagem lateral';
+
+  @override
   String get defaultTranslationLanguage => 'Idioma de tradução padrão';
 
   @override

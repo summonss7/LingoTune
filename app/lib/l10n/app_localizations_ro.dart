@@ -122,6 +122,12 @@ class AppLocalizationsRo extends AppLocalizations {
   String get autoScrollFocusOffsetSubtitle => 'Poziția focalizării inițială pentru derularea automată (implicit: +50)';
 
   @override
+  String get showVerticalSlider => 'Slider vertical';
+
+  @override
+  String get showVerticalSliderSubtitle => 'Afișează sliderul de derulare lateral';
+
+  @override
   String get defaultTranslationLanguage => 'Limbă traducere implicită';
 
   @override

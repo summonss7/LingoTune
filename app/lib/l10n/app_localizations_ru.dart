@@ -122,6 +122,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get autoScrollFocusOffsetSubtitle => 'Начальное положение фокуса для автопрокрутки (по умолчанию: +50)';
 
   @override
+  String get showVerticalSlider => 'Боковой скроллер';
+
+  @override
+  String get showVerticalSliderSubtitle => 'Показать ползунок прокрутки сбоку';
+
+  @override
   String get defaultTranslationLanguage => 'Язык перевода по умолчанию';
 
   @override

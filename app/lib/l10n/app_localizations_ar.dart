@@ -122,6 +122,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get autoScrollFocusOffsetSubtitle => 'موضع التركيز الافتراضي للتمرير التلقائي (افتراضي: +50)';
 
   @override
+  String get showVerticalSlider => 'شريط تمرير عمودي';
+
+  @override
+  String get showVerticalSliderSubtitle => 'إظهار شريط التمرير الجانبي';
+
+  @override
   String get defaultTranslationLanguage => 'لغة الترجمة الافتراضية';
 
   @override

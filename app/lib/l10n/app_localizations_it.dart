@@ -122,6 +122,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get autoScrollFocusOffsetSubtitle => 'Posizione del focus iniziale per lo scroll automatico (predefinito: +50)';
 
   @override
+  String get showVerticalSlider => 'Cursore verticale';
+
+  @override
+  String get showVerticalSliderSubtitle => 'Mostra cursore di scorrimento laterale';
+
+  @override
   String get defaultTranslationLanguage => 'Lingua traduzione predefinita';
 
   @override

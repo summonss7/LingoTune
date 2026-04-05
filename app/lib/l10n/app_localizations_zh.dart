@@ -122,6 +122,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get autoScrollFocusOffsetSubtitle => '自动滚动的默认焦点位置（默认: +50）';
 
   @override
+  String get showVerticalSlider => '垂直滑块';
+
+  @override
+  String get showVerticalSliderSubtitle => '显示侧边滚动滑块';
+
+  @override
   String get defaultTranslationLanguage => '默认翻译语言';
 
   @override

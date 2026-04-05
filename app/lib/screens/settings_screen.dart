@@ -25,7 +25,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _useCustomFolder = true;
   String _customLrcJsonFolder = '';
-  double _scrollOffset = 120.0;
+  double _scrollOffset = 50.0;
   double _autoScrollFocusOffset = 50.0;
   bool _audioServiceInitialized = false;
   String _audioServiceError = '';
@@ -204,6 +204,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: Switch(
               value: settingsProvider.autoScroll,
               onChanged: (value) => settingsProvider.setAutoScroll(value),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.view_sidebar_outlined),
+            title: Text(l10n.showVerticalSlider),
+            subtitle: Text(l10n.showVerticalSliderSubtitle),
+            trailing: Switch(
+              value: settingsProvider.showVerticalSlider,
+              onChanged: (value) => settingsProvider.setShowVerticalSlider(value),
             ),
           ),
           ListTile(

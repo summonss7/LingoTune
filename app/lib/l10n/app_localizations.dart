@@ -335,6 +335,18 @@ abstract class AppLocalizations {
   /// **'Default focus position for auto-scroll (default: +50)'**
   String get autoScrollFocusOffsetSubtitle;
 
+  /// No description provided for @showVerticalSlider.
+  ///
+  /// In en, this message translates to:
+  /// **'Vertical Slider'**
+  String get showVerticalSlider;
+
+  /// No description provided for @showVerticalSliderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show side scroll slider'**
+  String get showVerticalSliderSubtitle;
+
   /// No description provided for @defaultTranslationLanguage.
   ///
   /// In en, this message translates to:

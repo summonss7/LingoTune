@@ -122,6 +122,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get autoScrollFocusOffsetSubtitle => 'Standard-Fokusposition für Auto-Scroll (Standard: +50)';
 
   @override
+  String get showVerticalSlider => 'Vertikaler Slider';
+
+  @override
+  String get showVerticalSliderSubtitle => 'Seitlichen Scroll-Slider anzeigen';
+
+  @override
   String get defaultTranslationLanguage => 'Standard-Übersetzungssprache';
 
   @override
