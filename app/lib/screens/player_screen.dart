@@ -714,7 +714,243 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     }
   }
 
-  Widget _buildLoopButton(bool isLandscape) {
+  Widget _buildAppBarContent(BuildContext context) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final sw = MediaQuery.of(context).size.width;
+    final hd = widget.translationService.translations.isNotEmpty;
+    final dw = hd ? sw * 0.22 : 0.0;
+    final avail = sw - 56.0 - dw - (hd ? 12.0 : 4.0);
+    int cnt = 5;
+    if (!_isEditMode) cnt++;
+    if (_isEditMode) cnt++;
+    final bs = (avail / cnt).clamp(18.0, 44.0);
+    final iconSz = (bs * 0.72).clamp(12.0, 24.0);
+
+    Widget btn(IconData icon, VoidCallback onTap, {Color? color}) {
+      return SizedBox(
+        width: bs,
+        height: bs,
+        child: IconButton(
+          icon: Icon(icon, color: color),
+          iconSize: iconSz,
+          padding: EdgeInsets.zero,
+          constraints: BoxConstraints.tightFor(width: bs, height: bs),
+          onPressed: onTap,
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (!_isEditMode)
+          btn(
+            _autoScroll ? Icons.play_arrow : Icons.pause,
+            () => setState(() => _autoScroll = !_autoScroll),
+            color: _autoScroll ? Colors.green : Colors.grey,
+          ),
+        btn(Icons.share, _exportCurrentSong),
+        btn(
+          _isEditMode ? Icons.edit_off : Icons.edit_note,
+          () => setState(() => _isEditMode = !_isEditMode),
+        ),
+        if (_isEditMode) btn(Icons.save, _saveLrcChanges),
+        btn(
+          Icons.swap_vert,
+          () {
+            final sp = Provider.of<SettingsProvider>(context, listen: false);
+            sp.setShowTranslationFirst(!sp.showTranslationFirst);
+          },
+        ),
+        btn(
+          Icons.text_fields,
+          () async {
+            final prefs = await SharedPreferences.getInstance();
+            final show = prefs.getBool('showTranscription') ?? false;
+            await prefs.setBool('showTranscription', !show);
+            await _updateLyricsWithTranslations();
+            setState(() {});
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(!show ? 'Транскрипция включена' : 'Транскрипция выключена'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
+          },
+        ),
+        SizedBox(
+          width: bs,
+          height: bs,
+          child: PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, size: iconSz),
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints.tightFor(width: bs, height: bs),
+            onSelected: (String value) async {
+              if (value == 'edit') {
+                final saved = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (context) => TranslationEditorScreen(
+                      song: _currentSong,
+                      lyricLines: widget.lyricsService.lyricLines,
+                      translationService: widget.translationService,
+                      lyricsService: widget.lyricsService,
+                    ),
+                  ),
+                );
+                if (saved == true) {
+                  await _updateLyricsWithTranslations();
+                  setState(() {});
+                }
+              } else if (value == 'add') {
+                _loadTranslationsFromFile();
+              } else if (value == 'loadText') {
+                _showTextLoaderDialog();
+              } else if (value == 'delete') {
+                await _deleteCurrentTranslation();
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit, size: 20),
+                    const SizedBox(width: 12),
+                    Text(AppLocalizations.of(context)!.editTranslations),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'add',
+                child: Row(
+                  children: [
+                    const Icon(Icons.archive, size: 20),
+                    const SizedBox(width: 12),
+                    Text(AppLocalizations.of(context)!.loadTranslationsFromFile),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'loadText',
+                child: Row(
+                  children: [
+                    const Icon(Icons.description, size: 20),
+                    const SizedBox(width: 12),
+                    Text(AppLocalizations.of(context)!.loadTextMenu),
+                  ],
+                ),
+              ),
+              if (widget.translationService.translations.isNotEmpty)
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete, size: 20),
+                      const SizedBox(width: 12),
+                      Text(AppLocalizations.of(context)!.deleteTranslation),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (hd) SizedBox(width: 8),
+        if (hd)
+          Container(
+            constraints: BoxConstraints(maxWidth: dw),
+            padding: EdgeInsets.symmetric(horizontal: isLandscape ? 4.0 : 8.0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.translationService.translations.length > 1)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isLandscape ? 4 : 6,
+                      vertical: isLandscape ? 2 : 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${widget.translationService.translations.length}',
+                      style: TextStyle(
+                        fontSize: isLandscape ? 10 : 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                SizedBox(width: widget.translationService.translations.length > 1 ? 6 : 0),
+                DropdownButton<String>(
+                  value: widget.translationService.currentLanguageIndex.toString(),
+                  icon: const Icon(Icons.arrow_drop_down, size: 20),
+                  underline: const SizedBox(),
+                  style: TextStyle(
+                    fontSize: isLandscape ? 12 : 14,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  onChanged: (String? value) async {
+                    if (value != null) {
+                      final index = int.parse(value);
+                      widget.translationService.selectLanguage(index);
+                      final translation = widget.translationService.translations[index];
+                      final db = DatabaseService();
+                      await db.setSelectedLanguage(_currentSong.id, translation.language);
+                      await _updateLyricsWithTranslations();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Выбран язык: ${translation.languageName}'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                      setState(() { });
+                    }
+                  },
+                  items: widget.translationService.translations.asMap().entries.map((entry) {
+                    final translation = entry.value;
+                    final isSelected = entry.key == widget.translationService.currentLanguageIndex;
+                    final shortName = _getShortLanguageName(translation.languageName, translation.language);
+                    final emoji = _getLanguageEmoji(translation.language, translation.type);
+                    return DropdownMenuItem<String>(
+                      value: entry.key.toString(),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(emoji, style: TextStyle(fontSize: isLandscape ? 14 : 16)),
+                          const SizedBox(width: 6),
+                          Text(
+                            shortName,
+                            style: TextStyle(
+                              fontSize: isLandscape ? 12 : 14,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                            ),
+                          ),
+                          if (isSelected)
+                            Icon(Icons.check, size: isLandscape ? 14 : 16, color: Theme.of(context).colorScheme.primary),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(width: 4),
+      ],
+    );
+  }
+
+  Widget _buildLoopButton(bool isLandscape, {double iconSize = 32.0}) {
     IconData icon;
     Color? color;
     
@@ -757,7 +993,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         ),
         onPressed: _toggleLoop,
         tooltip: localizations.repeat,
-        iconSize: isLandscape ? 24 : 32,
+        iconSize: iconSize,
       ),
     );
   }
@@ -1247,268 +1483,12 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_currentSong.title),
         backgroundColor: _isEditMode
             ? Colors.orange
             : Theme.of(context).colorScheme.inversePrimary,
-       actions: [
-          const SizedBox(width: 24),
-          if (!_isEditMode)
-            IconButton(
-              icon: Icon(
-                _autoScroll ? Icons.play_arrow : Icons.pause,
-                color: _autoScroll ? Colors.green : Colors.grey,
-              ),
-              onPressed: () {
-                setState(() {
-                  _autoScroll = !_autoScroll;
-                });
-              },
-              tooltip: _autoScroll ? 'Auto-scroll enabled' : 'Auto-scroll disabled',
-              iconSize: 26,
-            ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: _exportCurrentSong,
-            tooltip: 'Export LRC & JSON',
-            iconSize: isLandscape ? 24 : null,
-          ),
-          IconButton(
-            icon: Icon(_isEditMode ? Icons.edit_off : Icons.edit_note),
-            onPressed: () {
-              setState(() {
-                _isEditMode = !_isEditMode;
-              });
-            },
-            tooltip: _isEditMode ? 'Exit edit mode' : 'Edit timestamps',
-            iconSize: isLandscape ? 24 : null,
-          ),
-          if (_isEditMode)
-            IconButton(
-              icon: const Icon(Icons.save),
-              onPressed: _saveLrcChanges,
-              tooltip: 'Save changes',
-              iconSize: isLandscape ? 24 : null,
-            ),
-          IconButton(
-            icon: const Icon(Icons.swap_vert),
-            onPressed: () {
-              final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-              settingsProvider.setShowTranslationFirst(!settingsProvider.showTranslationFirst);
-            },
-            tooltip: 'Toggle translation/original order',
-            iconSize: isLandscape ? 24 : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.text_fields),
-            onPressed: () async {
-              final prefs = await SharedPreferences.getInstance();
-              final showTranscript = prefs.getBool('showTranscription') ?? false;
-
-              final newPref = !(showTranscript);
-              await prefs.setBool('showTranscription', newPref);
-
-              await _updateLyricsWithTranslations();
-              setState(() {});
-
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(newPref ? 'Транскрипция включена' : 'Транскрипция выключена'),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-            tooltip: 'Показать транскрипцию (третья строка)',
-            iconSize: isLandscape ? 24 : null,
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.translate),
-            tooltip: 'Translations',
-            iconSize: isLandscape ? 24 : null,
-            onSelected: (String value) async {
-              if (value == 'edit') {
-                final saved = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (context) => TranslationEditorScreen(
-                      song: _currentSong,
-                      lyricLines: widget.lyricsService.lyricLines,
-                      translationService: widget.translationService,
-                      lyricsService: widget.lyricsService,
-                    ),
-                  ),
-                );
-
-                if (saved == true) {
-                  await _updateLyricsWithTranslations();
-                  setState(() {});
-                }
-              } else if (value == 'add') {
-                _loadTranslationsFromFile();
-              } else if (value == 'loadText') {
-                _showTextLoaderDialog();
-              } else if (value == 'delete') {
-                await _deleteCurrentTranslation();
-              }
-            },
-            itemBuilder: (BuildContext context) => [
-              PopupMenuItem<String>(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(Icons.edit, size: 20),
-                    SizedBox(width: 12),
-                    Text(AppLocalizations.of(context)!.editTranslations),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'add',
-                child: Row(
-                  children: [
-                    Icon(Icons.archive, size: 20),
-                    SizedBox(width: 12),
-                    Text(AppLocalizations.of(context)!.loadTranslationsFromFile),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'loadText',
-                child: Row(
-                  children: [
-                    Icon(Icons.description, size: 20),
-                    SizedBox(width: 12),
-                    Text(AppLocalizations.of(context)!.loadTextMenu),
-                  ],
-                ),
-              ),
-              if (widget.translationService.translations.isNotEmpty)
-                PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, size: 20),
-                      SizedBox(width: 12),
-                      Text(AppLocalizations.of(context)!.deleteTranslation),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          if (widget.translationService.translations.isNotEmpty)
-            Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.25,
-              ),
-              padding: EdgeInsets.symmetric(horizontal: isLandscape ? 4.0 : 8.0),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.translationService.translations.length > 1)
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isLandscape ? 4 : 6,
-                        vertical: isLandscape ? 2 : 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${widget.translationService.translations.length}',
-                        style: TextStyle(
-                          fontSize: isLandscape ? 10 : 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  SizedBox(width: widget.translationService.translations.length > 1 ? 6 : 0),
-                  DropdownButton<String>(
-                    value: widget.translationService.currentLanguageIndex.toString(),
-                    icon: const Icon(Icons.arrow_drop_down, size: 20),
-                    underline: const SizedBox(),
-                    style: TextStyle(
-                      fontSize: isLandscape ? 12 : 14,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                    onChanged: (String? value) async {
-                      if (value != null) {
-                        final index = int.parse(value);
-                        widget.translationService.selectLanguage(index);
-
-                        final translation = widget.translationService.translations[index];
-                        final db = DatabaseService();
-                        await db.setSelectedLanguage(_currentSong.id, translation.language);
-
-                        debugPrint('=== Translation changed ===');
-                        debugPrint('Index: $index');
-                        debugPrint('Language: ${translation.languageName} (${translation.language})');
-                        debugPrint('Saved to database: ${translation.language}');
-
-                        await _updateLyricsWithTranslations();
-
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Выбран язык: ${translation.languageName}'),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        }
-
-                        setState(() { });
-                      }
-                    },
-                    items: widget.translationService.translations.asMap().entries.map((entry) {
-                      final translation = entry.value;
-                      final isSelected = entry.key == widget.translationService.currentLanguageIndex;
-                      final typeText = translation.type != null
-                          ? ' (${_getTypeLabel(translation.type!)})'
-                          : '';
-                      final shortName = _getShortLanguageName(translation.languageName, translation.language);
-                      final emoji = _getLanguageEmoji(translation.language, translation.type);
-
-                      return DropdownMenuItem<String>(
-                        value: entry.key.toString(),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              emoji,
-                              style: TextStyle(fontSize: isLandscape ? 14 : 16),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              shortName,
-                              style: TextStyle(
-                                fontSize: isLandscape ? 12 : 14,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                color: isSelected
-                                    ? Theme.of(context).colorScheme.primary
-                                    : null,
-                              ),
-                            ),
-                            if (isSelected)
-                              Icon(
-                                Icons.check,
-                                size: isLandscape ? 14 : 16,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-        ],
+        titleSpacing: 0,
+        centerTitle: false,
+        title: _buildAppBarContent(context),
       ),
       body: Column(
         children: [
@@ -1603,129 +1583,162 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                     );
                   },
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    StreamBuilder<Duration>(
-                      stream: widget.audioService.player.positionStream,
-                      initialData: Duration.zero,
-                      builder: (context, snapshot) {
-                        final position = snapshot.data ?? Duration.zero;
-                        return Text(_formatDuration(position), style: TextStyle(fontSize: isLandscape ? 12 : null));
-                      },
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: isLandscape ? 8.0 : 16.0),
-                        child: Text(
-                          _currentSong.title,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: isLandscape ? 11 : 13,
-                            fontWeight: FontWeight.w500,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                 Row(
+                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                   children: [
+                      StreamBuilder<Duration>(
+                        stream: widget.audioService.player.positionStream,
+                        initialData: Duration.zero,
+                        builder: (context, snapshot) {
+                          final position = snapshot.data ?? Duration.zero;
+                          return Text(_formatDuration(position), style: TextStyle(fontSize: isLandscape ? 12 : null));
+                        },
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: isLandscape ? 8.0 : 16.0),
+                          child: Text(
+                            _currentSong.title,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: isLandscape ? 11 : 13,
+                              fontWeight: FontWeight.w500,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    StreamBuilder<Duration?>(
-                      stream: widget.audioService.player.durationStream,
-                      initialData: Duration.zero,
-                      builder: (context, snapshot) {
-                        final duration = snapshot.data ?? Duration.zero;
-                        return Text(_formatDuration(duration), style: TextStyle(fontSize: isLandscape ? 12 : null));
-                      },
-                    ),
-                  ],
-                ),
+                      StreamBuilder<Duration?>(
+                        stream: widget.audioService.player.durationStream,
+                        initialData: Duration.zero,
+                        builder: (context, snapshot) {
+                          final duration = snapshot.data ?? Duration.zero;
+                          return Text(_formatDuration(duration), style: TextStyle(fontSize: isLandscape ? 12 : null));
+                        },
+                      ),
+                   ],
+                 ),
                 SizedBox(height: isLandscape ? 4.0 : 8.0),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _isShuffleEnabled 
-                            ? Theme.of(context).colorScheme.primaryContainer 
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        border: _isShuffleEnabled
-                            ? Border.all(
-                                color: Theme.of(context).colorScheme.primary,
-                                width: 2,
-                              )
-                            : null,
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.shuffle,
-                          color: _isShuffleEnabled 
-                              ? Theme.of(context).colorScheme.primary 
-                              : null,
-                          weight: _isShuffleEnabled ? 900 : 400,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final availableWidth = constraints.maxWidth;
+                    final baseIconSize = isLandscape ? 24.0 : 32.0;
+                    final baseFabSize = 56.0;
+                    final baseSpacing = isLandscape ? 8.0 : 16.0;
+                    final buttonCount = 7;
+                    final fabVisualSize = baseFabSize;
+                    final totalSpacing = baseSpacing * 2;
+                    final totalButtonWidth = buttonCount * (baseIconSize + 16) + fabVisualSize + totalSpacing;
+                    double iconSize;
+                    double fabSize;
+                    double spacing;
+                    if (totalButtonWidth <= availableWidth) {
+                      iconSize = baseIconSize;
+                      fabSize = baseFabSize;
+                      spacing = baseSpacing;
+                    } else {
+                      final ratio = availableWidth / totalButtonWidth;
+                      iconSize = (baseIconSize * ratio).clamp(18.0, baseIconSize);
+                      fabSize = (baseFabSize * ratio).clamp(36.0, baseFabSize);
+                      spacing = (baseSpacing * ratio).clamp(4.0, baseSpacing);
+                    }
+                    final fabIconSize = (fabSize * 0.5).clamp(18.0, 28.0);
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: _isShuffleEnabled 
+                                ? Theme.of(context).colorScheme.primaryContainer 
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: _isShuffleEnabled
+                                ? Border.all(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 2,
+                                  )
+                                : null,
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.shuffle,
+                              color: _isShuffleEnabled 
+                                  ? Theme.of(context).colorScheme.primary 
+                                  : null,
+                              weight: _isShuffleEnabled ? 900 : 400,
+                            ),
+                            onPressed: _toggleShuffle,
+                            tooltip: AppLocalizations.of(context)!.shuffle,
+                            iconSize: iconSize,
+                            padding: const EdgeInsets.all(4.0),
+                          ),
                         ),
-                        onPressed: _toggleShuffle,
-                        tooltip: AppLocalizations.of(context)!.shuffle,
-                        iconSize: isLandscape ? 24 : 32,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.skip_previous),
-                      onPressed: _canPlayPrevious() ? _playPreviousSong : null,
-                      iconSize: isLandscape ? 24 : 32,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.replay_10),
-                      onPressed: () {
-                        final currentPosition =
-                            widget.audioService.position.inSeconds - 10;
-                        widget.audioService.seek(Duration(
-                            seconds: currentPosition > 0 ? currentPosition : 0));
-                      },
-                      iconSize: isLandscape ? 24 : 32,
-                    ),
-                    SizedBox(width: isLandscape ? 8.0 : 16.0),
-                    StreamBuilder<bool>(
-                      stream:
-                          widget.audioService.player.playingStream,
-                      initialData: false,
-                      builder: (context, snapshot) {
-                        final isPlaying = snapshot.data ?? false;
-                        return FloatingActionButton(
+                        IconButton(
+                          icon: const Icon(Icons.skip_previous),
+                          onPressed: _canPlayPrevious() ? _playPreviousSong : null,
+                          iconSize: iconSize,
+                          padding: const EdgeInsets.all(4.0),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.replay_10),
                           onPressed: () {
-                            if (isPlaying) {
-                              widget.audioService.pause();
-                            } else {
-                              widget.audioService.play();
-                            }
+                            final currentPosition =
+                                widget.audioService.position.inSeconds - 10;
+                            widget.audioService.seek(Duration(
+                                seconds: currentPosition > 0 ? currentPosition : 0));
                           },
-                          child: Icon(
-                              isPlaying ? Icons.pause : Icons.play_arrow,
-                              size: isLandscape ? 24 : null),
-                        );
-                      },
-                    ),
-                    SizedBox(width: isLandscape ? 8.0 : 16.0),
-                    IconButton(
-                      icon: const Icon(Icons.forward_10),
-                      onPressed: () {
-                        final currentPosition =
-                            widget.audioService.position.inSeconds + 10;
-                        widget.audioService.seek(Duration(
-                            seconds: currentPosition < widget.audioService.duration.inSeconds
-                                ? currentPosition
-                                : widget.audioService.duration.inSeconds));
-                      },
-                      iconSize: isLandscape ? 24 : 32,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.skip_next),
-                      onPressed: _canPlayNext() ? _playNextSong : null,
-                      iconSize: isLandscape ? 24 : 32,
-                    ),
-                    _buildLoopButton(isLandscape),
-                  ],
+                          iconSize: iconSize,
+                          padding: const EdgeInsets.all(4.0),
+                        ),
+                        SizedBox(
+                          width: fabSize,
+                          height: fabSize,
+                          child: StreamBuilder<bool>(
+                            stream:
+                                widget.audioService.player.playingStream,
+                            initialData: false,
+                            builder: (context, snapshot) {
+                              final isPlaying = snapshot.data ?? false;
+                              return FloatingActionButton(
+                                onPressed: () {
+                                  if (isPlaying) {
+                                    widget.audioService.pause();
+                                  } else {
+                                    widget.audioService.play();
+                                  }
+                                },
+                                child: Icon(
+                                    isPlaying ? Icons.pause : Icons.play_arrow,
+                                    size: fabIconSize),
+                              );
+                            },
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.forward_10),
+                          onPressed: () {
+                            final currentPosition =
+                                widget.audioService.position.inSeconds + 10;
+                            widget.audioService.seek(Duration(
+                                seconds: currentPosition < widget.audioService.duration.inSeconds
+                                    ? currentPosition
+                                    : widget.audioService.duration.inSeconds));
+                          },
+                          iconSize: iconSize,
+                          padding: const EdgeInsets.all(4.0),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.skip_next),
+                          onPressed: _canPlayNext() ? _playNextSong : null,
+                          iconSize: iconSize,
+                          padding: const EdgeInsets.all(4.0),
+                        ),
+                        _buildLoopButton(isLandscape, iconSize: iconSize),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
