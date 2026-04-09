@@ -191,11 +191,19 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   Future<void> _createPlaylist() async {
     final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController();
-    final iconController = TextEditingController();
     String? selectedMusicFolder;
     bool hasUserEditedName = false;
 
-    return showDialog(
+    final iconOptions = [
+      {'value': null, 'label': l10n.playlistPlay, 'icon': Icons.playlist_play},
+      {'value': 'music_note', 'label': l10n.musicNote, 'icon': Icons.music_note},
+      {'value': 'favorite', 'label': l10n.favorite, 'icon': Icons.favorite},
+      {'value': 'language', 'label': l10n.language, 'icon': Icons.language},
+      {'value': 'library_music', 'label': l10n.libraryMusic, 'icon': Icons.library_music},
+    ];
+    String? selectedIcon;
+
+    final result = await showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
@@ -203,11 +211,91 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (selectedMusicFolder != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.folder_open, color: Colors.green, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              path.basename(selectedMusicFolder!),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            Text(
+                              selectedMusicFolder!,
+                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            selectedMusicFolder = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ] else ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.folder_open, size: 28),
+                    label: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.selectMusicFolder,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            l10n.tapToSelectFolder,
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                    onPressed: () async {
+                      final result = await FilePicker.platform.getDirectoryPath();
+                      if (result != null && result.isNotEmpty) {
+                        setState(() {
+                          selectedMusicFolder = result;
+                          if (!hasUserEditedName) {
+                            final folderName = path.basename(result);
+                            controller.text = folderName;
+                          }
+                        });
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               TextField(
                 controller: controller,
                 decoration: InputDecoration(
                   labelText: l10n.playlistName,
                   hintText: 'My Playlist',
+                  prefixIcon: const Icon(Icons.edit),
                 ),
                 onChanged: (value) {
                   if (!hasUserEditedName && value.isNotEmpty) {
@@ -216,47 +304,30 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: iconController,
+              DropdownButtonFormField<String>(
+                value: selectedIcon,
                 decoration: InputDecoration(
                   labelText: l10n.iconOptional,
-                  hintText: 'music_note',
+                  prefixIcon: Icon(_getIconData(selectedIcon)),
                 ),
+                items: iconOptions.map((option) {
+                  return DropdownMenuItem<String>(
+                    value: option['value'] as String?,
+                    child: Row(
+                      children: [
+                        Icon(option['icon'] as IconData, size: 20),
+                        const SizedBox(width: 12),
+                        Text(option['label'] as String),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedIcon = value;
+                  });
+                },
               ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.folder_open),
-                title: Text(selectedMusicFolder == null 
-                    ? l10n.selectMusicFolder 
-                    : l10n.folderPath),
-                subtitle: selectedMusicFolder != null 
-                    ? Text(selectedMusicFolder!, maxLines: 1, overflow: TextOverflow.ellipsis)
-                    : Text(l10n.folderWithAudioFiles),
-                trailing: IconButton(
-                  icon: const Icon(Icons.browse_gallery),
-                  onPressed: () async {
-                    final result = await FilePicker.platform.getDirectoryPath();
-                    if (result != null && result.isNotEmpty) {
-                      setState(() {
-                        selectedMusicFolder = result;
-                        if (!hasUserEditedName) {
-                          final folderName = path.basename(result);
-                          controller.text = folderName;
-                        }
-                      });
-                    }
-                  },
-                ),
-              ),
-              if (selectedMusicFolder != null)
-                IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    setState(() {
-                      selectedMusicFolder = null;
-                    });
-                  },
-                ),
             ],
           ),
           actions: [
@@ -267,7 +338,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
             ElevatedButton(
               onPressed: () async {
                 final name = controller.text.trim();
-                final icon = iconController.text.trim();
+                final icon = selectedIcon;
 
                 if (name.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -288,7 +359,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                   final playlist = Playlist(
                     id: playlistId,
                     name: name,
-                    icon: icon.isEmpty ? null : icon,
+                    icon: icon,
                     isSystem: false,
                     musicFolderPath: selectedMusicFolder,
                   );
@@ -322,8 +393,9 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
             ),
           ],
         ),
-      ),
-    );
+       ),
+     );
+    controller.dispose();
   }
 
   Future<bool> _requestFolderPermissions(BuildContext context) async {

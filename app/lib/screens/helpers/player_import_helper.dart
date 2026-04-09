@@ -284,51 +284,57 @@ class PlayerImportHelper {
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.specifyTranslationLanguage),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                labelText: l10n.languageNameLabel,
-                hintText: l10n.languageNameHint,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(l10n.specifyTranslationLanguage),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: l10n.languageNameLabel,
+                    hintText: l10n.languageNameHint,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(l10n.translationTypeLabel),
+                DropdownButton<String>(
+                  value: selectedType,
+                  items: typeOptions.map((type) {
+                    return DropdownMenuItem<String>(
+                      value: type['value'] as String?,
+                      child: Text(type['label'] as String),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedType = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, null),
+                child: Text(l10n.cancel),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(l10n.translationTypeLabel),
-            DropdownButton<String>(
-              value: selectedType,
-              items: typeOptions.map((type) {
-                return DropdownMenuItem<String>(
-                  value: type['value'] as String?,
-                  child: Text(type['label'] as String),
-                );
-              }).toList(),
-              onChanged: (value) {
-                selectedType = value;
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, null),
-            child: Text(l10n.cancel),
+              ElevatedButton(
+                onPressed: () {
+                  if (nameController.text.isEmpty) return;
+                  Navigator.pop(context, {
+                    'name': nameController.text,
+                    'type': selectedType,
+                  });
+                },
+                child: Text(l10n.confirm),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.isEmpty) return;
-              Navigator.pop(context, {
-                'name': nameController.text,
-                'type': selectedType,
-              });
-            },
-            child: Text(l10n.confirm),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
     if (result != null) {

@@ -496,5 +496,176 @@
     "refreshOnlySongs": "Only songs",
     "refreshEverything": "Everything",
     "refreshDialogDescription": "What would you like to update? \"Only songs\" speeds up process by skipping lyrics.",
-    "mostSongs": "Most Songs"
+    "mostSongs": "Most Songs",
+    "playlistPlay": "Playlist",
+    "musicNote": "Music Note",
+    "favorite": "Favorite",
+    "libraryMusic": "Library",
+    "tapToSelectFolder": "Tap to select a folder with audio files",
+    "showVerticalSlider": "Show Vertical Slider",
+     "showVerticalSliderSubtitle": "Display vertical focus offset slider in player",
+     "transcriptionEnabled": "Transcription enabled",
+     "transcriptionDisabled": "Transcription disabled",
+     "languageSelected": "Selected language: {language}",
+     "@languageSelected": {
+       "placeholders": {
+         "language": {"type": "String"}
+       }
+     },
+     "noTranslationsScanning": "No translations found, scanning folder...",
+     "translationsLoadedCount": "Loaded translations: {count}",
+     "@translationsLoadedCount": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "translationsNotFound": "No translations found for this song",
+     "errorLoadingTranslations": "Error loading translations: {error}",
+     "@errorLoadingTranslations": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "languageNotAvailable": "{settingLang} selected in settings but not available. Opening: {availableLang}",
+     "@languageNotAvailable": {
+       "placeholders": {
+         "settingLang": {"type": "String"},
+         "availableLang": {"type": "String"}
+       }
+     },
+     "errorAudioService": "Audio Service Error",
+     "audioServiceFailed": "Failed to initialize background audio playback.",
+     "notificationMayNotAppear": "Player notification may not appear.",
+     "lrcAndTranslationsSaved": "LRC and all translations saved!",
+     "translationDeleted": "Translation \"{name}\" deleted",
+     "@translationDeleted": {
+       "placeholders": {
+         "name": {"type": "String"}
+       }
+     },
+     "failedToDeleteTranslation": "Failed to delete translation: {error}",
+     "@failedToDeleteTranslation": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "generatingTranslations": "Generating translations",
+     "generatingProcessing": "Processing:",
+     "generatingLines": "Lines:",
+     "generatingLinesOf": "{current} of {total}",
+     "@generatingLinesOf": {
+       "placeholders": {
+         "current": {"type": "int"},
+         "total": {"type": "int"}
+       }
+     },
+     "generatingErrors": "Errors: {count}",
+     "@generatingErrors": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "selectedLanguagesCountGen": "Selected: {count}",
+     "@selectedLanguagesCountGen": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "transcriptionSection": "Transcription",
+     "translationsSection": "Translations",
+     "translationLoadedSuccess": "Translation loaded successfully!",
+     "exportSuccessful": "Export successful!",
+     "failedToExportSong": "Failed to export song",
+     "deleteTranslationTitle": "Delete Translation",
+     "deleteTranslationConfirm": "Are you sure you want to delete the \"{name}\" translation?",
+     "@deleteTranslationConfirm": {
+       "placeholders": {
+         "name": {"type": "String"}
+       }
+     },
+     "lrcLoaded": "LRC file loaded",
+     "noFilesLoaded": "No files loaded from archive",
+     "failedToProcessArchive": "Failed to process archive: {error}",
+     "@failedToProcessArchive": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "failedToLoadTranslationsShort": "Failed to load translations: {error}",
+     "@failedToLoadTranslationsShort": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "noFolderConfiguredMsg": "No folder configured",
+     "failedToPlaySongMsg": "Failed to play song: {error}",
+     "@failedToPlaySongMsg": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "addedSongsToPlaylistMsg": "Added {count} song(s) to \"{playlist}\"",
+     "@addedSongsToPlaylistMsg": {
+       "placeholders": {
+         "count": {"type": "int"},
+         "playlist": {"type": "String"}
+       }
+     },
+     "failedToAddSongsMsg": "Failed to add songs: {error}",
+     "@failedToAddSongsMsg": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "addSongsButton": "Add {count} song(s)",
+     "@addSongsButton": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "removeSong": "Remove",
+     "failedToRemoveSongMsg": "Failed to remove song: {error}",
+     "@failedToRemoveSongMsg": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "failedToReorderSongsMsg": "Failed to reorder songs: {error}",
+     "@failedToReorderSongsMsg": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "failedToLoadSongsMsg": "Failed to load songs: {error}",
+     "@failedToLoadSongsMsg": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "errorLoadingText": "Error loading text: {error}",
+     "@errorLoadingText": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "lrcAndTranslationsLoaded": "LRC and {count} translation(s) loaded",
+     "@lrcAndTranslationsLoaded": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "translationsOnlyLoaded": "{count} translation(s) loaded",
+     "@translationsOnlyLoaded": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "pleaseSetDeepSeekApiKey": "Please set DeepSeek API key in settings",
+     "lyricsGeneratedSuccessfullyMsg": "Lyrics generated successfully",
+     "exportShareSubject": "LingoTune export: {title} with lyrics and translations",
+     "@exportShareSubject": {
+       "placeholders": {
+         "title": {"type": "String"}
+       }
+     }
 }

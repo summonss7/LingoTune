@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_info.dart';
 
 class AboutApp extends StatelessWidget {
   const AboutApp({super.key});
@@ -30,7 +31,7 @@ class AboutApp extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'v4.4.10',
+              'v${AppInfo.version}',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],

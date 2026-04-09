@@ -21,6 +21,8 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   StreamSubscription? _bufferedPositionSubscription;
   StreamSubscription? _playerStateSubscription;
   StreamSubscription? _durationSubscription;
+  StreamSubscription? _interruptionSubscription;
+  StreamSubscription? _becomingNoisySubscription;
 
   BackgroundAudioHandler(this._player) {
     _setupListeners();
@@ -50,7 +52,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       final session = await AudioSession.instance;
       await session.configure(const AudioSessionConfiguration.music());
       
-      session.interruptionEventStream.listen((event) {
+      _interruptionSubscription = session.interruptionEventStream.listen((event) {
         if (event.begin) {
           pause();
         } else {
@@ -58,7 +60,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         }
       });
       
-      session.becomingNoisyEventStream.listen((_) {
+      _becomingNoisySubscription = session.becomingNoisyEventStream.listen((_) {
         pause();
       });
       
@@ -294,6 +296,8 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       await _bufferedPositionSubscription?.cancel();
       await _playerStateSubscription?.cancel();
       await _durationSubscription?.cancel();
+      await _interruptionSubscription?.cancel();
+      await _becomingNoisySubscription?.cancel();
 
       await _player.stop();
 
@@ -306,6 +310,10 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     } catch (e) {
       debugPrint('✗ BackgroundAudioHandler: Error in stop(): $e');
     }
+  }
+
+  Future<void> dispose() async {
+    await stop();
   }
 
   @override

@@ -106,10 +106,10 @@ class FolderImportService {
     required String? lyricsFolderPath,
     required Function(FolderImportProgress) onProgress,
     required Function() onCancel,
+    bool Function()? isCancelled,
   }) async {
     int importedCount = 0;
     int processedFiles = 0;
-    bool shouldCancel = false;
     String? error;
 
     try {
@@ -169,7 +169,7 @@ class FolderImportService {
       }
 
       for (int i = 0; i < audioFiles.length; i++) {
-        if (shouldCancel) break;
+        if (isCancelled?.call() == true) break;
 
         final file = audioFiles[i];
         final normalizedPath = _databaseService.normalizePathForSync(file.path);
@@ -278,6 +278,7 @@ class FolderImportService {
             : (currentTransIsMissing ? null : existingSong?.translationsPath),
           originalLanguage: existingSong?.originalLanguage ?? 'unknown',
           hasLyrics: hasLyrics || ((existingSong?.hasLyrics ?? false) && !currentLrcIsMissing && !currentTransIsMissing),
+          isInLibrary: existingSong?.isInLibrary ?? true,
         );
 
         songsToInsert.add(song);
@@ -302,7 +303,7 @@ class FolderImportService {
         await Future.delayed(const Duration(milliseconds: 1));
       }
 
-      if (shouldCancel) {
+      if (isCancelled?.call() == true) {
         await _databaseService.deletePlaylist(playlistId);
         return FolderImportResult(
           playlist: Playlist(
@@ -402,22 +403,10 @@ class FolderImportService {
     final batch = db.batch();
 
     for (final song in songs) {
+      final data = song.toJson()..remove('translations');
       batch.insert(
         'songs',
-        {
-          'id': song.id,
-          'title': song.title,
-          'artist': song.artist,
-          'audioPath': song.audioPath,
-          'lrcPath': song.lrcPath,
-          'translationsPath': song.translationsPath,
-          'coverArtPath': song.coverArtPath,
-          'coverArtVersion': song.coverArtVersion,
-          'originalLanguage': song.originalLanguage,
-          'language': song.language,
-          'selectedLanguage': song.selectedLanguage,
-          'createdAt': song.createdAt,
-        },
+        data,
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
@@ -442,6 +431,10 @@ class FolderImportService {
     }
 
     await batch.commit(noResult: true);
+
+    await db.rawUpdate('''
+      UPDATE playlists SET songCount = (SELECT COUNT(*) FROM playlist_songs WHERE playlistId = ?) WHERE id = ?
+    ''', [playlistId, playlistId]);
   }
 
   Future<void> _batchInsertTranslations(Map<String, List<TranslationFile>> songTranslations) async {
@@ -469,6 +462,11 @@ class FolderImportService {
     }
 
     await batch.commit(noResult: true);
+  }
+
+  bool _isAudioFile(String filePath) {
+    final extension = path.extension(filePath).toLowerCase();
+    return ['.mp3', '.wav', '.m4a', '.ogg', '.flac'].contains(extension);
   }
 
   bool _isSmartMatch(String fileName, String songName) {

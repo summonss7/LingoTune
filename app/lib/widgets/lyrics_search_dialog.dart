@@ -36,11 +36,13 @@ class _LyricsSearchDialogState extends State<LyricsSearchDialog> {
         widget.title,
       );
 
+      if (!mounted) return;
       setState(() {
         _lyrics = lyrics;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;

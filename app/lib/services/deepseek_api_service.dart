@@ -36,6 +36,18 @@ class DeepSeekApiService {
     this.enableCache = true,
   });
 
+  static const int _maxCacheSize = 200;
+
+  void _cleanExpiredCache() {
+    _cache.removeWhere((key, entry) => entry.isExpired);
+    if (_cache.length > _maxCacheSize) {
+      final keysToRemove = _cache.keys.take(_cache.length - _maxCacheSize ~/ 2);
+      for (final key in keysToRemove) {
+        _cache.remove(key);
+      }
+    }
+  }
+
   Future<String?> translateLine({
     required String text,
     required String sourceLanguage,
@@ -50,9 +62,10 @@ class DeepSeekApiService {
 
     final cacheKey = '$sourceLanguage:$targetLanguage:${type ?? 'default'}:$text';
     if (enableCache) {
+      _cleanExpiredCache();
       final cached = _cache[cacheKey];
       if (cached != null && !cached.isExpired) {
-        debugPrint('✓ Using cached translation: ${text.substring(0, 30)}...');
+        debugPrint('✓ Using cached translation: ${text.length > 30 ? '${text.substring(0, 30)}...' : text}');
         return cached.value;
       }
     }
@@ -70,7 +83,7 @@ class DeepSeekApiService {
         final response = await _makeRequest(prompt, targetLanguage);
 
         if (response != null) {
-          debugPrint('✓ Translated successfully (attempt ${attempt + 1}): ${text.substring(0, 30)}...');
+          debugPrint('✓ Translated successfully (attempt ${attempt + 1}): ${text.length > 30 ? '${text.substring(0, 30)}...' : text}');
 
           if (enableCache) {
             _cache[cacheKey] = _CacheEntry(response, DateTime.now().add(Duration(hours: 24)));
@@ -82,7 +95,7 @@ class DeepSeekApiService {
         debugPrint('✗ Translation attempt ${attempt + 1} failed: $e');
 
         if (attempt == GenerationConstants.maxRetries - 1) {
-          debugPrint('✗ All retries failed for: ${text.substring(0, 30)}...');
+          debugPrint('✗ All retries failed for: ${text.length > 30 ? '${text.substring(0, 30)}...' : text}');
           rethrow;
         }
 
@@ -287,7 +300,7 @@ class DeepSeekApiService {
               debugPrint('✗ Failed to parse extracted JSON: $e');
             }
           }
-          debugPrint('Response content preview: ${cleanedResponse.substring(0, 500)}...');
+          debugPrint('Response content preview: ${cleanedResponse.length > 500 ? '${cleanedResponse.substring(0, 500)}...' : cleanedResponse}');
           return {};
         }
       } else {

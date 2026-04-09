@@ -8,6 +8,9 @@ import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 
 class CoverArtService {
+  static final Map<String, bool> _fileExistsCache = {};
+  static const int _maxCacheSize = 500;
+
   static final List<List<Color>> _gradients = [
     [Color(0xFF667eea), Color(0xFF764ba2)],
     [Color(0xFFf093fb), Color(0xFFF5576C)],
@@ -169,6 +172,14 @@ class CoverArtService {
       await File(outputPath).writeAsBytes(finalBytes);
 
       debugPrint('Cover art saved: $outputPath');
+      _fileExistsCache[outputPath] = true;
+      if (_fileExistsCache.length > _maxCacheSize) {
+        final keysToRemove = _fileExistsCache.keys.take(_fileExistsCache.length - _maxCacheSize ~/ 2);
+        for (final key in keysToRemove) {
+          _fileExistsCache.remove(key);
+        }
+      }
+      if (oldCoverPath != null) _fileExistsCache.remove(oldCoverPath);
       return outputPath;
     } catch (e) {
       debugPrint('Error saving cover art: $e');
@@ -185,6 +196,15 @@ class CoverArtService {
         await file.delete();
         debugPrint('Cover art deleted: $coverArtPath');
       }
+
+      _fileExistsCache.remove(coverArtPath);
+
+      final thumbPath = coverArtPath.replaceAll('_cover.png', '_thumb.png');
+      final thumbFile = File(thumbPath);
+      if (thumbFile.existsSync()) {
+        await thumbFile.delete();
+        debugPrint('Thumbnail deleted: $thumbPath');
+      }
     } catch (e) {
       debugPrint('Error deleting cover art: $e');
     }
@@ -200,8 +220,11 @@ class CoverArtService {
     final widgetKey = key ?? ValueKey('${coverArtPath}_v$coverArtVersion');
 
     if (coverArtPath != null && coverArtPath.isNotEmpty) {
-      final coverFile = File(coverArtPath);
-      if (!coverFile.existsSync()) {
+      final exists = _fileExistsCache.putIfAbsent(
+        coverArtPath,
+        () => File(coverArtPath).existsSync(),
+      );
+      if (!exists) {
         debugPrint('Cover art file does not exist: $coverArtPath');
         return generateCoverArt(title, size: size);
       }

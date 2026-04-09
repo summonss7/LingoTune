@@ -31,7 +31,15 @@ class FolderConfigService {
 
   static Future<Directory> getDefaultFolder() async {
     final directory = await getExternalStorageDirectory();
-    final lyricsFolder = Directory(path.join(directory!.parent.path, _defaultFolderName));
+    if (directory == null) {
+      final appDir = await getApplicationDocumentsDirectory();
+      final lyricsFolder = Directory(path.join(appDir.path, _defaultFolderName));
+      if (!lyricsFolder.existsSync()) {
+        await lyricsFolder.create(recursive: true);
+      }
+      return lyricsFolder;
+    }
+    final lyricsFolder = Directory(path.join(directory.parent.path, _defaultFolderName));
 
     if (!lyricsFolder.existsSync()) {
       await lyricsFolder.create(recursive: true);
@@ -135,7 +143,7 @@ class FolderConfigService {
               languageName = translation['languageName'] as String? ?? 'Unknown';
               type = translation['type'] as String?;
 
-              if (type != null && languageName == 'Транскрипция') {
+              if (type == 'transcript') {
                 language = 'transcript';
               }
             }

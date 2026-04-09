@@ -122,12 +122,6 @@ class AppLocalizationsRo extends AppLocalizations {
   String get autoScrollFocusOffsetSubtitle => 'Poziția focalizării inițială pentru derularea automată (implicit: +50)';
 
   @override
-  String get showVerticalSlider => 'Slider vertical';
-
-  @override
-  String get showVerticalSliderSubtitle => 'Afișează sliderul de derulare lateral';
-
-  @override
   String get defaultTranslationLanguage => 'Limbă traducere implicită';
 
   @override
@@ -1607,4 +1601,209 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get mostSongs => 'Cele mai multe melodii';
+
+  @override
+  String get playlistPlay => 'Playlist';
+
+  @override
+  String get musicNote => 'Notă muzicală';
+
+  @override
+  String get favorite => 'Favorit';
+
+  @override
+  String get libraryMusic => 'Bibliotecă';
+
+  @override
+  String get tapToSelectFolder => 'Atinge pentru a selecta un folder cu fișiere audio';
+
+  @override
+  String get showVerticalSlider => 'Slider vertical';
+
+  @override
+  String get showVerticalSliderSubtitle => 'Afișați slider vertical de decalaj în player';
+
+  @override
+  String get transcriptionEnabled => 'Transcriere activată';
+
+  @override
+  String get transcriptionDisabled => 'Transcriere dezactivată';
+
+  @override
+  String languageSelected(String language) {
+    return 'Limba selectată: $language';
+  }
+
+  @override
+  String get noTranslationsScanning => 'Nicio traducere găsită, se scanează folderul...';
+
+  @override
+  String translationsLoadedCount(int count) {
+    return 'Traduceri încărcate: $count';
+  }
+
+  @override
+  String get translationsNotFound => 'Nicio traducere găsită pentru această melodie';
+
+  @override
+  String errorLoadingTranslations(String error) {
+    return 'Eroare la încărcarea traducerilor: $error';
+  }
+
+  @override
+  String languageNotAvailable(String settingLang, String availableLang) {
+    return '$settingLang selectat dar indisponibil. Se deschide: $availableLang';
+  }
+
+  @override
+  String get errorAudioService => 'Eroare Serviciu Audio';
+
+  @override
+  String get audioServiceFailed => 'Nu s-a putut inițializa redarea audio în fundal.';
+
+  @override
+  String get notificationMayNotAppear => 'Notificarea player-ului poate să nu apară.';
+
+  @override
+  String get lrcAndTranslationsSaved => 'LRC și toate traducerile salvate!';
+
+  @override
+  String translationDeleted(String name) {
+    return 'Traducerea \"$name\" ștearsă';
+  }
+
+  @override
+  String failedToDeleteTranslation(String error) {
+    return 'Ștergerea a eșuat: $error';
+  }
+
+  @override
+  String get generatingTranslations => 'Se generează traduceri';
+
+  @override
+  String get generatingProcessing => 'Procesare:';
+
+  @override
+  String get generatingLines => 'Linii:';
+
+  @override
+  String generatingLinesOf(int current, int total) {
+    return '$current din $total';
+  }
+
+  @override
+  String generatingErrors(int count) {
+    return 'Erori: $count';
+  }
+
+  @override
+  String selectedLanguagesCountGen(int count) {
+    return 'Selectate: $count';
+  }
+
+  @override
+  String get transcriptionSection => 'Transcriere';
+
+  @override
+  String get translationsSection => 'Traduceri';
+
+  @override
+  String get translationLoadedSuccess => 'Traducere încărcată cu succes!';
+
+  @override
+  String get exportSuccessful => 'Export reușit!';
+
+  @override
+  String get failedToExportSong => 'Exportul melodiei a eșuat';
+
+  @override
+  String get deleteTranslationTitle => 'Șterge traducerea';
+
+  @override
+  String deleteTranslationConfirm(String name) {
+    return 'Ștergeți traducerea \"$name\"?';
+  }
+
+  @override
+  String get lrcLoaded => 'Fișier LRC încărcat';
+
+  @override
+  String get noFilesLoaded => 'Niciun fișier găsit în arhivă';
+
+  @override
+  String failedToProcessArchive(String error) {
+    return 'Procesarea arhivei a eșuat: $error';
+  }
+
+  @override
+  String failedToLoadTranslationsShort(String error) {
+    return 'Încărcare eșuată: $error';
+  }
+
+  @override
+  String get noFolderConfiguredMsg => 'Niciun folder configurat';
+
+  @override
+  String failedToPlaySongMsg(String error) {
+    return 'Redare eșuată: $error';
+  }
+
+  @override
+  String addedSongsToPlaylistMsg(int count, String playlist) {
+    return '$count melodie(ii) adăugate în \"$playlist\"';
+  }
+
+  @override
+  String failedToAddSongsMsg(String error) {
+    return 'Adăugare eșuată: $error';
+  }
+
+  @override
+  String addSongsButton(int count) {
+    return 'Adaugă $count';
+  }
+
+  @override
+  String get removeSong => 'Elimină';
+
+  @override
+  String failedToRemoveSongMsg(String error) {
+    return 'Eliminare eșuată: $error';
+  }
+
+  @override
+  String failedToReorderSongsMsg(String error) {
+    return 'Reordonare eșuată: $error';
+  }
+
+  @override
+  String failedToLoadSongsMsg(String error) {
+    return 'Încărcare eșuată: $error';
+  }
+
+  @override
+  String errorLoadingText(String error) {
+    return 'Eroare la încărcarea textului: $error';
+  }
+
+  @override
+  String lrcAndTranslationsLoaded(int count) {
+    return 'LRC și $count traducere/i încărcate';
+  }
+
+  @override
+  String translationsOnlyLoaded(int count) {
+    return '$count traducere/i încărcate';
+  }
+
+  @override
+  String get pleaseSetDeepSeekApiKey => 'Setați cheia API DeepSeek în setări';
+
+  @override
+  String get lyricsGeneratedSuccessfullyMsg => 'Versuri generate cu succes';
+
+  @override
+  String exportShareSubject(String title) {
+    return 'LingoTune export: $title cu versuri și traduceri';
+  }
 }

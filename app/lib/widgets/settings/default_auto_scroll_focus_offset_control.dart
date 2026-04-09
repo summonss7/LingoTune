@@ -39,8 +39,8 @@ class _DefaultAutoScrollFocusOffsetControlState extends State<DefaultAutoScrollF
 
   void _onTextFieldChanged(String value) {
     final parsed = double.tryParse(value);
-    if (parsed != null) return;
-    _updateOffset(parsed!);
+    if (parsed == null) return;
+    _updateOffset(parsed);
   }
 
   @override

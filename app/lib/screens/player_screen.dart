@@ -29,6 +29,7 @@ import 'helpers/player_translation_helper.dart';
 import 'helpers/player_playlist_helper.dart';
 import 'helpers/player_import_helper.dart';
 import 'helpers/player_export_helper.dart';
+import '../utils/language_helpers.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Song song;
@@ -61,8 +62,11 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   late Song _currentSong;
   bool _isShuffleEnabled = false;
   LoopMode _loopMode = LoopMode.off;
-  List<int>? _shuffledIndices;
   final Random _random = Random();
+
+  bool _cachedShowTranscription = false;
+  int _lastProcessedIndex = -1;
+  int _lastProcessedLanguageIndex = -1;
 
   final PlayerTranslationHelper _playerTranslationHelper = PlayerTranslationHelper();
   final PlayerPlaylistHelper _playerPlaylistHelper = PlayerPlaylistHelper();
@@ -78,56 +82,53 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   bool get wantKeepAlive => true;
 
   @override
-  void didChangeDependencies() async {
+  void didChangeDependencies() {
     super.didChangeDependencies();
     debugPrint('=== PlayerScreen: didChangeDependencies ===');
     debugPrint('Widget song: ${widget.song.title}');
-    debugPrint('Widget song lrcPath: ${widget.song.lrcPath}');
     debugPrint('Current song: ${_currentSong.title}');
-    debugPrint('Current song lrcPath: ${_currentSong.lrcPath}');
-    debugPrint('Current song ID: ${_currentSong.id}');
-    debugPrint('Widget song ID: ${widget.song.id}');
     debugPrint('Lyrics lines in service: ${widget.lyricsService.lyricLines.length}');
     debugPrint('Translations in service: ${widget.translationService.translations.length}');
   
-    // Синхронизируем widget.song с _currentSong
     if (_currentSong.id != widget.song.id) {
       debugPrint('=== Song ID changed, syncing ===');
-      debugPrint('Old song: ${_currentSong.title}, New song: ${widget.song.title}');
       _currentSong = widget.song;
-      await _loadSettings();
-      
-      final prefs = await SharedPreferences.getInstance();
-      final defaultOffset = prefs.getDouble('defaultAutoScrollFocusOffset') ?? 50.0;
-      await prefs.setDouble('autoScrollFocusOffset', defaultOffset);
-      setState(() {
-        _autoScrollFocusOffset = defaultOffset;
-      });
-      
-      // Перезагружаем данные если нужно
-      if (_currentSong.lrcPath != null && _currentSong.lrcPath!.isNotEmpty) {
-        debugPrint('Reloading LRC file from widget.song: ${_currentSong.lrcPath}');
-        widget.lyricsService.loadLrcFile(_currentSong.lrcPath!);
-      }
-    } else {
-      debugPrint('=== Song ID same, checking lrcPath ===');
-      debugPrint('lrcPath changed: ${widget.song.lrcPath != _currentSong.lrcPath}');
-      debugPrint('Lyrics empty: ${widget.lyricsService.lyricLines.isEmpty}');
-      
-      // Перезагружаем если изменился lrcPath или пусто
-      if (widget.song.lrcPath != _currentSong.lrcPath || widget.lyricsService.lyricLines.isEmpty) {
-        debugPrint('=== Reloading because lrcPath changed OR lyrics empty ===');
-        _reloadSongData();
-      }
+      _isShuffleEnabled = widget.audioService.isShuffleEnabled;
+      _loopMode = widget.audioService.loopMode;
+      _reloadSongDataWithSettings();
+    } else if (widget.song.lrcPath != _currentSong.lrcPath || widget.lyricsService.lyricLines.isEmpty) {
+      debugPrint('=== Reloading because lrcPath changed OR lyrics empty ===');
+      _reloadSongData();
     }
+  }
+
+  Future<void> _reloadSongDataWithSettings() async {
+    await _loadSettings();
+    
+    final prefs = await SharedPreferences.getInstance();
+    final defaultOffset = prefs.getDouble('defaultAutoScrollFocusOffset') ?? 50.0;
+    await prefs.setDouble('autoScrollFocusOffset', defaultOffset);
+    if (!mounted) return;
+    setState(() {
+      _autoScrollFocusOffset = defaultOffset;
+    });
+
+    if (_currentSong.lrcPath != null && _currentSong.lrcPath!.isNotEmpty) {
+      debugPrint('Reloading LRC file: ${_currentSong.lrcPath}');
+      await widget.lyricsService.loadLrcFile(_currentSong.lrcPath!);
+    }
+
+    await _loadAllTranslations(_currentSong.id, _currentSong.title);
+    await _updateLyricsWithTranslations();
+    if (mounted) setState(() {});
   }
   
   Future<void> _reloadSongData() async {
     final db = DatabaseService();
     final updatedSong = await db.getSong(_currentSong.id);
     
-    if (updatedSong != null) {
-      _currentSong = updatedSong!;
+    if (updatedSong != null && mounted) {
+      _currentSong = updatedSong;
       
       if (_currentSong.lrcPath != null && _currentSong.lrcPath!.isNotEmpty) {
         debugPrint('Reloading LRC file from DB: ${_currentSong.lrcPath}');
@@ -136,7 +137,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       
       await _loadAllTranslations(_currentSong.id, _currentSong.title);
       await _updateLyricsWithTranslations();
-      setState(() {});
+      if (mounted) setState(() {});
       
       debugPrint('=== Reloaded from DB ===');
       debugPrint('Lyrics after reload: ${widget.lyricsService.lyricLines.length}');
@@ -152,90 +153,12 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     debugPrint('Translations in service before deactivate: ${widget.translationService.translations.length}');
   }
 
-  String _getTypeLabel(String type) {
-    switch (type) {
-      case 'author':
-        return '(авт.)';
-      case 'poetic':
-        return '(поэт.)';
-      case 'literal':
-        return '(досл.)';
-      case 'transcript':
-        return '';
-      default:
-        return '';
-    }
-  }
-
   String _getShortLanguageName(String languageName, String languageCode) {
-    if (languageName.toLowerCase() == 'transcript' || languageName.toLowerCase() == 'транскрипция') {
-      return 'TR';
-    }
-    switch (languageCode.toLowerCase()) {
-      case 'ru':
-        return 'RU';
-      case 'en':
-        return 'EN';
-      case 'de':
-        return 'DE';
-      case 'fr':
-        return 'FR';
-      case 'es':
-        return 'ES';
-      case 'it':
-        return 'IT';
-      case 'pt':
-        return 'PT';
-      case 'ro':
-        return 'RO';
-      default:
-        if (languageName.length <= 3) {
-          return languageName.toUpperCase();
-        }
-        return languageName.substring(0, 3).toUpperCase();
-    }
+    return LanguageHelper.getShortLanguageName(languageName, languageCode);
   }
 
   String _getLanguageEmoji(String language, String? type) {
-    final lowerLang = language.toLowerCase();
-
-    if (type == 'transcript') {
-      return '🎤';
-    }
-
-    if (lowerLang.contains('рус') || lowerLang == 'ru') return '🇷🇺';
-    if (lowerLang.contains('english') || lowerLang == 'en') return '🇬🇧';
-    if (lowerLang.contains('german') || lowerLang == 'de') return '🇩🇪';
-    if (lowerLang.contains('french') || lowerLang == 'fr') return '🇫🇷';
-    if (lowerLang.contains('spanish') || lowerLang == 'es') return '🇪🇸';
-    if (lowerLang.contains('italian') || lowerLang == 'it') return '🇮🇹';
-    if (lowerLang.contains('portuguese') || lowerLang == 'pt') return '🇵🇹';
-    if (lowerLang.contains('romanian') || lowerLang == 'ro') return '🇷🇴';
-
-    return '🌐';
-  }
-
-  String _getTranslationLanguageName(String code) {
-    switch (code) {
-      case 'ru':
-        return 'русский';
-      case 'en':
-        return 'английский';
-      case 'ro':
-        return 'румынский';
-      case 'fr':
-        return 'французский';
-      case 'de':
-        return 'немецкий';
-      case 'es':
-        return 'испанский';
-      case 'it':
-        return 'итальянский';
-      case 'pt':
-        return 'португальский';
-      default:
-        return 'Unknown';
-    }
+    return LanguageHelper.getLanguageEmoji(language, type);
   }
 
   Future<void> _selectLanguageBasedOnSettings() async {
@@ -272,8 +195,6 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       
       if (_isShuffleEnabled) {
         _generateShuffledIndices();
-      } else {
-        _shuffledIndices = null;
       }
     });
   }
@@ -420,22 +341,12 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     debugPrint('Translations in service: ${widget.translationService.translations.length}');
 
     _currentSong = widget.song;
+    _isShuffleEnabled = widget.audioService.isShuffleEnabled;
+    _loopMode = widget.audioService.loopMode;
     _loadSettings();
     _startPositionUpdates();
 
-    if (widget.song.lrcPath != null && widget.song.lrcPath!.isNotEmpty) {
-      debugPrint('Loading LRC file from song in initState: ${widget.song.lrcPath}');
-      widget.lyricsService.loadLrcFile(widget.song.lrcPath!);
-      debugPrint('LRC loaded successfully, lyric lines count: ${widget.lyricsService.lyricLines.length}');
-    }
-
-    if (widget.translationService.translations.isEmpty) {
-      debugPrint('Translations are empty in initState, loading from database...');
-      _scanAndAddTranslations(widget.song.id, widget.song.title);
-    }
-
-    _updateLyricsWithTranslations();
-    _autoPlay();
+    _initSongData();
 
     widget.audioService.onSongComplete = () {
       if (mounted) {
@@ -443,14 +354,29 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       }
     };
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (mounted) {
-        setState(() {});
-        await _selectLanguageBasedOnSettings();
-      }
-    });
-
     _initBackgroundAudio();
+  }
+
+  Future<void> _initSongData() async {
+    if (widget.song.lrcPath != null && widget.song.lrcPath!.isNotEmpty) {
+      debugPrint('Loading LRC file from song in initState: ${widget.song.lrcPath}');
+      await widget.lyricsService.loadLrcFile(widget.song.lrcPath!);
+      debugPrint('LRC loaded successfully, lyric lines count: ${widget.lyricsService.lyricLines.length}');
+    }
+
+    if (widget.translationService.translations.isEmpty) {
+      debugPrint('Translations are empty in initState, loading from database...');
+      await _loadAllTranslations(widget.song.id, widget.song.title);
+    }
+
+    await _updateLyricsWithTranslations();
+
+    _autoPlay();
+
+    if (mounted) {
+      setState(() {});
+      await _selectLanguageBasedOnSettings();
+    }
   }
 
   Future<void> _initBackgroundAudio() async {
@@ -503,6 +429,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   }
 
   Future<void> _updateLyricsWithTranslations() async {
+    _playerTranslationHelper.markDirty();
     await _playerTranslationHelper.updateLyricsWithTranslations(
       context,
       widget.lyricsService.lyricLines,
@@ -600,7 +527,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
   void _startPositionUpdates() {
     _positionTimer?.cancel();
-    _positionTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) async {
+    _positionTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) async {
       if (widget.audioService.isInitialized) {
         final position = widget.audioService.position.inMilliseconds.toDouble() / 1000;
         widget.lyricsService.updatePosition(position);
@@ -608,11 +535,24 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         final prefs = await SharedPreferences.getInstance();
         final showTranscript = prefs.getBool('showTranscription') ?? false;
 
+        final currentLineIndex = widget.lyricsService.currentIndex;
+        final currentLangIndex = widget.translationService.currentLanguageIndex;
+        final needsTranslationUpdate = currentLineIndex != _lastProcessedIndex ||
+            currentLangIndex != _lastProcessedLanguageIndex ||
+            showTranscript != _cachedShowTranscription;
+
+        _cachedShowTranscription = showTranscript;
+
+        if (needsTranslationUpdate) {
+          _lastProcessedIndex = currentLineIndex;
+          _lastProcessedLanguageIndex = currentLangIndex;
+          await _updateLyricsWithTranslations();
+        }
+
         if (_autoScroll && !_isEditMode) {
           _scrollToCurrentLine();
         }
 
-        await _updateLyricsWithTranslations();
         if (mounted) {
           setState(() {});
         }
@@ -622,7 +562,6 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
   @override
   void dispose() {
-    widget.audioService.pause();
     _positionTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
@@ -761,90 +700,88 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
             await _updateLyricsWithTranslations();
             setState(() {});
             if (mounted) {
+              final l10n = AppLocalizations.of(context)!;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(!show ? 'Транскрипция включена' : 'Транскрипция выключена'),
+                  content: Text(!show ? l10n.transcriptionEnabled : l10n.transcriptionDisabled),
                   duration: const Duration(seconds: 2),
                 ),
               );
             }
           },
         ),
-        SizedBox(
-          width: bs,
-          height: bs,
-          child: PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, size: iconSz),
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints.tightFor(width: bs, height: bs),
-            onSelected: (String value) async {
-              if (value == 'edit') {
-                final saved = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (context) => TranslationEditorScreen(
-                      song: _currentSong,
-                      lyricLines: widget.lyricsService.lyricLines,
-                      translationService: widget.translationService,
-                      lyricsService: widget.lyricsService,
-                    ),
+        PopupMenuButton<String>(
+          icon: Icon(Icons.more_vert, size: iconSz),
+          padding: EdgeInsets.symmetric(horizontal: (bs - iconSz) / 2),
+          constraints: BoxConstraints(minWidth: bs, minHeight: bs),
+          position: PopupMenuPosition.under,
+          onSelected: (String value) async {
+            if (value == 'edit') {
+              final saved = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (context) => TranslationEditorScreen(
+                    song: _currentSong,
+                    lyricLines: widget.lyricsService.lyricLines,
+                    translationService: widget.translationService,
+                    lyricsService: widget.lyricsService,
                   ),
-                );
-                if (saved == true) {
-                  await _updateLyricsWithTranslations();
-                  setState(() {});
-                }
-              } else if (value == 'add') {
-                _loadTranslationsFromFile();
-              } else if (value == 'loadText') {
-                _showTextLoaderDialog();
-              } else if (value == 'delete') {
-                await _deleteCurrentTranslation();
+                ),
+              );
+              if (saved == true) {
+                await _updateLyricsWithTranslations();
+                setState(() {});
               }
-            },
-            itemBuilder: (BuildContext context) => [
+            } else if (value == 'add') {
+              _loadTranslationsFromFile();
+            } else if (value == 'loadText') {
+              _showTextLoaderDialog();
+            } else if (value == 'delete') {
+              await _deleteCurrentTranslation();
+            }
+          },
+          itemBuilder: (BuildContext context) => [
+            PopupMenuItem<String>(
+              value: 'edit',
+              child: Row(
+                children: [
+                  const Icon(Icons.edit, size: 20),
+                  const SizedBox(width: 12),
+                  Text(AppLocalizations.of(context)!.editTranslations),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'add',
+              child: Row(
+                children: [
+                  const Icon(Icons.archive, size: 20),
+                  const SizedBox(width: 12),
+                  Text(AppLocalizations.of(context)!.loadTranslationsFromFile),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'loadText',
+              child: Row(
+                children: [
+                  const Icon(Icons.description, size: 20),
+                  const SizedBox(width: 12),
+                  Text(AppLocalizations.of(context)!.loadTextMenu),
+                ],
+              ),
+            ),
+            if (widget.translationService.translations.isNotEmpty)
               PopupMenuItem<String>(
-                value: 'edit',
+                value: 'delete',
                 child: Row(
                   children: [
-                    const Icon(Icons.edit, size: 20),
+                    const Icon(Icons.delete, size: 20),
                     const SizedBox(width: 12),
-                    Text(AppLocalizations.of(context)!.editTranslations),
+                    Text(AppLocalizations.of(context)!.deleteTranslation),
                   ],
                 ),
               ),
-              PopupMenuItem<String>(
-                value: 'add',
-                child: Row(
-                  children: [
-                    const Icon(Icons.archive, size: 20),
-                    const SizedBox(width: 12),
-                    Text(AppLocalizations.of(context)!.loadTranslationsFromFile),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'loadText',
-                child: Row(
-                  children: [
-                    const Icon(Icons.description, size: 20),
-                    const SizedBox(width: 12),
-                    Text(AppLocalizations.of(context)!.loadTextMenu),
-                  ],
-                ),
-              ),
-              if (widget.translationService.translations.isNotEmpty)
-                PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.delete, size: 20),
-                      const SizedBox(width: 12),
-                      Text(AppLocalizations.of(context)!.deleteTranslation),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
         if (hd) SizedBox(width: 8),
         if (hd)
@@ -895,9 +832,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                       await db.setSelectedLanguage(_currentSong.id, translation.language);
                       await _updateLyricsWithTranslations();
                       if (mounted) {
+                        final l10n = AppLocalizations.of(context)!;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Выбран язык: ${translation.languageName}'),
+                            content: Text(l10n.languageSelected(translation.languageName)),
                             duration: const Duration(seconds: 2),
                           ),
                         );
@@ -1391,9 +1329,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       _updateLyricsWithTranslations();
       
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Перевод загружен успешно!'),
+          SnackBar(
+            content: Text(l10n.translationLoadedSuccess),
             backgroundColor: Colors.green,
           ),
         );
@@ -1401,9 +1340,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     } catch (e) {
       debugPrint('Error loading translation: $e');
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка: ${e.toString()}'),
+            content: Text(l10n.errorLabel),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -1416,9 +1356,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     try {
       if (_currentSong.lrcPath == null) {
         if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No LRC file associated with this song'),
+            SnackBar(
+              content: Text(l10n.noLrcFileAssociated),
               backgroundColor: Colors.red,
             ),
           );
@@ -1440,9 +1381,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       }
 
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('LRC and all translations saved successfully!'),
+          SnackBar(
+            content: Text(l10n.lrcAndTranslationsSaved),
             backgroundColor: Colors.green,
           ),
         );
@@ -1450,9 +1392,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     } catch (e) {
       debugPrint('Error saving LRC and translations: $e');
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Text(l10n.errorWithMessage(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -1490,8 +1433,16 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                     animation: widget.lyricsService,
                     builder: (context, child) {
                       final lines = widget.lyricsService.lyricLines;
-                      while (_lineKeys.length < lines.length) {
-                        _lineKeys.add(GlobalKey());
+                      if (_lineKeys.length < lines.length) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted && _lineKeys.length < widget.lyricsService.lyricLines.length) {
+                            setState(() {
+                              while (_lineKeys.length < widget.lyricsService.lyricLines.length) {
+                                _lineKeys.add(GlobalKey());
+                              }
+                            });
+                          }
+                        });
                       }
 
                       return ListView.builder(
@@ -1752,20 +1703,21 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       return;
     }
 
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Translation'),
-        content: Text('Are you sure you want to delete the "${currentTranslation.languageName}" translation?'),
+        title: Text(l10n.deleteTranslationTitle),
+        content: Text(l10n.deleteTranslationConfirm(currentTranslation.languageName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -1793,9 +1745,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       await _updateLyricsWithTranslations();
 
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Translation "${currentTranslation.languageName}" deleted successfully'),
+            content: Text(l10n.translationDeleted(currentTranslation.languageName)),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
@@ -1807,9 +1760,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     } catch (e) {
       debugPrint('✗ Error deleting translation: $e');
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to delete translation: $e'),
+            content: Text(l10n.failedToDeleteTranslation(e.toString())),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),

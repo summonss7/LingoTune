@@ -122,12 +122,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get autoScrollFocusOffsetSubtitle => 'Posición de enfoque inicial para auto-scroll (predeterminado: +50)';
 
   @override
-  String get showVerticalSlider => 'Deslizador vertical';
-
-  @override
-  String get showVerticalSliderSubtitle => 'Mostrar deslizador de desplazamiento lateral';
-
-  @override
   String get defaultTranslationLanguage => 'Idioma de traducción predeterminado';
 
   @override
@@ -1607,4 +1601,209 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mostSongs => 'Más canciones';
+
+  @override
+  String get playlistPlay => 'Lista de reproducción';
+
+  @override
+  String get musicNote => 'Nota musical';
+
+  @override
+  String get favorite => 'Favorito';
+
+  @override
+  String get libraryMusic => 'Biblioteca';
+
+  @override
+  String get tapToSelectFolder => 'Toca para seleccionar una carpeta con archivos de audio';
+
+  @override
+  String get showVerticalSlider => 'Slider vertical';
+
+  @override
+  String get showVerticalSliderSubtitle => 'Mostrar slider vertical de desplazamiento en el reproductor';
+
+  @override
+  String get transcriptionEnabled => 'Transcripción activada';
+
+  @override
+  String get transcriptionDisabled => 'Transcripción desactivada';
+
+  @override
+  String languageSelected(String language) {
+    return 'Idioma seleccionado: $language';
+  }
+
+  @override
+  String get noTranslationsScanning => 'Sin traducciones, escaneando carpeta...';
+
+  @override
+  String translationsLoadedCount(int count) {
+    return 'Traducciones cargadas: $count';
+  }
+
+  @override
+  String get translationsNotFound => 'No se encontraron traducciones para esta canción';
+
+  @override
+  String errorLoadingTranslations(String error) {
+    return 'Error cargando traducciones: $error';
+  }
+
+  @override
+  String languageNotAvailable(String settingLang, String availableLang) {
+    return '$settingLang seleccionado pero no disponible. Abriendo: $availableLang';
+  }
+
+  @override
+  String get errorAudioService => 'Error del Servicio de Audio';
+
+  @override
+  String get audioServiceFailed => 'No se pudo inicializar la reproducción de audio en segundo plano.';
+
+  @override
+  String get notificationMayNotAppear => 'La notificación del reproductor puede no aparecer.';
+
+  @override
+  String get lrcAndTranslationsSaved => 'LRC y todas las traducciones guardadas!';
+
+  @override
+  String translationDeleted(String name) {
+    return 'Traducción \"$name\" eliminada';
+  }
+
+  @override
+  String failedToDeleteTranslation(String error) {
+    return 'Error al eliminar traducción: $error';
+  }
+
+  @override
+  String get generatingTranslations => 'Generando traducciones';
+
+  @override
+  String get generatingProcessing => 'Procesando:';
+
+  @override
+  String get generatingLines => 'Líneas:';
+
+  @override
+  String generatingLinesOf(int current, int total) {
+    return '$current de $total';
+  }
+
+  @override
+  String generatingErrors(int count) {
+    return 'Errores: $count';
+  }
+
+  @override
+  String selectedLanguagesCountGen(int count) {
+    return 'Seleccionados: $count';
+  }
+
+  @override
+  String get transcriptionSection => 'Transcripción';
+
+  @override
+  String get translationsSection => 'Traducciones';
+
+  @override
+  String get translationLoadedSuccess => 'Traducción cargada exitosamente!';
+
+  @override
+  String get exportSuccessful => 'Exportación exitosa!';
+
+  @override
+  String get failedToExportSong => 'Error al exportar canción';
+
+  @override
+  String get deleteTranslationTitle => 'Eliminar traducción';
+
+  @override
+  String deleteTranslationConfirm(String name) {
+    return '¿Eliminar traducción \"$name\"?';
+  }
+
+  @override
+  String get lrcLoaded => 'Archivo LRC cargado';
+
+  @override
+  String get noFilesLoaded => 'No se encontraron archivos en el archivo';
+
+  @override
+  String failedToProcessArchive(String error) {
+    return 'Error procesando archivo: $error';
+  }
+
+  @override
+  String failedToLoadTranslationsShort(String error) {
+    return 'Error al cargar: $error';
+  }
+
+  @override
+  String get noFolderConfiguredMsg => 'Ninguna carpeta configurada';
+
+  @override
+  String failedToPlaySongMsg(String error) {
+    return 'Error de reproducción: $error';
+  }
+
+  @override
+  String addedSongsToPlaylistMsg(int count, String playlist) {
+    return '$count canción(es) añadida(s) a \"$playlist\"';
+  }
+
+  @override
+  String failedToAddSongsMsg(String error) {
+    return 'Error al añadir: $error';
+  }
+
+  @override
+  String addSongsButton(int count) {
+    return 'Añadir $count';
+  }
+
+  @override
+  String get removeSong => 'Eliminar';
+
+  @override
+  String failedToRemoveSongMsg(String error) {
+    return 'Error al eliminar: $error';
+  }
+
+  @override
+  String failedToReorderSongsMsg(String error) {
+    return 'Error al reordenar: $error';
+  }
+
+  @override
+  String failedToLoadSongsMsg(String error) {
+    return 'Error al cargar: $error';
+  }
+
+  @override
+  String errorLoadingText(String error) {
+    return 'Error cargando texto: $error';
+  }
+
+  @override
+  String lrcAndTranslationsLoaded(int count) {
+    return 'LRC y $count traducción(es) cargadas';
+  }
+
+  @override
+  String translationsOnlyLoaded(int count) {
+    return '$count traducción(es) cargadas';
+  }
+
+  @override
+  String get pleaseSetDeepSeekApiKey => 'Configure la clave API de DeepSeek en ajustes';
+
+  @override
+  String get lyricsGeneratedSuccessfullyMsg => 'Letras generadas exitosamente';
+
+  @override
+  String exportShareSubject(String title) {
+    return 'LingoTune exportación: $title con letras y traducciones';
+  }
 }

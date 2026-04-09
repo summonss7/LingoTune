@@ -41,60 +41,68 @@ class SettingsDialogs {
     );
   }
 
-  static void showApiKeyDialog(
+  static Future<void> showApiKeyDialog(
     BuildContext context,
     SettingsProvider settingsProvider,
-  ) {
+  ) async {
     final controller = TextEditingController(
         text: settingsProvider.deepseekApiKey ?? '');
     final l10n = AppLocalizations.of(context)!;
 
-    showDialog(
+    await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.deepseekApiKey),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          decoration: InputDecoration(
-            labelText: l10n.apiKeyHint,
-            border: const OutlineInputBorder(),
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.visibility),
-              onPressed: () {
-                controller.text = controller.text;
-              },
+      builder: (dialogContext) {
+        bool obscureText = true;
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: Text(l10n.deepseekApiKey),
+            content: TextField(
+              controller: controller,
+              obscureText: obscureText,
+              decoration: InputDecoration(
+                labelText: l10n.apiKeyHint,
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: Icon(obscureText ? Icons.visibility : Icons.visibility_off),
+                  onPressed: () {
+                    setDialogState(() {
+                      obscureText = !obscureText;
+                    });
+                  },
+                ),
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(l10n.cancel),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  settingsProvider.setDeepseekApiKey(controller.text.trim());
+                  Navigator.pop(dialogContext);
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    SnackBar(content: Text(l10n.apiKeySaved)),
+                  );
+                },
+                child: Text(l10n.save),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              settingsProvider.setDeepseekApiKey(controller.text.trim());
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.apiKeySaved)),
-              );
-            },
-            child: Text(l10n.save),
-          ),
-        ],
-      ),
+        );
+      },
     );
+    controller.dispose();
   }
 
-  static void showDeepseekPromptDialog(
+  static Future<void> showDeepseekPromptDialog(
     BuildContext context,
     SettingsProvider settingsProvider,
-  ) {
+  ) async {
     final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController(text: settingsProvider.deepseekPrompt ?? '');
 
-    showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.deepSeekPromptTitle),
@@ -145,19 +153,20 @@ class SettingsDialogs {
           ),
         ],
       ),
-    );
+     );
+    controller.dispose();
   }
 
-  static void showPromptEditDialog(
+  static Future<void> showPromptEditDialog(
     BuildContext context,
     SettingsProvider settingsProvider,
     String initialPrompt,
     bool isCustom,
-  ) {
+  ) async {
     final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController(text: initialPrompt);
 
-    showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Row(
@@ -271,19 +280,20 @@ class SettingsDialogs {
           ),
         ],
       ),
-    );
+     );
+    controller.dispose();
   }
 
-  static void showCustomTimeoutDialog(
+  static Future<void> showCustomTimeoutDialog(
     BuildContext context,
     SettingsProvider settingsProvider,
-  ) {
+  ) async {
     final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController(
       text: settingsProvider.deepseekTimeout.toString(),
     );
 
-    showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.customTimeout),
@@ -324,17 +334,18 @@ class SettingsDialogs {
           ),
         ],
       ),
-    );
+     );
+    controller.dispose();
   }
 
-  static void showCustomModelDialog(
+  static Future<void> showCustomModelDialog(
     BuildContext context,
     SettingsProvider settingsProvider,
-  ) {
+  ) async {
     final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController(text: settingsProvider.deepseekModel);
 
-    showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.customModel),
@@ -384,7 +395,8 @@ class SettingsDialogs {
           ),
         ],
       ),
-    );
+     );
+    controller.dispose();
   }
 
   static Future<void> showCurrentFolder(BuildContext context) async {

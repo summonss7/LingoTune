@@ -122,12 +122,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get autoScrollFocusOffsetSubtitle => '自动滚动的默认焦点位置（默认: +50）';
 
   @override
-  String get showVerticalSlider => '垂直滑块';
-
-  @override
-  String get showVerticalSliderSubtitle => '显示侧边滚动滑块';
-
-  @override
   String get defaultTranslationLanguage => '默认翻译语言';
 
   @override
@@ -1607,4 +1601,209 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mostSongs => '最多歌曲';
+
+  @override
+  String get playlistPlay => '播放列表';
+
+  @override
+  String get musicNote => '音符';
+
+  @override
+  String get favorite => '收藏';
+
+  @override
+  String get libraryMusic => '音乐库';
+
+  @override
+  String get tapToSelectFolder => '点击选择包含音频文件的文件夹';
+
+  @override
+  String get showVerticalSlider => '垂直滑块';
+
+  @override
+  String get showVerticalSliderSubtitle => '在播放器中显示垂直焦点偏移滑块';
+
+  @override
+  String get transcriptionEnabled => '转录已启用';
+
+  @override
+  String get transcriptionDisabled => '转录已禁用';
+
+  @override
+  String languageSelected(String language) {
+    return '已选择语言：$language';
+  }
+
+  @override
+  String get noTranslationsScanning => '未找到翻译，正在扫描文件夹...';
+
+  @override
+  String translationsLoadedCount(int count) {
+    return '已加载翻译：$count';
+  }
+
+  @override
+  String get translationsNotFound => '未找到此歌曲的翻译';
+
+  @override
+  String errorLoadingTranslations(String error) {
+    return '加载翻译出错：$error';
+  }
+
+  @override
+  String languageNotAvailable(String settingLang, String availableLang) {
+    return '设置中选择了$settingLang但不可用。打开：$availableLang';
+  }
+
+  @override
+  String get errorAudioService => '音频服务错误';
+
+  @override
+  String get audioServiceFailed => '无法初始化后台音频播放。';
+
+  @override
+  String get notificationMayNotAppear => '播放器通知可能不会出现。';
+
+  @override
+  String get lrcAndTranslationsSaved => 'LRC和所有翻译已保存！';
+
+  @override
+  String translationDeleted(String name) {
+    return '翻译\"$name\"已删除';
+  }
+
+  @override
+  String failedToDeleteTranslation(String error) {
+    return '删除翻译失败：$error';
+  }
+
+  @override
+  String get generatingTranslations => '正在生成翻译';
+
+  @override
+  String get generatingProcessing => '处理中：';
+
+  @override
+  String get generatingLines => '行数：';
+
+  @override
+  String generatingLinesOf(int current, int total) {
+    return '$current/$total';
+  }
+
+  @override
+  String generatingErrors(int count) {
+    return '错误：$count';
+  }
+
+  @override
+  String selectedLanguagesCountGen(int count) {
+    return '已选择：$count';
+  }
+
+  @override
+  String get transcriptionSection => '转录';
+
+  @override
+  String get translationsSection => '翻译';
+
+  @override
+  String get translationLoadedSuccess => '翻译加载成功！';
+
+  @override
+  String get exportSuccessful => '导出成功！';
+
+  @override
+  String get failedToExportSong => '导出歌曲失败';
+
+  @override
+  String get deleteTranslationTitle => '删除翻译';
+
+  @override
+  String deleteTranslationConfirm(String name) {
+    return '确定删除翻译\"$name\"吗？';
+  }
+
+  @override
+  String get lrcLoaded => 'LRC文件已加载';
+
+  @override
+  String get noFilesLoaded => '未在压缩包中找到文件';
+
+  @override
+  String failedToProcessArchive(String error) {
+    return '处理压缩包失败：$error';
+  }
+
+  @override
+  String failedToLoadTranslationsShort(String error) {
+    return '加载失败：$error';
+  }
+
+  @override
+  String get noFolderConfiguredMsg => '未配置文件夹';
+
+  @override
+  String failedToPlaySongMsg(String error) {
+    return '播放失败：$error';
+  }
+
+  @override
+  String addedSongsToPlaylistMsg(int count, String playlist) {
+    return '已将$count首歌添加到\"$playlist\"';
+  }
+
+  @override
+  String failedToAddSongsMsg(String error) {
+    return '添加失败：$error';
+  }
+
+  @override
+  String addSongsButton(int count) {
+    return '添加$count';
+  }
+
+  @override
+  String get removeSong => '移除';
+
+  @override
+  String failedToRemoveSongMsg(String error) {
+    return '移除失败：$error';
+  }
+
+  @override
+  String failedToReorderSongsMsg(String error) {
+    return '排序失败：$error';
+  }
+
+  @override
+  String failedToLoadSongsMsg(String error) {
+    return '加载失败：$error';
+  }
+
+  @override
+  String errorLoadingText(String error) {
+    return '加载文本出错：$error';
+  }
+
+  @override
+  String lrcAndTranslationsLoaded(int count) {
+    return 'LRC和$count个翻译已加载';
+  }
+
+  @override
+  String translationsOnlyLoaded(int count) {
+    return '$count个翻译已加载';
+  }
+
+  @override
+  String get pleaseSetDeepSeekApiKey => '请在设置中配置DeepSeek API密钥';
+
+  @override
+  String get lyricsGeneratedSuccessfullyMsg => '歌词生成成功';
+
+  @override
+  String exportShareSubject(String title) {
+    return 'LingoTune导出：$title 含歌词和翻译';
+  }
 }

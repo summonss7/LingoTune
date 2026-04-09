@@ -14,9 +14,19 @@ import 'package:lingotune/services/translation_service.dart';
 import 'package:lingotune/services/settings_provider.dart';
 import 'package:lingotune/services/database_service.dart';
 import 'package:lingotune/services/folder_config_service.dart';
+import 'package:lingotune/utils/language_helpers.dart';
 
 class PlayerTranslationHelper {
   final DatabaseService _databaseService = DatabaseService();
+
+  int _cachedCurrentIndex = -1;
+  String? _cachedLanguageCode;
+  bool _cachedShowTranscript = false;
+  bool _isDirty = true;
+
+  void markDirty() {
+    _isDirty = true;
+  }
 
   Future<void> loadAllTranslations(
     BuildContext context,
@@ -40,11 +50,12 @@ class PlayerTranslationHelper {
 
         final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
         if (context.mounted && settingsProvider.showTranslationMessages) {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Переводов нет, сканируем папку...'),
+            SnackBar(
+              content: Text(l10n.noTranslationsScanning),
               backgroundColor: Colors.orange,
-              duration: Duration(seconds: 3),
+              duration: const Duration(seconds: 3),
             ),
           );
         }
@@ -107,9 +118,10 @@ class PlayerTranslationHelper {
 
       final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
       if (context.mounted && settingsProvider.showTranslationMessages) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Загружено переводов: ${translationService.translations.length}'),
+            content: Text(l10n.translationsLoadedCount(translationService.translations.length)),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
@@ -120,9 +132,10 @@ class PlayerTranslationHelper {
       debugPrint('Stack trace: ${StackTrace.current}');
       final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
       if (context.mounted && settingsProvider.showTranslationMessages) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка загрузки переводов: ${e.toString()}'),
+            content: Text(l10n.errorLoadingTranslations(e.toString())),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -183,11 +196,12 @@ class PlayerTranslationHelper {
       debugPrint('⚠ No translations available');
       final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
       if (context.mounted && settingsProvider.showTranslationMessages) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Переводов не найдено для этой песни'),
+          SnackBar(
+            content: Text(l10n.translationsNotFound),
             backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -232,9 +246,10 @@ class PlayerTranslationHelper {
       if (selectedLanguage != null) {
         final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
         if (context.mounted && settingsProvider.showTranslationMessages) {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Выбран язык: ${selectedLanguage.languageName}'),
+              content: Text(l10n.languageSelected(selectedLanguage.languageName)),
               duration: const Duration(seconds: 2),
             ),
           );
@@ -242,16 +257,17 @@ class PlayerTranslationHelper {
       }
     } else {
       debugPrint('⚠ No match found in translations');
-      final languageName = _getTranslationLanguageName(defaultLanguage);
+      final languageName = LanguageHelper.getLanguageName(defaultLanguage);
       if (translationService.translations.isNotEmpty) {
         translationService.selectLanguage(0);
         await Future.delayed(const Duration(milliseconds: 100));
 
         final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
         if (context.mounted && settingsProvider.showTranslationMessages) {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('В настройках выбран $languageName, но перевода нет. Открываю первый доступный: ${translationService.translations[0].languageName}'),
+              content: Text(l10n.languageNotAvailable(languageName, translationService.translations[0].languageName)),
               duration: const Duration(seconds: 4),
             ),
           );
@@ -263,48 +279,26 @@ class PlayerTranslationHelper {
     debugPrint('Translation has ${translationService.currentTranslation?.lines.length ?? 0} lines');
   }
 
-  String _getTranslationLanguageName(String code) {
-    switch (code) {
-      case 'ru':
-        return 'русский';
-      case 'en':
-        return 'английский';
-      case 'ro':
-        return 'румынский';
-      case 'fr':
-        return 'французский';
-      case 'de':
-        return 'немецкий';
-      case 'es':
-        return 'испанский';
-      case 'it':
-        return 'итальянский';
-      case 'pt':
-        return 'португальский';
-      default:
-        return 'Unknown';
-    }
-  }
-
   Future<void> updateLyricsWithTranslations(
     BuildContext context,
     List<LyricLine> lyricLines,
     TranslationService translationService,
   ) async {
-    debugPrint('=== _updateLyricsWithTranslations called ===');
-
     final currentTranslation = translationService.currentTranslation;
     final transcriptTranslation = translationService.transcriptTranslation;
-
-    debugPrint('Lines count: ${lyricLines.length}');
-    debugPrint('Current translation: ${currentTranslation?.languageName} (${currentTranslation?.language})');
-    debugPrint('Transcript translation: ${transcriptTranslation?.languageName} (${transcriptTranslation?.language})');
-    debugPrint('Transcript has lines: ${transcriptTranslation?.lines.length ?? 0}');
-
+    final currentLangCode = currentTranslation?.language;
     final prefs = await SharedPreferences.getInstance();
     final showTranscript = prefs.getBool('showTranscription') ?? false;
 
-    debugPrint('Show transcript setting: $showTranscript');
+    if (!_isDirty &&
+        _cachedLanguageCode == currentLangCode &&
+        _cachedShowTranscript == showTranscript) {
+      return;
+    }
+
+    _cachedLanguageCode = currentLangCode;
+    _cachedShowTranscript = showTranscript;
+    _isDirty = false;
 
     int translatedCount = 0;
     int transcriptCount = 0;
@@ -335,6 +329,5 @@ class PlayerTranslationHelper {
     }
 
     debugPrint('Updated lyrics: $translatedCount translated, $transcriptCount transcript');
-    debugPrint('=== _updateLyricsWithTranslations completed ===');
   }
 }

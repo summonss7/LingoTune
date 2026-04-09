@@ -167,16 +167,16 @@ class SongImportService {
       final lrcFiles = <String>[];
       final jsonFiles = <String>[];
 
-      for (final file in await tempDir.list()) {
-        final path = file.path;
-        if (path.endsWith('.mp3') ||
-            path.endsWith('.wav') ||
-            path.endsWith('.m4a')) {
-          audioFiles.add(path);
-        } else if (path.endsWith('.lrc')) {
-          lrcFiles.add(path);
-        } else if (path.endsWith('.json')) {
-          jsonFiles.add(path);
+      for (final file in await tempDir.list().toList()) {
+        final filePath = file.path;
+        if (filePath.endsWith('.mp3') ||
+            filePath.endsWith('.wav') ||
+            filePath.endsWith('.m4a')) {
+          audioFiles.add(filePath);
+        } else if (filePath.endsWith('.lrc')) {
+          lrcFiles.add(filePath);
+        } else if (filePath.endsWith('.json')) {
+          jsonFiles.add(filePath);
         }
       }
 
@@ -190,13 +190,13 @@ class SongImportService {
         final fileName = path.basename(audioPath);
         final baseName = path.basenameWithoutExtension(audioPath);
 
-        final matchingLrc = lrcFiles.firstWhere(
-          (lrc) => path.basename(lrc).startsWith(baseName),
-          orElse: () => null as dynamic,
+        final matchingLrc = lrcFiles.cast<String?>().firstWhere(
+          (lrc) => lrc != null && path.basename(lrc).startsWith(baseName),
+          orElse: () => null,
         );
 
-        final matchingJsons = jsonFiles.where((json) =>
-            path.basename(json).startsWith(baseName)).toList();
+        final matchingJsons = jsonFiles.where((jsonFile) =>
+            path.basename(jsonFile).startsWith(baseName)).toList();
 
         final hasLyrics = matchingLrc != null || matchingJsons.isNotEmpty;
         final song = Song(
@@ -204,9 +204,9 @@ class SongImportService {
           title: baseName,
           artist: 'Unknown Artist',
           audioPath: audioPath,
-          lrcPath: matchingLrc?.path,
+          lrcPath: matchingLrc,
           translationsPath:
-              matchingJsons.isNotEmpty ? matchingJsons.first.path : null,
+              matchingJsons.isNotEmpty ? matchingJsons.first : null,
           originalLanguage: 'unknown',
           hasLyrics: hasLyrics,
         );

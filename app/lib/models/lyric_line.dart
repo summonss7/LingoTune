@@ -19,7 +19,7 @@ class LyricLine {
       text: json['text'] as String,
       translatedText: json['translatedText'] as String?,
       transcript: json['transcript'] as String?,
-      originalStartTime: json['originalStartTime'] as double?,
+      originalStartTime: (json['originalStartTime'] as num?)?.toDouble(),
     );
   }
 

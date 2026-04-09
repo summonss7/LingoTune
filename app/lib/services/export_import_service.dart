@@ -26,6 +26,11 @@ class ImportResult {
 }
 
 class ExportImportService {
+  static bool _isSafePath(String basePath, String candidate) {
+    final resolved = path.canonicalize(path.join(basePath, candidate));
+    return resolved.startsWith(path.canonicalize(basePath));
+  }
+
   static String _sanitizeFileName(String name) {
     if (name.isEmpty) return 'untitled';
     
@@ -232,6 +237,10 @@ class ExportImportService {
           if (fileName.endsWith('.mp3') || fileName.endsWith('.m4a') || 
               fileName.endsWith('.wav') || fileName.endsWith('.ogg') || 
               fileName.endsWith('.flac')) {
+            if (!_isSafePath(tempDir, file.name)) {
+              debugPrint('⚠ Skipping unsafe path: ${file.name}');
+              continue;
+            }
             final filePath = path.join(tempDir, file.name);
             final outputFile = File(filePath);
             await outputFile.writeAsBytes(file.content as List<int>);
@@ -300,12 +309,17 @@ class ExportImportService {
           if (extractMp3 && (fileNameLower.endsWith('.mp3') || fileNameLower.endsWith('.m4a') || 
               fileNameLower.endsWith('.wav') || fileNameLower.endsWith('.ogg') || fileNameLower.endsWith('.flac'))) {
             final tempDir = await getTemporaryDirectory();
-            final mp3TempPath = path.join(tempDir.path, 'imported_audio', fileName);
+            final mp3TempPath = path.join(tempDir.path, 'imported_audio', path.basename(fileName));
             final mp3File = File(mp3TempPath);
             await mp3File.create(recursive: true);
             await mp3File.writeAsBytes(file.content as List<int>);
             extractedMp3Files.add(mp3TempPath);
             debugPrint('✓ Extracted MP3 file: $fileName -> $mp3TempPath');
+            continue;
+          }
+
+          if (!_isSafePath(folder.path, fileName)) {
+            debugPrint('✗ Skipping unsafe path: $fileName');
             continue;
           }
 
@@ -419,12 +433,16 @@ class ExportImportService {
         debugPrint('Processing file: ${file.name}, isDirectory: $isDirectory, size: ${file.size}');
 
         if (!isDirectory) {
-          // Normalize separators and STRIP leading slashes to prevent absolute path escapes
           String fileName = file.name.replaceAll('\\', '/');
           while (fileName.startsWith('/')) {
             fileName = fileName.substring(1);
           }
           
+          if (!_isSafePath(targetDir, fileName)) {
+            debugPrint('✗ Skipping unsafe path: $fileName');
+            continue;
+          }
+
           final filePath = path.join(targetDir, fileName);
 
           debugPrint('Extracting: $file.name -> $filePath');

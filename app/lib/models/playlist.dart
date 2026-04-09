@@ -28,7 +28,7 @@ class Playlist {
       id: json['id'] as String,
       name: json['name'] as String,
       icon: json['icon'] as String?,
-      isSystem: json['isSystem'] as int == 1,
+      isSystem: json['isSystem'] == 1 || json['isSystem'] == true,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),

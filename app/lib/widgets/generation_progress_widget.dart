@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lingotune/l10n/app_localizations.dart';
 
 class GenerationProgressWidget extends StatelessWidget {
   final double progress;
@@ -19,6 +20,7 @@ class GenerationProgressWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final percentage = (progress * 100).toStringAsFixed(1);
+    final l10n = AppLocalizations.of(context)!;
 
     return Card(
       margin: const EdgeInsets.all(16),
@@ -30,9 +32,9 @@ class GenerationProgressWidget extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Генерация переводов',
-                  style: TextStyle(
+                Text(
+                  l10n.generatingTranslations,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -59,14 +61,14 @@ class GenerationProgressWidget extends StatelessWidget {
             const SizedBox(height: 24),
             _buildInfoRow(
               Icons.music_note,
-              'Обработка:',
+              l10n.generatingProcessing,
               currentSong,
             ),
             const SizedBox(height: 12),
             _buildInfoRow(
               Icons.format_list_numbered,
-              'Строки:',
-              '$currentLine из $totalLines',
+              l10n.generatingLines,
+              l10n.generatingLinesOf(currentLine, totalLines),
             ),
             if (errors.isNotEmpty) ...[
               const SizedBox(height: 24),
@@ -80,7 +82,7 @@ class GenerationProgressWidget extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Ошибки: ${errors.length}',
+                    l10n.generatingErrors(errors.length),
                     style: TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,

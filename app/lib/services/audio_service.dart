@@ -35,6 +35,7 @@ class AudioService extends ChangeNotifier {
   bool get isShuffleEnabled => _isShuffleEnabled;
   List<Song>? get currentPlaylist => _currentPlaylist;
   Song? get currentSong => _currentSong;
+  List<int>? get shuffledPlaylist => _shuffledIndices;
 
   AudioService() {
     _initPlayer();
@@ -305,7 +306,6 @@ class AudioService extends ChangeNotifier {
       await play();
     }
 
-    onSongComplete?.call();
     notifyListeners();
   }
 

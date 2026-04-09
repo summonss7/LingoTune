@@ -106,7 +106,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to load songs: $e'),
+            content: Text(AppLocalizations.of(context)!.failedToLoadSongsMsg(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -180,7 +180,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to remove song: $e')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.failedToRemoveSongMsg(e.toString()))),
         );
       }
     }
@@ -199,7 +199,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
     _playlistService.updatePlaylistSongsOrder(widget.playlist.id, _songs).catchError((e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to reorder songs: $e')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.failedToReorderSongsMsg(e.toString()))),
         );
       }
     });
@@ -373,7 +373,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Added ${selectedSongs.length} song(s) to "${widget.playlist.name}"'),
+                        content: Text(AppLocalizations.of(context)!.addedSongsToPlaylistMsg(selectedSongs.length, widget.playlist.name)),
                         backgroundColor: Colors.green,
                       ),
                     );
@@ -383,14 +383,14 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Failed to add songs: $e'),
+                        content: Text(AppLocalizations.of(context)!.failedToAddSongsMsg(e.toString())),
                         backgroundColor: Colors.red,
                       ),
                     );
                   }
                 }
               },
-              child: Text('Add ${selectedSongs.length} song(s)'),
+              child: Text(AppLocalizations.of(context)!.addSongsButton(selectedSongs.length)),
             ),
           ],
         ),
@@ -440,7 +440,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to play song: $e'),
+            content: Text(AppLocalizations.of(context)!.failedToPlaySongMsg(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -564,7 +564,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
                 TextButton.icon(
                   onPressed: _selectedSongs.isNotEmpty ? _deleteSelectedSongsFromPlaylist : null,
                   icon: const Icon(Icons.remove_circle),
-                  label: const Text('Remove'),
+                  label: Text(AppLocalizations.of(context)!.removeSong),
                   style: TextButton.styleFrom(foregroundColor: Colors.red),
                 ),
                 TextButton(
@@ -808,8 +808,8 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
     if (apiKey == null || apiKey.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please set DeepSeek API key in settings'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.pleaseSetDeepSeekApiKey),
             backgroundColor: Colors.red,
           ),
         );
@@ -833,7 +833,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
 
     if (result == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lyrics generated successfully')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.lyricsGeneratedSuccessfullyMsg)),
       );
       await _loadSongs();
     }

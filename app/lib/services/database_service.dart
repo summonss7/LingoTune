@@ -591,16 +591,16 @@ class DatabaseService {
     debugPrint('=== Merging database from: $importedDbPath ===');
     debugPrint('Rebase paths to: $newFolderPath');
 
+    Database? importedDb;
     try {
       final db = await database;
-      final importedDb = await openDatabase(
+      importedDb = await openDatabase(
         importedDbPath,
         readOnly: true,
       );
 
       await db.transaction((txn) async {
-        // 1. Merge songs
-        final importedSongs = await importedDb.query('songs');
+        final importedSongs = await importedDb!.query('songs');
 
         for (final songMap in importedSongs) {
           final songId = songMap['id'] as String;
@@ -634,7 +634,7 @@ class DatabaseService {
         }
 
         // 2. Merge song_translations
-        final importedTranslations = await importedDb.query('song_translations');
+        final importedTranslations = await importedDb!.query('song_translations');
         for (final transMap in importedTranslations) {
           final transId = transMap['id'] as String;
           final existingTrans = await txn.query(
@@ -656,7 +656,7 @@ class DatabaseService {
         }
 
         // 3. Merge playlists
-        final importedPlaylists = await importedDb.query('playlists');
+        final importedPlaylists = await importedDb!.query('playlists');
 
         for (final playlistMap in importedPlaylists) {
           final playlistId = playlistMap['id'] as String;
@@ -692,7 +692,7 @@ class DatabaseService {
         }
 
         // 4. Merge playlist_songs
-        final importedPlaylistSongs = await importedDb.query('playlist_songs');
+        final importedPlaylistSongs = await importedDb!.query('playlist_songs');
 
         for (final psMap in importedPlaylistSongs) {
           final playlistId = psMap['playlistId'] as String;
@@ -710,12 +710,15 @@ class DatabaseService {
         }
       });
 
-      await importedDb.close();
-      debugPrint('Database merge completed');
     } catch (e) {
       debugPrint('Error merging database: $e');
+      try {
+        await importedDb?.close();
+      } catch (_) {}
       rethrow;
     }
+    await importedDb?.close();
+    debugPrint('Database merge completed');
   }
 
   Future<void> addTranslationFile(String songId, String language, String languageName, String filePath, {String? type}) async {

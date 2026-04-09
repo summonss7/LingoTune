@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/generation_constants.dart';
+import 'package:lingotune/l10n/app_localizations.dart';
 
 class GenerationOptionsWidget extends StatefulWidget {
   final Function(List<String>) onLanguagesChanged;
@@ -36,6 +37,8 @@ class _GenerationOptionsWidgetState extends State<GenerationOptionsWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -46,7 +49,7 @@ class _GenerationOptionsWidgetState extends State<GenerationOptionsWidget> {
               const Icon(Icons.translate, color: Colors.blue),
               const SizedBox(width: 8),
               Text(
-                'Выберите языки перевода',
+                l10n.selectLanguages,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -54,7 +57,7 @@ class _GenerationOptionsWidgetState extends State<GenerationOptionsWidget> {
               ),
               const Spacer(),
               Text(
-                'Выбрано: ${_selectedLanguages.length}',
+                l10n.selectedLanguagesCountGen(_selectedLanguages.length),
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontSize: 14,
@@ -64,8 +67,8 @@ class _GenerationOptionsWidgetState extends State<GenerationOptionsWidget> {
           ),
         ),
         const Divider(),
-        _buildLanguageSection('Транскрипция', ['trans']),
-        _buildLanguageSection('Переводы', ['ru', 'ru_literal', 'en', 'de', 'es', 'fr', 'it', 'pt', 'zh', 'ar', 'uk']),
+        _buildLanguageSection(l10n.transcriptionSection, ['trans']),
+        _buildLanguageSection(l10n.translationsSection, ['ru', 'ru_literal', 'en', 'de', 'es', 'fr', 'it', 'pt', 'zh', 'ar', 'uk']),
         const SizedBox(height: 16),
       ],
     );

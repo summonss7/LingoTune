@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lingotune/models/song.dart';
 import 'package:lingotune/services/export_import_service.dart';
+import 'package:lingotune/l10n/app_localizations.dart';
 
 class PlayerExportHelper {
   Future<void> exportCurrentSong(
@@ -24,15 +25,16 @@ class PlayerExportHelper {
       }
 
       if (zipFile != null) {
+        final l10n = AppLocalizations.of(context)!;
         await ExportImportService.shareExportFile(
           zipFile,
-          'LingoTune экспорт: ${song.title} с лирикой и переводами',
+          l10n.exportShareSubject(song.title),
         );
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Export successful!'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.exportSuccessful),
               backgroundColor: Colors.green,
             ),
           );
@@ -40,8 +42,8 @@ class PlayerExportHelper {
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to export song'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.failedToExportSong),
               backgroundColor: Colors.red,
             ),
           );
@@ -53,7 +55,7 @@ class PlayerExportHelper {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(AppLocalizations.of(context)!.errorWithMessage(e.toString())),
             backgroundColor: Colors.red,
           ),
         );

@@ -335,11 +335,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (value) {
                 settingsProvider.setShowTranscript(value);
                 if (settingsProvider.showTranslationMessages && mounted) {
+                  final l10n = AppLocalizations.of(context)!;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(value
-                          ? 'Транскрипция включена'
-                          : 'Транскрипция выключена'),
+                          ? l10n.transcriptionEnabled
+                          : l10n.transcriptionDisabled),
                       duration: const Duration(seconds: 2),
                     ),
                   );

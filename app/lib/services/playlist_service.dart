@@ -483,7 +483,7 @@ class PlaylistService {
             originalLanguage: existingSong.originalLanguage,
             language: existingSong.language,
             hasLyrics: hasLyrics || (existingSong.hasLyrics && !currentLrcIsMissing && !currentTransIsMissing),
-            isInLibrary: addToLibraryWhenAddingToPlaylist,
+            isInLibrary: existingSong.isInLibrary || addToLibraryWhenAddingToPlaylist,
             createdAt: existingSong.createdAt,
           );
 

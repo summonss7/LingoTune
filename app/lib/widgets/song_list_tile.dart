@@ -60,19 +60,19 @@ class SongListTile extends StatelessWidget {
             height: 50,
             fit: BoxFit.cover,
             errorBuilder: (ctx, error, stackTrace) {
-              return _buildDefaultLeading();
+              return _buildDefaultLeading(context);
             },
           ),
         );
       } catch (e) {
-        return _buildDefaultLeading();
+        return _buildDefaultLeading(context);
       }
     }
 
-    return _buildDefaultLeading();
+    return _buildDefaultLeading(context);
   }
 
-  Widget _buildDefaultLeading() {
+  Widget _buildDefaultLeading(BuildContext context) {
     return Container(
       width: 50,
       height: 50,

@@ -495,5 +495,176 @@
     "refreshOnlySongs": "Только песни",
     "refreshEverything": "Всё",
     "refreshDialogDescription": "Что вы хотите обновить? \"Только песни\" ускоряет процесс, пропуская тексты.",
-    "mostSongs": "Больше всего песен"
+    "mostSongs": "Больше всего песен",
+    "playlistPlay": "Плейлист",
+    "musicNote": "Нота",
+    "favorite": "Избранное",
+    "libraryMusic": "Библиотека",
+    "tapToSelectFolder": "Нажмите, чтобы выбрать папку с аудиофайлами",
+    "showVerticalSlider": "Вертикальный слайдер",
+     "showVerticalSliderSubtitle": "Показывать вертикальный слайдер смещения в плеере",
+     "transcriptionEnabled": "Транскрипция включена",
+     "transcriptionDisabled": "Транскрипция выключена",
+     "languageSelected": "Выбран язык: {language}",
+     "@languageSelected": {
+       "placeholders": {
+         "language": {"type": "String"}
+       }
+     },
+     "noTranslationsScanning": "Переводов нет, сканируем папку...",
+     "translationsLoadedCount": "Загружено переводов: {count}",
+     "@translationsLoadedCount": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "translationsNotFound": "Переводов не найдено для этой песни",
+     "errorLoadingTranslations": "Ошибка загрузки переводов: {error}",
+     "@errorLoadingTranslations": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "languageNotAvailable": "В настройках выбран {settingLang}, но перевода нет. Открываю: {availableLang}",
+     "@languageNotAvailable": {
+       "placeholders": {
+         "settingLang": {"type": "String"},
+         "availableLang": {"type": "String"}
+       }
+     },
+     "errorAudioService": "Ошибка Audio Service",
+     "audioServiceFailed": "Не удалось инициализировать фоновое воспроизведение.",
+     "notificationMayNotAppear": "Уведомление плеера может не появиться.",
+     "lrcAndTranslationsSaved": "LRC и все переводы сохранены!",
+     "translationDeleted": "Перевод \"{name}\" удалён",
+     "@translationDeleted": {
+       "placeholders": {
+         "name": {"type": "String"}
+       }
+     },
+     "failedToDeleteTranslation": "Ошибка удаления перевода: {error}",
+     "@failedToDeleteTranslation": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "generatingTranslations": "Генерация переводов",
+     "generatingProcessing": "Обработка:",
+     "generatingLines": "Строки:",
+     "generatingLinesOf": "{current} из {total}",
+     "@generatingLinesOf": {
+       "placeholders": {
+         "current": {"type": "int"},
+         "total": {"type": "int"}
+       }
+     },
+     "generatingErrors": "Ошибки: {count}",
+     "@generatingErrors": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "selectedLanguagesCountGen": "Выбрано: {count}",
+     "@selectedLanguagesCountGen": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "transcriptionSection": "Транскрипция",
+     "translationsSection": "Переводы",
+     "translationLoadedSuccess": "Перевод загружен успешно!",
+     "exportSuccessful": "Экспорт успешен!",
+     "failedToExportSong": "Не удалось экспортировать песню",
+     "deleteTranslationTitle": "Удалить перевод",
+     "deleteTranslationConfirm": "Удалить перевод \"{name}\"?",
+     "@deleteTranslationConfirm": {
+       "placeholders": {
+         "name": {"type": "String"}
+       }
+     },
+     "lrcLoaded": "LRC файл загружен",
+     "noFilesLoaded": "Файлы не найдены в архиве",
+     "failedToProcessArchive": "Ошибка обработки архива: {error}",
+     "@failedToProcessArchive": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "failedToLoadTranslationsShort": "Не удалось загрузить: {error}",
+     "@failedToLoadTranslationsShort": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "noFolderConfiguredMsg": "Папка не настроена",
+     "failedToPlaySongMsg": "Ошибка воспроизведения: {error}",
+     "@failedToPlaySongMsg": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "addedSongsToPlaylistMsg": "Добавлено {count} песен в \"{playlist}\"",
+     "@addedSongsToPlaylistMsg": {
+       "placeholders": {
+         "count": {"type": "int"},
+         "playlist": {"type": "String"}
+       }
+     },
+     "failedToAddSongsMsg": "Ошибка добавления: {error}",
+     "@failedToAddSongsMsg": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "addSongsButton": "Добавить {count}",
+     "@addSongsButton": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "removeSong": "Удалить",
+     "failedToRemoveSongMsg": "Ошибка удаления: {error}",
+     "@failedToRemoveSongMsg": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "failedToReorderSongsMsg": "Ошибка сортировки: {error}",
+     "@failedToReorderSongsMsg": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "failedToLoadSongsMsg": "Ошибка загрузки: {error}",
+     "@failedToLoadSongsMsg": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "errorLoadingText": "Ошибка загрузки текста: {error}",
+     "@errorLoadingText": {
+       "placeholders": {
+         "error": {"type": "String"}
+       }
+     },
+     "lrcAndTranslationsLoaded": "LRC и {count} перевод(ов) загружено",
+     "@lrcAndTranslationsLoaded": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "translationsOnlyLoaded": "Загружено {count} перевод(ов)",
+     "@translationsOnlyLoaded": {
+       "placeholders": {
+         "count": {"type": "int"}
+       }
+     },
+     "pleaseSetDeepSeekApiKey": "Установите DeepSeek API ключ в настройках",
+     "lyricsGeneratedSuccessfullyMsg": "Тексты сгенерированы успешно",
+     "exportShareSubject": "LingoTune экспорт: {title} с лирикой и переводами",
+     "@exportShareSubject": {
+       "placeholders": {
+         "title": {"type": "String"}
+       }
+     }
 }

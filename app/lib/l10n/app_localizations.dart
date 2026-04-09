@@ -335,18 +335,6 @@ abstract class AppLocalizations {
   /// **'Default focus position for auto-scroll (default: +50)'**
   String get autoScrollFocusOffsetSubtitle;
 
-  /// No description provided for @showVerticalSlider.
-  ///
-  /// In en, this message translates to:
-  /// **'Vertical Slider'**
-  String get showVerticalSlider;
-
-  /// No description provided for @showVerticalSliderSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Show side scroll slider'**
-  String get showVerticalSliderSubtitle;
-
   /// No description provided for @defaultTranslationLanguage.
   ///
   /// In en, this message translates to:
@@ -3088,6 +3076,324 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Most Songs'**
   String get mostSongs;
+
+  /// No description provided for @playlistPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist'**
+  String get playlistPlay;
+
+  /// No description provided for @musicNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Music Note'**
+  String get musicNote;
+
+  /// No description provided for @favorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite'**
+  String get favorite;
+
+  /// No description provided for @libraryMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get libraryMusic;
+
+  /// No description provided for @tapToSelectFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to select a folder with audio files'**
+  String get tapToSelectFolder;
+
+  /// No description provided for @showVerticalSlider.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Vertical Slider'**
+  String get showVerticalSlider;
+
+  /// No description provided for @showVerticalSliderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Display vertical focus offset slider in player'**
+  String get showVerticalSliderSubtitle;
+
+  /// No description provided for @transcriptionEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcription enabled'**
+  String get transcriptionEnabled;
+
+  /// No description provided for @transcriptionDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcription disabled'**
+  String get transcriptionDisabled;
+
+  /// No description provided for @languageSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected language: {language}'**
+  String languageSelected(String language);
+
+  /// No description provided for @noTranslationsScanning.
+  ///
+  /// In en, this message translates to:
+  /// **'No translations found, scanning folder...'**
+  String get noTranslationsScanning;
+
+  /// No description provided for @translationsLoadedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Loaded translations: {count}'**
+  String translationsLoadedCount(int count);
+
+  /// No description provided for @translationsNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No translations found for this song'**
+  String get translationsNotFound;
+
+  /// No description provided for @errorLoadingTranslations.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading translations: {error}'**
+  String errorLoadingTranslations(String error);
+
+  /// No description provided for @languageNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'{settingLang} selected in settings but not available. Opening: {availableLang}'**
+  String languageNotAvailable(String settingLang, String availableLang);
+
+  /// No description provided for @errorAudioService.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio Service Error'**
+  String get errorAudioService;
+
+  /// No description provided for @audioServiceFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to initialize background audio playback.'**
+  String get audioServiceFailed;
+
+  /// No description provided for @notificationMayNotAppear.
+  ///
+  /// In en, this message translates to:
+  /// **'Player notification may not appear.'**
+  String get notificationMayNotAppear;
+
+  /// No description provided for @lrcAndTranslationsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'LRC and all translations saved!'**
+  String get lrcAndTranslationsSaved;
+
+  /// No description provided for @translationDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation \"{name}\" deleted'**
+  String translationDeleted(String name);
+
+  /// No description provided for @failedToDeleteTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete translation: {error}'**
+  String failedToDeleteTranslation(String error);
+
+  /// No description provided for @generatingTranslations.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating translations'**
+  String get generatingTranslations;
+
+  /// No description provided for @generatingProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing:'**
+  String get generatingProcessing;
+
+  /// No description provided for @generatingLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines:'**
+  String get generatingLines;
+
+  /// No description provided for @generatingLinesOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {total}'**
+  String generatingLinesOf(int current, int total);
+
+  /// No description provided for @generatingErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'Errors: {count}'**
+  String generatingErrors(int count);
+
+  /// No description provided for @selectedLanguagesCountGen.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected: {count}'**
+  String selectedLanguagesCountGen(int count);
+
+  /// No description provided for @transcriptionSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcription'**
+  String get transcriptionSection;
+
+  /// No description provided for @translationsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Translations'**
+  String get translationsSection;
+
+  /// No description provided for @translationLoadedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation loaded successfully!'**
+  String get translationLoadedSuccess;
+
+  /// No description provided for @exportSuccessful.
+  ///
+  /// In en, this message translates to:
+  /// **'Export successful!'**
+  String get exportSuccessful;
+
+  /// No description provided for @failedToExportSong.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to export song'**
+  String get failedToExportSong;
+
+  /// No description provided for @deleteTranslationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Translation'**
+  String get deleteTranslationTitle;
+
+  /// No description provided for @deleteTranslationConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete the \"{name}\" translation?'**
+  String deleteTranslationConfirm(String name);
+
+  /// No description provided for @lrcLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'LRC file loaded'**
+  String get lrcLoaded;
+
+  /// No description provided for @noFilesLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'No files loaded from archive'**
+  String get noFilesLoaded;
+
+  /// No description provided for @failedToProcessArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to process archive: {error}'**
+  String failedToProcessArchive(String error);
+
+  /// No description provided for @failedToLoadTranslationsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load translations: {error}'**
+  String failedToLoadTranslationsShort(String error);
+
+  /// No description provided for @noFolderConfiguredMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'No folder configured'**
+  String get noFolderConfiguredMsg;
+
+  /// No description provided for @failedToPlaySongMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to play song: {error}'**
+  String failedToPlaySongMsg(String error);
+
+  /// No description provided for @addedSongsToPlaylistMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {count} song(s) to \"{playlist}\"'**
+  String addedSongsToPlaylistMsg(int count, String playlist);
+
+  /// No description provided for @failedToAddSongsMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add songs: {error}'**
+  String failedToAddSongsMsg(String error);
+
+  /// No description provided for @addSongsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {count} song(s)'**
+  String addSongsButton(int count);
+
+  /// No description provided for @removeSong.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get removeSong;
+
+  /// No description provided for @failedToRemoveSongMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to remove song: {error}'**
+  String failedToRemoveSongMsg(String error);
+
+  /// No description provided for @failedToReorderSongsMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to reorder songs: {error}'**
+  String failedToReorderSongsMsg(String error);
+
+  /// No description provided for @failedToLoadSongsMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load songs: {error}'**
+  String failedToLoadSongsMsg(String error);
+
+  /// No description provided for @errorLoadingText.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading text: {error}'**
+  String errorLoadingText(String error);
+
+  /// No description provided for @lrcAndTranslationsLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'LRC and {count} translation(s) loaded'**
+  String lrcAndTranslationsLoaded(int count);
+
+  /// No description provided for @translationsOnlyLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} translation(s) loaded'**
+  String translationsOnlyLoaded(int count);
+
+  /// No description provided for @pleaseSetDeepSeekApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Please set DeepSeek API key in settings'**
+  String get pleaseSetDeepSeekApiKey;
+
+  /// No description provided for @lyricsGeneratedSuccessfullyMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics generated successfully'**
+  String get lyricsGeneratedSuccessfullyMsg;
+
+  /// No description provided for @exportShareSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'LingoTune export: {title} with lyrics and translations'**
+  String exportShareSubject(String title);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

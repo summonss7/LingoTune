@@ -191,14 +191,15 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _showAudioServiceErrorDialog(String error) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.error_outline, color: Colors.red),
-            SizedBox(width: 12),
-            Text('Ошибка Audio Service', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            const Icon(Icons.error_outline, color: Colors.red),
+            const SizedBox(width: 12),
+            Text(l10n.errorAudioService, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ],
         ),
         content: SingleChildScrollView(
@@ -206,11 +207,11 @@ class _MainScreenState extends State<MainScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Не удалось инициализировать фоновое воспроизведение музыки.'),
+              Text(l10n.audioServiceFailed),
               const SizedBox(height: 8),
-              const Text('Это означает, что уведомление с управлением плеером может не появляться.'),
+              Text(l10n.notificationMayNotAppear),
               const SizedBox(height: 16),
-              Text('Ошибка:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(l10n.errorLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(error, style: TextStyle(fontSize: 12, color: Colors.grey)),
             ],
@@ -219,7 +220,7 @@ class _MainScreenState extends State<MainScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: Text(l10n.ok),
           ),
         ],
       ),
@@ -239,6 +240,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
+    _backgroundHandler?.dispose();
     _audioService.dispose();
     _lyricsService.dispose();
     _translationService.dispose();
