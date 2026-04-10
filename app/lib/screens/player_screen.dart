@@ -37,6 +37,7 @@ class PlayerScreen extends StatefulWidget {
   final LyricsService lyricsService;
   final TranslationService translationService;
   final List<Song>? playlistSongs;
+  final bool shouldResume;
 
   const PlayerScreen({
     super.key,
@@ -45,13 +46,14 @@ class PlayerScreen extends StatefulWidget {
     required this.lyricsService,
     required this.translationService,
     this.playlistSongs,
+    this.shouldResume = false,
   });
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClientMixin {
+class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   Timer? _positionTimer;
   bool _highlightNextLine = true;
   bool _isEditMode = false;
@@ -335,7 +337,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   @override
   void initState() {
     super.initState();
-    debugPrint('=== PlayerScreen: initState ===');
+    WidgetsBinding.instance.addObserver(this);
+    debugPrint('=== PlayerScreen: initState (shouldResume: ${widget.shouldResume}) ===');
     debugPrint('Song: ${widget.song.title}');
     debugPrint('LRC path: ${widget.song.lrcPath}');
     debugPrint('Translations in service: ${widget.translationService.translations.length}');
@@ -358,6 +361,18 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   }
 
   Future<void> _initSongData() async {
+    if (widget.shouldResume) {
+      debugPrint('=== Resuming player — skipping autoPlay, keeping current state ===');
+      if (widget.translationService.translations.isNotEmpty) {
+        await _updateLyricsWithTranslations();
+      }
+      if (mounted) {
+        setState(() {});
+        await _selectLanguageBasedOnSettings();
+      }
+      return;
+    }
+
     if (widget.song.lrcPath != null && widget.song.lrcPath!.isNotEmpty) {
       debugPrint('Loading LRC file from song in initState: ${widget.song.lrcPath}');
       await widget.lyricsService.loadLrcFile(widget.song.lrcPath!);
@@ -381,6 +396,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
   Future<void> _initBackgroundAudio() async {
     debugPrint('=== PlayerScreen: Checking background audio ===');
+    widget.audioService.setCurrentSong(widget.song);
     if (widget.audioService.backgroundHandler != null) {
       debugPrint('✓ Background handler is active');
 
@@ -561,7 +577,20 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('=== PlayerScreen: resumed, restarting updates ===');
+      _lastScrolledIndex = -1;
+      _startPositionUpdates();
+      _updateLyricsWithTranslations();
+      if (mounted) setState(() {});
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _positionTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
@@ -1646,8 +1675,13 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                           child: StreamBuilder<bool>(
                             stream:
                                 widget.audioService.player.playingStream,
-                            initialData: false,
                             builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return FloatingActionButton(
+                                  onPressed: null,
+                                  child: Icon(Icons.circle_outlined, size: fabIconSize, color: Colors.grey),
+                                );
+                              }
                               final isPlaying = snapshot.data ?? false;
                               return FloatingActionButton(
                                 onPressed: () {

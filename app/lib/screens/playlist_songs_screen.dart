@@ -30,6 +30,7 @@ import 'lyric_generator_dialog.dart';
 import 'helpers/cover_art_helper.dart';
 import 'helpers/playlist_import_helper.dart';
 import 'helpers/song_translation_loader.dart';
+import '../widgets/mini_player_widget.dart';
 
 class PlaylistSongsScreen extends StatefulWidget {
   final Playlist playlist;
@@ -657,8 +658,11 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
                  ),
               ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+      body: Column(
+        children: [
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
           : _isImporting
               ? Center(
                    child: Column(
@@ -793,11 +797,22 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
                                              const Icon(Icons.play_arrow),
                                           ],
                                        ),
-                        onTap: _isSelectionMode ? () => _toggleSongSelection(song) : () => _playSong(song),
-                      ),
-                    );
-                  },
-                ),
+                         onTap: _isSelectionMode ? () => _toggleSongSelection(song) : () => _playSong(song),
+                       ),
+                     );
+                   },
+                 ),
+          ),
+          ListenableBuilder(
+            listenable: widget.audioService,
+            builder: (context, _) => MiniPlayerWidget(
+              audioService: widget.audioService,
+              onTap: _openCurrentPlayer,
+              onPlayPause: _togglePlayback,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -836,6 +851,90 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
         SnackBar(content: Text(AppLocalizations.of(context)!.lyricsGeneratedSuccessfullyMsg)),
       );
       await _loadSongs();
+    }
+  }
+
+  Future<void> _togglePlayback() async {
+    try {
+      final isPlaying = await widget.audioService.player.playingStream.first;
+      if (isPlaying) {
+        await widget.audioService.pause();
+      } else {
+        if (widget.audioService.isInitialized) {
+          await widget.audioService.play();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error toggling playback: $e');
+    }
+  }
+
+  Future<void> _openCurrentPlayer() async {
+    final song = widget.audioService.currentSong;
+    if (song == null || !widget.audioService.hasActiveSong) return;
+
+    try {
+      final db = DatabaseService();
+      final updatedSong = await db.getSong(song.id);
+      if (updatedSong == null) return;
+
+      if (widget.lyricsService.lyricLines.isEmpty && updatedSong.lrcPath != null && updatedSong.lrcPath!.isNotEmpty) {
+        await widget.lyricsService.loadLrcFile(updatedSong.lrcPath!);
+      }
+
+      if (widget.translationService.translations.isEmpty) {
+        final translationFiles = await db.getTranslationFiles(song.id);
+        for (final tf in translationFiles) {
+          final filePath = tf['filePath'] as String;
+          final language = tf['language'] as String;
+          final languageName = tf['languageName'] as String;
+          final type = tf['type'] as String?;
+
+          try {
+            final file = File(filePath);
+            if (await file.exists()) {
+              final content = await file.readAsString();
+              final data = json.decode(content) as Map<String, dynamic>;
+              if (data.containsKey('translations')) {
+                final translations = data['translations'] as List;
+                for (final t in translations) {
+                  final translationData = t as Map<String, dynamic>;
+                  final lines = (translationData['lines'] as List?)
+                      ?.map((l) => LyricLine.fromJson(l as Map<String, dynamic>))
+                      .toList() ?? [];
+                  widget.translationService.addTranslation(Translation(
+                    language: language,
+                    languageName: languageName,
+                    type: type,
+                    lines: lines,
+                    filePath: filePath,
+                  ));
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint('Error loading translation for resume: $e');
+          }
+        }
+      }
+
+      if (!mounted) return;
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PlayerScreen(
+            song: updatedSong,
+            audioService: widget.audioService,
+            lyricsService: widget.lyricsService,
+            translationService: widget.translationService,
+            playlistSongs: widget.audioService.currentPlaylist,
+            shouldResume: true,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error opening current player: $e');
     }
   }
 

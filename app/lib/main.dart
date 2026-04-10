@@ -3,16 +3,23 @@ import 'package:provider/provider.dart';
 import 'package:audio_service/audio_service.dart' as audio_pkg;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'dart:io';
 import '../services/audio_service.dart';
 import '../services/lyrics_service.dart';
 import '../services/translation_service.dart';
 import '../services/theme_provider.dart';
 import '../services/settings_provider.dart';
 import '../services/background_audio_handler.dart';
+import '../services/database_service.dart';
 import '../app_info.dart';
+import '../models/lyric_line.dart';
+import '../models/translation.dart' show Translation;
 import 'screens/song_library_screen.dart';
+import 'screens/player_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/playlist_screen.dart';
+import 'widgets/mini_player_widget.dart';
 import 'l10n/app_localizations.dart';
 
 void main() async {
@@ -284,32 +291,27 @@ class _MainScreenState extends State<MainScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      body: _getCurrentScreen(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _currentIndex == 2 ? null : FloatingActionButton(
-        onPressed: _togglePlayback,
-        backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-        foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-        elevation: 8,
-        child: StreamBuilder<bool>(
-          stream: _audioService.player.playingStream,
-          initialData: false,
-          builder: (context, snapshot) {
-            final isPlaying = snapshot.data ?? false;
-            return Icon(isPlaying ? Icons.pause : Icons.play_arrow);
-          },
-        ),
+      body: Column(
+        children: [
+          Expanded(child: _getCurrentScreen()),
+          if (_currentIndex != 2)
+            ListenableBuilder(
+              listenable: _audioService,
+              builder: (context, _) => MiniPlayerWidget(
+                audioService: _audioService,
+                onTap: _openCurrentPlayer,
+                onPlayPause: _togglePlayback,
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: BottomAppBar(
-        height: 70,
-        notchMargin: 8,
+        height: 60,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _buildNavItem(0, Icons.library_music, l10n.library),
-            const SizedBox(width: 36),
             _buildNavItem(1, Icons.playlist_play, l10n.playlists),
-            const SizedBox(width: 36),
             _buildNavItem(2, Icons.settings, l10n.settings),
           ],
         ),
@@ -364,6 +366,75 @@ class _MainScreenState extends State<MainScreen> {
       }
     } catch (e) {
       debugPrint('Error toggling playback: $e');
+    }
+  }
+
+  Future<void> _openCurrentPlayer() async {
+    final song = _audioService.currentSong;
+    if (song == null || !_audioService.hasActiveSong) return;
+
+    try {
+      final db = DatabaseService();
+      final updatedSong = await db.getSong(song.id);
+      if (updatedSong == null) return;
+
+      if (_lyricsService.lyricLines.isEmpty && updatedSong.lrcPath != null && updatedSong.lrcPath!.isNotEmpty) {
+        await _lyricsService.loadLrcFile(updatedSong.lrcPath!);
+      }
+
+      if (_translationService.translations.isEmpty) {
+        final translationFiles = await db.getTranslationFiles(song.id);
+        for (final tf in translationFiles) {
+          final filePath = tf['filePath'] as String;
+          final language = tf['language'] as String;
+          final languageName = tf['languageName'] as String;
+          final type = tf['type'] as String?;
+
+          try {
+            final file = File(filePath);
+            if (await file.exists()) {
+              final content = await file.readAsString();
+              final data = json.decode(content) as Map<String, dynamic>;
+              if (data.containsKey('translations')) {
+                final translations = data['translations'] as List;
+                for (final t in translations) {
+                  final translationData = t as Map<String, dynamic>;
+                  final lines = (translationData['lines'] as List?)
+                      ?.map((l) => LyricLine.fromJson(l as Map<String, dynamic>))
+                      .toList() ?? [];
+                  _translationService.addTranslation(Translation(
+                    language: language,
+                    languageName: languageName,
+                    type: type,
+                    lines: lines,
+                    filePath: filePath,
+                  ));
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint('Error loading translation for resume: $e');
+          }
+        }
+      }
+
+      if (!mounted) return;
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PlayerScreen(
+            song: updatedSong,
+            audioService: _audioService,
+            lyricsService: _lyricsService,
+            translationService: _translationService,
+            playlistSongs: _audioService.currentPlaylist,
+            shouldResume: true,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error opening current player: $e');
     }
   }
 }

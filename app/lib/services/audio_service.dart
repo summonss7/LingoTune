@@ -29,6 +29,7 @@ class AudioService extends ChangeNotifier {
   BackgroundAudioHandler? get backgroundHandler => _backgroundHandler;
   bool get isPlaying => _isPlaying;
   bool get isInitialized => _isInitialized;
+  bool get hasActiveSong => _currentSong != null && _isInitialized;
   Duration get duration => _duration;
   Duration get position => _position;
   LoopMode get loopMode => _loopMode;
