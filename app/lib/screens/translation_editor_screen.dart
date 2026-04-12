@@ -3,11 +3,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:path/path.dart' as p;
 import '../models/song.dart';
 import '../models/lyric_line.dart';
+import '../models/translation.dart';
 import '../services/translation_api_service.dart';
 import '../services/translation_service.dart';
 import '../services/lyrics_service.dart';
+import '../services/database_service.dart';
 import 'package:lingotune/l10n/app_localizations.dart';
 
 class TranslationEditorScreen extends StatefulWidget {
@@ -109,23 +112,6 @@ class _TranslationEditorScreenState extends State<TranslationEditorScreen> {
 
   Future<void> _saveTranslations() async {
     try {
-      if (widget.translationService.currentTranslation == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(context)!.translationSaveFailed),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      for (var line in widget.lyricLines) {
-        final translatedText = _translations[line.text] ?? '';
-        widget.translationService.updateTranslationText(line.startTime, translatedText);
-      }
-
       if (_editOriginalText) {
         for (var i = 0; i < widget.lyricLines.length; i++) {
           final newText = _originalTextControllers[i]?.text ?? widget.lyricLines[i].text;
@@ -137,7 +123,15 @@ class _TranslationEditorScreenState extends State<TranslationEditorScreen> {
         await _saveLrcFile();
       }
 
-      await widget.translationService.saveCurrentTranslation();
+      if (widget.translationService.currentTranslation == null) {
+        await _createAndSaveNewTranslation();
+      } else {
+        for (var line in widget.lyricLines) {
+          final translatedText = _translations[line.text] ?? '';
+          widget.translationService.updateTranslationText(line.startTime, translatedText);
+        }
+        await widget.translationService.saveCurrentTranslation();
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -160,6 +154,98 @@ class _TranslationEditorScreenState extends State<TranslationEditorScreen> {
         );
       }
     }
+  }
+
+  Future<String> _getTranslationsFilePath() async {
+    if (widget.song.translationsPath != null &&
+        widget.song.translationsPath!.isNotEmpty) {
+      return widget.song.translationsPath!;
+    }
+
+    String basePath;
+    if (widget.song.lrcPath != null && widget.song.lrcPath!.isNotEmpty) {
+      basePath = widget.song.lrcPath!;
+    } else {
+      basePath = widget.song.audioPath;
+    }
+
+    final dir = p.dirname(basePath);
+    final baseName = p.basenameWithoutExtension(basePath);
+    return p.join(dir, '${baseName}_${_selectedLanguage}.json');
+  }
+
+  Future<void> _createAndSaveNewTranslation() async {
+    final lines = <LyricLine>[];
+    for (var i = 0; i < widget.lyricLines.length; i++) {
+      final line = widget.lyricLines[i];
+      final translatedText = _translations[line.text] ?? '';
+      lines.add(LyricLine(
+        startTime: line.startTime,
+        text: translatedText,
+        originalStartTime: line.originalStartTime ?? line.startTime,
+      ));
+    }
+
+    final filePath = await _getTranslationsFilePath();
+
+    final data = <String, dynamic>{
+      'title': widget.song.title,
+      'artist': widget.song.artist,
+      'originalLanguage': widget.song.originalLanguage,
+      'translations': [],
+    };
+
+    final file = File(filePath);
+    if (await file.exists()) {
+      try {
+        final existing = json.decode(await file.readAsString()) as Map<String, dynamic>;
+        if (existing.containsKey('title')) data['title'] = existing['title'];
+        if (existing.containsKey('artist')) data['artist'] = existing['artist'];
+        if (existing.containsKey('originalLanguage')) {
+          data['originalLanguage'] = existing['originalLanguage'];
+        }
+        data['translations'] = (existing['translations'] as List?) ?? [];
+      } catch (_) {}
+    }
+
+    final newTranslationData = Translation(
+      language: _selectedLanguage,
+      languageName: _languageName,
+      lines: lines,
+      filePath: filePath,
+    );
+
+    final translations = data['translations'] as List;
+    final existingIndex = translations.indexWhere(
+      (t) => (t as Map<String, dynamic>)['language'] == _selectedLanguage,
+    );
+    final jsonData = newTranslationData.toJson();
+    if (existingIndex != -1) {
+      translations[existingIndex] = jsonData;
+    } else {
+      translations.add(jsonData);
+    }
+
+    await file.writeAsString(
+      json.encode(data),
+      encoding: utf8,
+    );
+
+    widget.translationService.addTranslation(newTranslationData);
+
+    try {
+      final db = DatabaseService();
+      await db.addTranslationFile(
+        widget.song.id,
+        _selectedLanguage,
+        _languageName,
+        filePath,
+      );
+    } catch (e) {
+      debugPrint('Warning: could not register translation in DB: $e');
+    }
+
+    debugPrint('New translation created and saved to: $filePath');
   }
 
   Future<void> _saveLrcFile() async {

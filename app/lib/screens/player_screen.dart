@@ -583,9 +583,64 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       debugPrint('=== PlayerScreen: resumed, restarting updates ===');
       _lastScrolledIndex = -1;
       _startPositionUpdates();
-      _updateLyricsWithTranslations();
-      if (mounted) setState(() {});
+      _syncWithActuallyPlayingSong();
     }
+  }
+
+  Future<void> _syncWithActuallyPlayingSong() async {
+    String? actualAudioPath;
+
+    final handler = widget.audioService.backgroundHandler;
+    if (handler != null) {
+      final currentMediaItem = handler.mediaItem.value;
+      if (currentMediaItem != null) {
+        actualAudioPath = currentMediaItem.id;
+        debugPrint('Background handler playing: $actualAudioPath');
+      }
+    }
+
+    actualAudioPath ??= widget.audioService.currentSong?.audioPath;
+
+    if (actualAudioPath != null && actualAudioPath != _currentSong.audioPath) {
+      Song? actualSong;
+      if (widget.playlistSongs != null) {
+        try {
+          actualSong = widget.playlistSongs!.firstWhere(
+            (s) => s.audioPath == actualAudioPath,
+          );
+        } catch (_) {}
+      }
+
+      actualSong ??= widget.audioService.currentSong;
+
+      if (actualSong == null) {
+        final db = DatabaseService();
+        final songs = await db.getAllSongs();
+        try {
+          actualSong = songs.firstWhere((s) => s.audioPath == actualAudioPath);
+        } catch (_) {}
+      }
+
+      if (actualSong != null && actualSong.audioPath != _currentSong.audioPath) {
+        debugPrint('Song changed while in background! Switching from "${_currentSong.title}" to "${actualSong.title}"');
+        _currentSong = actualSong;
+
+        if (_currentSong.lrcPath != null && _currentSong.lrcPath!.isNotEmpty) {
+          await widget.lyricsService.loadLrcFile(_currentSong.lrcPath!);
+        } else {
+          widget.lyricsService.clear();
+        }
+
+        await _loadAllTranslations(_currentSong.id, _currentSong.title);
+        await _updateLyricsWithTranslations();
+
+        if (mounted) setState(() {});
+        return;
+      }
+    }
+
+    await _updateLyricsWithTranslations();
+    if (mounted) setState(() {});
   }
 
   @override
