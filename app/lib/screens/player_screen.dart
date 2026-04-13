@@ -77,6 +77,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
   double _autoScrollFocusOffset = 0.0;
   bool _isFirstLoad = true;
+  bool _isInBackground = false;
 
   List<Song> get playlistSongs => widget.playlistSongs ?? [];
 
@@ -580,10 +581,15 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      debugPrint('=== PlayerScreen: resumed, restarting updates ===');
-      _lastScrolledIndex = -1;
-      _startPositionUpdates();
-      _syncWithActuallyPlayingSong();
+      if (_isInBackground) {
+        debugPrint('=== PlayerScreen: resumed from background, restarting updates ===');
+        _isInBackground = false;
+        _lastScrolledIndex = -1;
+        _startPositionUpdates();
+        _syncWithActuallyPlayingSong();
+      }
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _isInBackground = true;
     }
   }
 

@@ -117,6 +117,11 @@ class _TranslationEditorScreenState extends State<TranslationEditorScreen> {
           final newText = _originalTextControllers[i]?.text ?? widget.lyricLines[i].text;
           final currentText = widget.lyricLines[i].text;
           if (newText != currentText) {
+            final oldText = widget.lyricLines[i].text;
+            final translation = _translations[oldText];
+            _translations.remove(oldText);
+            _translations[newText] = translation ?? '';
+            _originalTexts[i] = newText;
             widget.lyricsService.updateLineText(i, newText);
           }
         }

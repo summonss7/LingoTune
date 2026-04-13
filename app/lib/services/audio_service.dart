@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart' hide LoopMode;
 import 'package:audio_service/audio_service.dart' as audio_pkg;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'background_audio_handler.dart';
 import '../models/song.dart';
 import '../models/loop_mode.dart';
@@ -39,7 +40,30 @@ class AudioService extends ChangeNotifier {
   List<int>? get shuffledPlaylist => _shuffledIndices;
 
   AudioService() {
+    _loadPlaybackSettings();
     _initPlayer();
+  }
+
+  Future<void> _loadPlaybackSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final loopIndex = prefs.getInt('loopMode') ?? 0;
+      _loopMode = LoopMode.values[loopIndex.clamp(0, LoopMode.values.length - 1)];
+      _isShuffleEnabled = prefs.getBool('isShuffleEnabled') ?? false;
+      debugPrint('✓ AudioService: Loaded playback settings - loop: $_loopMode, shuffle: $_isShuffleEnabled');
+    } catch (e) {
+      debugPrint('✗ Error loading playback settings: $e');
+    }
+  }
+
+  Future<void> _savePlaybackSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('loopMode', _loopMode.index);
+      await prefs.setBool('isShuffleEnabled', _isShuffleEnabled);
+    } catch (e) {
+      debugPrint('✗ Error saving playback settings: $e');
+    }
   }
 
   void _initPlayer() {
@@ -65,14 +89,14 @@ class AudioService extends ChangeNotifier {
 
     _playerStateSubscription = _player.playerStateStream.listen((state) {
       _isPlaying = state.playing;
-      if (state.processingState == ProcessingState.completed) {
-        _onSongCompleted();
-      }
       notifyListeners();
     });
   }
 
   void _onSongCompleted() {
+    if (_loopMode == LoopMode.one) {
+      return;
+    }
     onSongComplete?.call();
   }
 
@@ -186,6 +210,7 @@ class AudioService extends ChangeNotifier {
     }
     _backgroundHandler?.setLoopMode(_loopMode);
     _backgroundHandler?.updateNotificationControls();
+    _savePlaybackSettings();
     notifyListeners();
   }
 
@@ -199,6 +224,7 @@ class AudioService extends ChangeNotifier {
     _isShuffleEnabled = !_isShuffleEnabled;
     _backgroundHandler?.setShuffleEnabled(_isShuffleEnabled);
     _backgroundHandler?.updateNotificationControls();
+    _savePlaybackSettings();
     notifyListeners();
   }
 

@@ -92,8 +92,6 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
           debugPrint('✓ BackgroundAudioHandler: LoopMode.one - restarting song');
           _player.seek(Duration.zero);
           _player.play();
-        } else {
-          skipToNext();
         }
       }
       _syncPlaybackState();
