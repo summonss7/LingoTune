@@ -4,8 +4,8 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '4.6.5';
-  static const String versionCode = '173';
+  static const String version = '4.6.6';
+  static const String versionCode = '174';
 
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';

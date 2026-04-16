@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as path_pkg;
+import 'package:just_audio/just_audio.dart' show ProcessingState;
 import 'package:audio_service/audio_service.dart' as audio_pkg;
 import '../models/song.dart';
 import '../models/lyric_line.dart';
@@ -101,6 +102,9 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       _reloadSongDataWithSettings();
     } else if (widget.song.lrcPath != _currentSong.lrcPath || widget.lyricsService.lyricLines.isEmpty) {
       debugPrint('=== Reloading because lrcPath changed OR lyrics empty ===');
+      _reloadSongData();
+    } else if (widget.translationService.translations.isEmpty) {
+      debugPrint('=== Reloading because translations are empty ===');
       _reloadSongData();
     }
   }
@@ -363,7 +367,18 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
   Future<void> _initSongData() async {
     if (widget.shouldResume) {
-      debugPrint('=== Resuming player — skipping autoPlay, keeping current state ===');
+      debugPrint('=== Resuming player — checking player state ===');
+
+      if (_isShuffleEnabled && widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
+        debugPrint('✓ Regenerating shuffled indices for resumed shuffle mode');
+        _generateShuffledIndices();
+      }
+
+      if (widget.audioService.player.processingState == ProcessingState.completed) {
+        debugPrint('⚠ Player in completed state on resume, seeking to start');
+        await widget.audioService.seek(Duration.zero);
+      }
+
       if (widget.translationService.translations.isNotEmpty) {
         await _updateLyricsWithTranslations();
       }
@@ -386,6 +401,11 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     }
 
     await _updateLyricsWithTranslations();
+
+    if (_isShuffleEnabled && widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
+      debugPrint('✓ Shuffle enabled on init, generating shuffled indices');
+      _generateShuffledIndices();
+    }
 
     _autoPlay();
 

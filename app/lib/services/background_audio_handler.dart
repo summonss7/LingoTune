@@ -11,6 +11,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   final AudioPlayer _player;
   LoopMode _loopMode = LoopMode.off;
   bool _isShuffleEnabled = false;
+  bool _isHandlingCompletion = false;
 
   Function(bool)? onShuffleToggled;
   Function(LoopMode)? onLoopToggled;
@@ -88,11 +89,17 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   void _setupListeners() {
     _playbackEventSubscription = _player.playbackEventStream.listen((event) {
       if (event.processingState == ProcessingState.completed) {
-        if (_loopMode == LoopMode.one) {
+        if (_loopMode == LoopMode.one && !_isHandlingCompletion) {
+          _isHandlingCompletion = true;
           debugPrint('✓ BackgroundAudioHandler: LoopMode.one - restarting song');
-          _player.seek(Duration.zero);
-          _player.play();
+          _player.seek(Duration.zero).then((_) {
+            _player.play().then((_) {
+              _isHandlingCompletion = false;
+            });
+          });
         }
+      } else {
+        _isHandlingCompletion = false;
       }
       _syncPlaybackState();
     });
