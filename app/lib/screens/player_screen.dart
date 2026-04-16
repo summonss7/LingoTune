@@ -79,6 +79,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   double _autoScrollFocusOffset = 0.0;
   bool _isFirstLoad = true;
   bool _isInBackground = false;
+  bool _isReloading = false;
 
   List<Song> get playlistSongs => widget.playlistSongs ?? [];
 
@@ -106,6 +107,19 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     } else if (widget.translationService.translations.isEmpty) {
       debugPrint('=== Reloading because translations are empty ===');
       _reloadSongData();
+    } else if (widget.translationService.currentTranslation == null) {
+      debugPrint('=== Restoring currentTranslation (was null) ===');
+      _restoreCurrentTranslation();
+    }
+  }
+
+  Future<void> _restoreCurrentTranslation() async {
+    if (widget.translationService.translations.isNotEmpty &&
+        widget.translationService.currentTranslation == null) {
+      debugPrint('✓ Restoring currentTranslation from available translations');
+      await _selectLanguageBasedOnSettings();
+      await _updateLyricsWithTranslations();
+      if (mounted) setState(() {});
     }
   }
 
@@ -126,29 +140,40 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     }
 
     await _loadAllTranslations(_currentSong.id, _currentSong.title);
+    await _selectLanguageBasedOnSettings();
     await _updateLyricsWithTranslations();
     if (mounted) setState(() {});
   }
   
   Future<void> _reloadSongData() async {
-    final db = DatabaseService();
-    final updatedSong = await db.getSong(_currentSong.id);
-    
-    if (updatedSong != null && mounted) {
-      _currentSong = updatedSong;
+    if (_isReloading) {
+      debugPrint('⚠ _reloadSongData already in progress, skipping');
+      return;
+    }
+    _isReloading = true;
+    try {
+      final db = DatabaseService();
+      final updatedSong = await db.getSong(_currentSong.id);
       
-      if (_currentSong.lrcPath != null && _currentSong.lrcPath!.isNotEmpty) {
-        debugPrint('Reloading LRC file from DB: ${_currentSong.lrcPath}');
-        await widget.lyricsService.loadLrcFile(_currentSong.lrcPath!);
+      if (updatedSong != null && mounted) {
+        _currentSong = updatedSong;
+        
+        if (_currentSong.lrcPath != null && _currentSong.lrcPath!.isNotEmpty) {
+          debugPrint('Reloading LRC file from DB: ${_currentSong.lrcPath}');
+          await widget.lyricsService.loadLrcFile(_currentSong.lrcPath!);
+        }
+        
+        await _loadAllTranslations(_currentSong.id, _currentSong.title);
+        await _selectLanguageBasedOnSettings();
+        await _updateLyricsWithTranslations();
+        if (mounted) setState(() {});
+        
+        debugPrint('=== Reloaded from DB ===');
+        debugPrint('Lyrics after reload: ${widget.lyricsService.lyricLines.length}');
+        debugPrint('Translations after reload: ${widget.translationService.translations.length}');
       }
-      
-      await _loadAllTranslations(_currentSong.id, _currentSong.title);
-      await _updateLyricsWithTranslations();
-      if (mounted) setState(() {});
-      
-      debugPrint('=== Reloaded from DB ===');
-      debugPrint('Lyrics after reload: ${widget.lyricsService.lyricLines.length}');
-      debugPrint('Translations after reload: ${widget.translationService.translations.length}');
+    } finally {
+      _isReloading = false;
     }
   }
 
@@ -658,6 +683,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         }
 
         await _loadAllTranslations(_currentSong.id, _currentSong.title);
+        await _selectLanguageBasedOnSettings();
         await _updateLyricsWithTranslations();
 
         if (mounted) setState(() {});
