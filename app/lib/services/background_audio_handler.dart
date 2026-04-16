@@ -12,6 +12,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   LoopMode _loopMode = LoopMode.off;
   bool _isShuffleEnabled = false;
   bool _isHandlingCompletion = false;
+  bool _wasPlayingBeforeInterruption = false;
 
   Function(bool)? onShuffleToggled;
   Function(LoopMode)? onLoopToggled;
@@ -55,9 +56,13 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       
       _interruptionSubscription = session.interruptionEventStream.listen((event) {
         if (event.begin) {
+          _wasPlayingBeforeInterruption = _player.playing;
           pause();
         } else {
-          play();
+          if (_wasPlayingBeforeInterruption) {
+            play();
+          }
+          _wasPlayingBeforeInterruption = false;
         }
       });
       
