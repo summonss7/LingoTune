@@ -92,10 +92,24 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     debugPrint('=== PlayerScreen: didChangeDependencies ===');
     debugPrint('Widget song: ${widget.song.title}');
     debugPrint('Current song: ${_currentSong.title}');
+    debugPrint('AudioService song: ${widget.audioService.currentSong?.title}');
     debugPrint('Lyrics lines in service: ${widget.lyricsService.lyricLines.length}');
     debugPrint('Translations in service: ${widget.translationService.translations.length}');
+
+    if (_isReloading) {
+      debugPrint('=== Skipping didChangeDependencies: reload in progress ===');
+      return;
+    }
   
     if (_currentSong.id != widget.song.id) {
+      final actualPlayingPath = widget.audioService.currentSong?.audioPath;
+      if (actualPlayingPath != null &&
+          actualPlayingPath != widget.song.audioPath &&
+          actualPlayingPath == _currentSong.audioPath) {
+        debugPrint('=== Skipping didChangeDependencies: audioService plays _currentSong, not widget.song ===');
+        return;
+      }
+
       debugPrint('=== Song ID changed, syncing ===');
       _currentSong = widget.song;
       _isShuffleEnabled = widget.audioService.isShuffleEnabled;
