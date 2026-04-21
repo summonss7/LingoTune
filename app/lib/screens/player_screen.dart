@@ -487,6 +487,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       _highlightNextLine = prefs.getBool('highlightNextLine') ?? true;
       _autoScroll = prefs.getBool('autoScroll') ?? true;
       _autoScrollFocusOffset = prefs.getDouble('autoScrollFocusOffset') ?? 50.0;
+      _cachedShowTranscription = prefs.getBool('showTranscription') ?? false;
     });
   }
 
@@ -510,6 +511,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       context,
       widget.lyricsService.lyricLines,
       widget.translationService,
+      showTranscript: _cachedShowTranscription,
+      focusIndex: widget.lyricsService.currentIndex,
     );
   }
 
@@ -521,6 +524,15 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     if (currentIndex >= 0 && currentIndex < totalLines) {
       if (currentIndex == _lastScrolledIndex) return;
       _lastScrolledIndex = currentIndex;
+
+      final lines = widget.lyricsService.lyricLines;
+      int scrollDuration;
+      if (currentIndex > 0 && currentIndex < lines.length) {
+        final intervalMs = ((lines[currentIndex].startTime - lines[currentIndex - 1].startTime) * 1000).toInt();
+        scrollDuration = (intervalMs * 0.4).round().clamp(80, 300);
+      } else {
+        scrollDuration = 150;
+      }
 
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted || !_scrollController.hasClients) return;
@@ -545,8 +557,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
               await _scrollController.animateTo(
                 targetOffset,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
+                duration: Duration(milliseconds: scrollDuration),
+                curve: Curves.easeOut,
               );
             }
             return;
@@ -561,8 +573,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
           await _scrollController.animateTo(
             jumpTarget,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
+            duration: Duration(milliseconds: scrollDuration),
+            curve: Curves.easeOut,
           );
 
           if (!mounted) return;
@@ -582,8 +594,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
                 await _scrollController.animateTo(
                   targetOffset,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
+                  duration: Duration(milliseconds: scrollDuration),
+                  curve: Curves.easeOut,
                 );
               }
             }
@@ -603,26 +615,20 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
   void _startPositionUpdates() {
     _positionTimer?.cancel();
-    _positionTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) async {
+    _positionTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       if (widget.audioService.isInitialized) {
         final position = widget.audioService.position.inMilliseconds.toDouble() / 1000;
         widget.lyricsService.updatePosition(position);
 
-        final prefs = await SharedPreferences.getInstance();
-        final showTranscript = prefs.getBool('showTranscription') ?? false;
-
         final currentLineIndex = widget.lyricsService.currentIndex;
         final currentLangIndex = widget.translationService.currentLanguageIndex;
         final needsTranslationUpdate = currentLineIndex != _lastProcessedIndex ||
-            currentLangIndex != _lastProcessedLanguageIndex ||
-            showTranscript != _cachedShowTranscription;
-
-        _cachedShowTranscription = showTranscript;
+            currentLangIndex != _lastProcessedLanguageIndex;
 
         if (needsTranslationUpdate) {
           _lastProcessedIndex = currentLineIndex;
           _lastProcessedLanguageIndex = currentLangIndex;
-          await _updateLyricsWithTranslations();
+          _updateLyricsWithTranslations();
         }
 
         if (_autoScroll && !_isEditMode) {
@@ -847,6 +853,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
             final prefs = await SharedPreferences.getInstance();
             final show = prefs.getBool('showTranscription') ?? false;
             await prefs.setBool('showTranscription', !show);
+            _cachedShowTranscription = !show;
+            _playerTranslationHelper.markDirty();
             await _updateLyricsWithTranslations();
             setState(() {});
             if (mounted) {

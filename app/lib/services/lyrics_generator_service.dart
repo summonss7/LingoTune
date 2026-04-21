@@ -24,17 +24,20 @@ class LyricsGeneratorService {
 
       final content = await file.readAsString();
       final lines = <LyricLine>[];
-      final regex = RegExp(r'\[(\d+):(\d+)\.(\d+)\](.+)');
+      final regex = RegExp(r'\[(\d+):(\d+)\.(\d{2,3})\](.+)');
 
       for (final line in content.split('\n')) {
         final match = regex.firstMatch(line);
         if (match != null) {
           final minutes = int.parse(match.group(1)!);
           final seconds = int.parse(match.group(2)!);
-          final centiseconds = int.parse(match.group(3)!);
+          final fraction = match.group(3)!;
+          final milliseconds = fraction.length == 2
+              ? int.parse(fraction) * 10
+              : int.parse(fraction);
           final text = match.group(4)!.trim();
 
-          final startTime = minutes * 60.0 + seconds + centiseconds / 100.0;
+          final startTime = minutes * 60.0 + seconds + milliseconds / 1000.0;
 
           if (text.isNotEmpty) {
             lines.add(LyricLine(
@@ -362,11 +365,11 @@ class LyricsGeneratorService {
         }
         final minutes = adjustedTime ~/ 60;
         final seconds = (adjustedTime % 60).toInt();
-        final centiseconds = ((adjustedTime % 1) * 100).toInt();
+        final milliseconds = ((adjustedTime % 1) * 1000).round().clamp(0, 999);
 
         buffer.write('[${minutes.toString().padLeft(2, '0')}:'
             '${seconds.toString().padLeft(2, '0')}.'
-            '${centiseconds.toString().padLeft(2, '0')}]');
+            '${milliseconds.toString().padLeft(3, '0')}]');
         buffer.writeln(line.text);
       }
 

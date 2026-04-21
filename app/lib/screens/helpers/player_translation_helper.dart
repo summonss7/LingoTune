@@ -282,52 +282,83 @@ class PlayerTranslationHelper {
   Future<void> updateLyricsWithTranslations(
     BuildContext context,
     List<LyricLine> lyricLines,
-    TranslationService translationService,
-  ) async {
+    TranslationService translationService, {
+    bool? showTranscript,
+    int? focusIndex,
+  }) async {
     final currentTranslation = translationService.currentTranslation;
     final transcriptTranslation = translationService.transcriptTranslation;
     final currentLangCode = currentTranslation?.language;
-    final prefs = await SharedPreferences.getInstance();
-    final showTranscript = prefs.getBool('showTranscription') ?? false;
+    final showTrans = showTranscript ?? _cachedShowTranscript;
 
     if (!_isDirty &&
         _cachedLanguageCode == currentLangCode &&
-        _cachedShowTranscript == showTranscript) {
+        _cachedShowTranscript == showTrans) {
       return;
     }
 
     _cachedLanguageCode = currentLangCode;
-    _cachedShowTranscript = showTranscript;
+    _cachedShowTranscript = showTrans;
     _isDirty = false;
 
     int translatedCount = 0;
     int transcriptCount = 0;
 
-    for (final lyricLine in lyricLines) {
-      if (currentTranslation != null) {
-        final translatedText = translationService.getTranslationForLine(lyricLine.startTime);
-        lyricLine.translatedText = translatedText;
-        if (translatedText != null) translatedCount++;
-      } else {
-        lyricLine.translatedText = null;
+    if (focusIndex != null && focusIndex >= 0) {
+      final indices = <int>{};
+      for (int i = focusIndex - 1; i <= focusIndex + 2; i++) {
+        if (i >= 0 && i < lyricLines.length) indices.add(i);
       }
+      for (final i in indices) {
+        final lyricLine = lyricLines[i];
+        if (currentTranslation != null) {
+          final translatedText = translationService.getTranslationForLine(lyricLine.startTime);
+          lyricLine.translatedText = translatedText;
+          if (translatedText != null) translatedCount++;
+        } else {
+          lyricLine.translatedText = null;
+        }
 
-      if (showTranscript) {
-        final transcriptText = translationService.getTranscriptForLine(lyricLine.startTime);
-        final transcriptFromTranslation = transcriptText ??
-            translationService.getTranscriptFromCurrentTranslation(lyricLine.startTime);
+        if (showTrans) {
+          final transcriptText = translationService.getTranscriptForLine(lyricLine.startTime);
+          final transcriptFromTranslation = transcriptText ??
+              translationService.getTranscriptFromCurrentTranslation(lyricLine.startTime);
 
-        if (transcriptFromTranslation != null) {
-          lyricLine.transcript = transcriptFromTranslation;
-          transcriptCount++;
+          if (transcriptFromTranslation != null) {
+            lyricLine.transcript = transcriptFromTranslation;
+            transcriptCount++;
+          } else {
+            lyricLine.transcript = null;
+          }
         } else {
           lyricLine.transcript = null;
         }
-      } else {
-        lyricLine.transcript = null;
+      }
+    } else {
+      for (final lyricLine in lyricLines) {
+        if (currentTranslation != null) {
+          final translatedText = translationService.getTranslationForLine(lyricLine.startTime);
+          lyricLine.translatedText = translatedText;
+          if (translatedText != null) translatedCount++;
+        } else {
+          lyricLine.translatedText = null;
+        }
+
+        if (showTrans) {
+          final transcriptText = translationService.getTranscriptForLine(lyricLine.startTime);
+          final transcriptFromTranslation = transcriptText ??
+              translationService.getTranscriptFromCurrentTranslation(lyricLine.startTime);
+
+          if (transcriptFromTranslation != null) {
+            lyricLine.transcript = transcriptFromTranslation;
+            transcriptCount++;
+          } else {
+            lyricLine.transcript = null;
+          }
+        } else {
+          lyricLine.transcript = null;
+        }
       }
     }
-
-    debugPrint('Updated lyrics: $translatedCount translated, $transcriptCount transcript');
   }
 }

@@ -264,8 +264,8 @@ class _TranslationEditorScreenState extends State<TranslationEditorScreen> {
       for (final line in widget.lyricLines) {
         final minutes = (line.startTime ~/ 60).toInt();
         final seconds = (line.startTime % 60).toInt();
-        final milliseconds = ((line.startTime % 1) * 100).toInt();
-        buffer.writeln('[${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}.${milliseconds.toString().padLeft(2, '0')}]${line.text}');
+        final milliseconds = ((line.startTime % 1) * 1000).round().clamp(0, 999);
+        buffer.writeln('[${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}.${milliseconds.toString().padLeft(3, '0')}]${line.text}');
       }
 
       await file.writeAsString(buffer.toString());

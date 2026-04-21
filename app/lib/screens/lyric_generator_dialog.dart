@@ -310,14 +310,16 @@ class _LyricGeneratorDialogState extends State<LyricGeneratorDialog> {
 
     for (final line in lines) {
       try {
-        // LRC формат: [00:30.00]Текст
         final match = RegExp(r'^\[(\d{2}):(\d{2})\.(\d{2,3})\]').firstMatch(line);
         if (match != null) {
           final minutes = int.parse(match.group(1)!);
           final seconds = int.parse(match.group(2)!);
-          final centiseconds = int.parse(match.group(3)!);
+          final fraction = match.group(3)!;
+          final milliseconds = fraction.length == 2
+              ? int.parse(fraction) * 10
+              : int.parse(fraction);
 
-          final totalSeconds = (minutes * 60.0) + seconds.toDouble() + (centiseconds / 100.0);
+          final totalSeconds = (minutes * 60.0) + seconds.toDouble() + (milliseconds / 1000.0);
           timestamps.add(totalSeconds);
         }
       } catch (e) {
@@ -588,11 +590,11 @@ class _LyricGeneratorDialogState extends State<LyricGeneratorDialog> {
         final currentStartTime = _originalTimestamps![i];
         final minutes = currentStartTime ~/ 60;
         final seconds = (currentStartTime % 60).toInt();
-        final centiseconds = ((currentStartTime % 1) * 100).toInt();
+        final milliseconds = ((currentStartTime % 1) * 1000).round().clamp(0, 999);
 
         buffer.write('[${minutes.toString().padLeft(2, '0')}:'
             '${seconds.toString().padLeft(2, '0')}.'
-            '${centiseconds.toString().padLeft(2, '0')}]');
+            '${milliseconds.toString().padLeft(3, '0')}]');
         buffer.writeln(lines[i]);
       }
     } else {
@@ -600,11 +602,11 @@ class _LyricGeneratorDialogState extends State<LyricGeneratorDialog> {
       for (final line in lines) {
         final minutes = startTime ~/ 60;
         final seconds = (startTime % 60).toInt();
-        final centiseconds = ((startTime % 1) * 100).toInt();
+        final milliseconds = ((startTime % 1) * 1000).round().clamp(0, 999);
 
         buffer.write('[${minutes.toString().padLeft(2, '0')}:'
             '${seconds.toString().padLeft(2, '0')}.'
-            '${centiseconds.toString().padLeft(2, '0')}]');
+            '${milliseconds.toString().padLeft(3, '0')}]');
         buffer.writeln(line);
         startTime += GenerationConstants.timingStep;
       }

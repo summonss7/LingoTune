@@ -14,21 +14,14 @@ def parse_lrc_file(lrc_path):
 
     lines_data = []
     for line in content.split('\n'):
-        # Парсим временные метки в формате [MM:SS.CC] или [MM:SS]
-        match = re.search(r'\[(\d{2}:\d{2}\.\d{2})\]\s*(.*)', line)
+        match = re.search(r'\[(\d{2}):(\d{2})\.(\d{2,3})\]\s*(.*)', line)
         if match:
-            time_str = match.group(1)
-            text = match.group(2).strip()
-
-            # Конвертируем время в секунды
-            parts = time_str.split(':')
-            if len(parts) == 3:
-                minutes = int(parts[0])
-                seconds = int(parts[1])
-                centiseconds = int(parts[2])
-                total_seconds = minutes * 60 + seconds + centiseconds / 100
-            else:
-                total_seconds = 0
+            minutes = int(match.group(1))
+            seconds = int(match.group(2))
+            fraction = match.group(3)
+            milliseconds = int(fraction) * 10 if len(fraction) == 2 else int(fraction)
+            total_seconds = minutes * 60 + seconds + milliseconds / 1000.0
+            text = match.group(4).strip()
 
             lines_data.append({
                 'time': total_seconds,
