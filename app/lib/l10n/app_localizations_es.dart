@@ -1806,4 +1806,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String exportShareSubject(String title) {
     return 'LingoTune exportación: $title con letras y traducciones';
   }
+
+  @override
+  String get timestampOffset => 'Desplazamiento de marcas de tiempo';
+
+  @override
+  String get timestampOffsetSubtitle => 'Desplazamiento predeterminado en minutos para marcas generadas';
+
+  @override
+  String get resetTimestamps => 'Restablecer marcas de tiempo';
+
+  @override
+  String get resetTimestampsConfirm => '¿Restablecer todas las marcas de tiempo a los valores predeterminados?';
+
+  @override
+  String get resetTimestampsSuccess => 'Marcas de tiempo restablecidas';
+
+  @override
+  String get saveAfterReset => 'Guardar cambios';
+
+  @override
+  String get saveAfterResetConfirm => '¿Guardar cambios después de restablecer las marcas?';
 }

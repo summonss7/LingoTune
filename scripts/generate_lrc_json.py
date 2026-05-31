@@ -67,8 +67,8 @@ def process_txt_file(txt_path, output_dir):
 
 
 def main():
-    input_dir = Path("D:/ProjectAI/LingoTune/input/best")
-    output_dir = Path("D:/ProjectAI/LingoTune/output")
+    input_dir = Path("D:/Ai-Projects/LingoTune/input/best")
+    output_dir = Path("D:/Ai-Projects/LingoTune/output")
     
     output_dir.mkdir(parents=True, exist_ok=True)
     

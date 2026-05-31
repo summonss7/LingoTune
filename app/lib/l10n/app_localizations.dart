@@ -3394,6 +3394,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'LingoTune export: {title} with lyrics and translations'**
   String exportShareSubject(String title);
+
+  /// No description provided for @timestampOffset.
+  ///
+  /// In en, this message translates to:
+  /// **'Timestamp Offset'**
+  String get timestampOffset;
+
+  /// No description provided for @timestampOffsetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Default offset in minutes for generated timestamps'**
+  String get timestampOffsetSubtitle;
+
+  /// No description provided for @resetTimestamps.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Timestamps'**
+  String get resetTimestamps;
+
+  /// No description provided for @resetTimestampsConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset all timestamps to default values?'**
+  String get resetTimestampsConfirm;
+
+  /// No description provided for @resetTimestampsSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Timestamps reset to default values'**
+  String get resetTimestampsSuccess;
+
+  /// No description provided for @saveAfterReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Changes'**
+  String get saveAfterReset;
+
+  /// No description provided for @saveAfterResetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes after resetting timestamps?'**
+  String get saveAfterResetConfirm;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

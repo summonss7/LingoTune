@@ -1806,4 +1806,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String exportShareSubject(String title) {
     return 'LingoTune导出：$title 含歌词和翻译';
   }
+
+  @override
+  String get timestampOffset => '时间戳偏移';
+
+  @override
+  String get timestampOffsetSubtitle => '生成时间戳的默认偏移（分钟）';
+
+  @override
+  String get resetTimestamps => '重置时间戳';
+
+  @override
+  String get resetTimestampsConfirm => '将所有时间戳重置为默认值？';
+
+  @override
+  String get resetTimestampsSuccess => '时间戳已重置为默认值';
+
+  @override
+  String get saveAfterReset => '保存更改';
+
+  @override
+  String get saveAfterResetConfirm => '重置后保存更改？';
 }

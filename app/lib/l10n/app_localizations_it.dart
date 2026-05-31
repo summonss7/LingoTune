@@ -1806,4 +1806,25 @@ class AppLocalizationsIt extends AppLocalizations {
   String exportShareSubject(String title) {
     return 'LingoTune export: $title con testi e traduzioni';
   }
+
+  @override
+  String get timestampOffset => 'Offset timestamp';
+
+  @override
+  String get timestampOffsetSubtitle => 'Offset predefinito in minuti per i timestamp generati';
+
+  @override
+  String get resetTimestamps => 'Ripristina timestamp';
+
+  @override
+  String get resetTimestampsConfirm => 'Ripristinare tutti i timestamp ai valori predefiniti?';
+
+  @override
+  String get resetTimestampsSuccess => 'Timestamp ripristinati ai valori predefiniti';
+
+  @override
+  String get saveAfterReset => 'Salva modifiche';
+
+  @override
+  String get saveAfterResetConfirm => 'Salvare le modifiche dopo il ripristino dei timestamp?';
 }

@@ -570,6 +570,13 @@
      "@translationsOnlyLoaded": {"placeholders": {"count": {"type": "int"}}},
      "pleaseSetDeepSeekApiKey": "يرجى تعيين مفتاح DeepSeek API في الإعدادات",
      "lyricsGeneratedSuccessfullyMsg": "تم إنشاء الكلمات بنجاح",
-     "exportShareSubject": "تصدير LingoTune: {title} مع الكلمات والترجمات",
-     "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}}
+      "exportShareSubject": "تصدير LingoTune: {title} مع الكلمات والترجمات",
+      "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}},
+      "timestampOffset": "إزاحة الطوابع الزمنية",
+      "timestampOffsetSubtitle": "الإزاحة الافتراضية بالدقائق للطوابع الزمنية المُنشأة",
+      "resetTimestamps": "إعادة تعيين الطوابع الزمنية",
+      "resetTimestampsConfirm": "إعادة تعيين جميع الطوابع الزمنية إلى القيم الافتراضية؟",
+      "resetTimestampsSuccess": "تم إعادة تعيين الطوابع الزمنية",
+      "saveAfterReset": "حفظ التغييرات",
+      "saveAfterResetConfirm": "حفظ التغييرات بعد إعادة التعيين؟"
 }

@@ -1806,4 +1806,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String exportShareSubject(String title) {
     return 'LingoTune экспорт: $title с лирикой и переводами';
   }
+
+  @override
+  String get timestampOffset => 'Смещение временных меток';
+
+  @override
+  String get timestampOffsetSubtitle => 'Смещение по умолчанию в минутах для генерируемых меток';
+
+  @override
+  String get resetTimestamps => 'Сбросить метки';
+
+  @override
+  String get resetTimestampsConfirm => 'Сбросить все временные метки к значениям по умолчанию?';
+
+  @override
+  String get resetTimestampsSuccess => 'Временные метки сброшены';
+
+  @override
+  String get saveAfterReset => 'Сохранить изменения';
+
+  @override
+  String get saveAfterResetConfirm => 'Сохранить изменения после сброса меток?';
 }

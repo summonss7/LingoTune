@@ -12,6 +12,7 @@ class LanguageHelper {
       'zh': 'китайский',
       'ar': 'арабский',
       'uk': 'українська',
+      'sk': 'словацкий',
     };
     return names[code] ?? code;
   }
@@ -45,6 +46,8 @@ class LanguageHelper {
         return 'AR';
       case 'uk':
         return 'UK';
+      case 'sk':
+        return 'SK';
       default:
         if (languageName.length <= 3) {
           return languageName.toUpperCase();
@@ -71,6 +74,7 @@ class LanguageHelper {
     if (lowerLang.contains('chinese') || lowerLang == 'zh') return '🇨🇳';
     if (lowerLang.contains('arabic') || lowerLang == 'ar') return '🇸🇦';
     if (lowerLang.contains('ukrainian') || lowerLang == 'uk') return '🇺🇦';
+    if (lowerLang.contains('slovak') || lowerLang == 'sk') return '🇸🇰';
 
     return '🌐';
   }

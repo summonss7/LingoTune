@@ -570,6 +570,13 @@
      "@translationsOnlyLoaded": {"placeholders": {"count": {"type": "int"}}},
      "pleaseSetDeepSeekApiKey": "Imposta la chiave API DeepSeek nelle impostazioni",
      "lyricsGeneratedSuccessfullyMsg": "Testi generati con successo",
-     "exportShareSubject": "LingoTune export: {title} con testi e traduzioni",
-     "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}}
+      "exportShareSubject": "LingoTune export: {title} con testi e traduzioni",
+      "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}},
+      "timestampOffset": "Offset timestamp",
+      "timestampOffsetSubtitle": "Offset predefinito in minuti per i timestamp generati",
+      "resetTimestamps": "Ripristina timestamp",
+      "resetTimestampsConfirm": "Ripristinare tutti i timestamp ai valori predefiniti?",
+      "resetTimestampsSuccess": "Timestamp ripristinati ai valori predefiniti",
+      "saveAfterReset": "Salva modifiche",
+      "saveAfterResetConfirm": "Salvare le modifiche dopo il ripristino dei timestamp?"
 }

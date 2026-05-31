@@ -1806,4 +1806,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String exportShareSubject(String title) {
     return 'LingoTune export : $title avec paroles et traductions';
   }
+
+  @override
+  String get timestampOffset => 'Décalage des horodatages';
+
+  @override
+  String get timestampOffsetSubtitle => 'Décalage par défaut en minutes pour les horodatages générés';
+
+  @override
+  String get resetTimestamps => 'Réinitialiser les horodatages';
+
+  @override
+  String get resetTimestampsConfirm => 'Réinitialiser tous les horodatages aux valeurs par défaut ?';
+
+  @override
+  String get resetTimestampsSuccess => 'Horodatages réinitialisés aux valeurs par défaut';
+
+  @override
+  String get saveAfterReset => 'Enregistrer les modifications';
+
+  @override
+  String get saveAfterResetConfirm => 'Enregistrer les modifications après la réinitialisation ?';
 }

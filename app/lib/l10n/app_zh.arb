@@ -570,6 +570,13 @@
      "@translationsOnlyLoaded": {"placeholders": {"count": {"type": "int"}}},
      "pleaseSetDeepSeekApiKey": "请在设置中配置DeepSeek API密钥",
      "lyricsGeneratedSuccessfullyMsg": "歌词生成成功",
-     "exportShareSubject": "LingoTune导出：{title} 含歌词和翻译",
-     "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}}
+      "exportShareSubject": "LingoTune导出：{title} 含歌词和翻译",
+      "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}},
+      "timestampOffset": "时间戳偏移",
+      "timestampOffsetSubtitle": "生成时间戳的默认偏移（分钟）",
+      "resetTimestamps": "重置时间戳",
+      "resetTimestampsConfirm": "将所有时间戳重置为默认值？",
+      "resetTimestampsSuccess": "时间戳已重置为默认值",
+      "saveAfterReset": "保存更改",
+      "saveAfterResetConfirm": "重置后保存更改？"
 }

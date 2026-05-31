@@ -1806,4 +1806,25 @@ class AppLocalizationsAr extends AppLocalizations {
   String exportShareSubject(String title) {
     return 'تصدير LingoTune: $title مع الكلمات والترجمات';
   }
+
+  @override
+  String get timestampOffset => 'إزاحة الطوابع الزمنية';
+
+  @override
+  String get timestampOffsetSubtitle => 'الإزاحة الافتراضية بالدقائق للطوابع الزمنية المُنشأة';
+
+  @override
+  String get resetTimestamps => 'إعادة تعيين الطوابع الزمنية';
+
+  @override
+  String get resetTimestampsConfirm => 'إعادة تعيين جميع الطوابع الزمنية إلى القيم الافتراضية؟';
+
+  @override
+  String get resetTimestampsSuccess => 'تم إعادة تعيين الطوابع الزمنية';
+
+  @override
+  String get saveAfterReset => 'حفظ التغييرات';
+
+  @override
+  String get saveAfterResetConfirm => 'حفظ التغييرات بعد إعادة التعيين؟';
 }

@@ -103,7 +103,7 @@ Return ONLY the {$targetLang} translation, nothing else.''';
     return supportedLanguages[code];
   }
 
-  static const List<String> sourceLanguages = ['ro', 'en', 'ru', 'de', 'es', 'fr', 'it', 'pt', 'zh', 'ar', 'uk'];
+  static const List<String> sourceLanguages = ['ro', 'en', 'ru', 'de', 'es', 'fr', 'it', 'pt', 'zh', 'ar', 'uk', 'sk'];
 
   static const Map<String, String> sourceLanguageNames = {
     'ro': 'Română',
@@ -117,5 +117,6 @@ Return ONLY the {$targetLang} translation, nothing else.''';
     'zh': '中文',
     'ar': 'العربية',
     'uk': 'Українська',
+    'sk': 'Slovenčina',
   };
 }

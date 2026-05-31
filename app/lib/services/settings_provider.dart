@@ -30,6 +30,7 @@ class SettingsProvider with ChangeNotifier {
   String _selectedPromptPreset = 'balanced';
   bool _addToLibraryWhenAddingToPlaylist = false;
   bool _showVerticalSlider = false;
+  double _defaultTimestampOffset = 1800.0;
 
   double get fontSize => _fontSize;
   String get defaultTranslationLanguage => _defaultTranslationLanguage;
@@ -58,6 +59,7 @@ class SettingsProvider with ChangeNotifier {
   String get selectedPromptPreset => _selectedPromptPreset;
   bool get addToLibraryWhenAddingToPlaylist => _addToLibraryWhenAddingToPlaylist;
   bool get showVerticalSlider => _showVerticalSlider;
+  double get defaultTimestampOffset => _defaultTimestampOffset;
 
   Future<void> loadSettings() async {
     debugPrint('=== SettingsProvider: Loading settings ===');
@@ -126,6 +128,7 @@ class SettingsProvider with ChangeNotifier {
       _selectedPromptPreset = prefs.getString('selectedPromptPreset') ?? 'balanced';
       _addToLibraryWhenAddingToPlaylist = prefs.getBool('addToLibraryWhenAddingToPlaylist') ?? false;
       _showVerticalSlider = prefs.getBool('showVerticalSlider') ?? false;
+      _defaultTimestampOffset = prefs.getDouble('defaultTimestampOffset') ?? 1800.0;
 
       debugPrint('Font size: $_fontSize');
       debugPrint('Translation language: $_defaultTranslationLanguage');
@@ -149,6 +152,9 @@ class SettingsProvider with ChangeNotifier {
       debugPrint('DeepSeek max tokens (regular): $_deepseekMaxTokensRegular');
       debugPrint('DeepSeek max tokens (JSON): $_deepseekMaxTokensJson');
       debugPrint('DeepSeek prompt preset: $_selectedPromptPreset');
+      debugPrint('Add to library when adding to playlist: $_addToLibraryWhenAddingToPlaylist');
+      debugPrint('Show vertical slider: $_showVerticalSlider');
+      debugPrint('Default timestamp offset: $_defaultTimestampOffset (${(_defaultTimestampOffset / 60).toInt()} min)');
 
       notifyListeners();
       debugPrint('Settings loaded and notified listeners');
@@ -448,6 +454,17 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setDefaultTimestampOffset(double value) async {
+    debugPrint('=== SettingsProvider: Setting default timestamp offset ===');
+    debugPrint('Old: $_defaultTimestampOffset (${(_defaultTimestampOffset / 60).toInt()} min), New: $value (${(value / 60).toInt()} min)');
+
+    _defaultTimestampOffset = value;
+    await _save();
+    notifyListeners();
+
+    debugPrint('Default timestamp offset updated and notified listeners');
+  }
+
   Future<void> _save() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -478,6 +495,7 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setString('selectedPromptPreset', _selectedPromptPreset);
       await prefs.setBool('addToLibraryWhenAddingToPlaylist', _addToLibraryWhenAddingToPlaylist);
       await prefs.setBool('showVerticalSlider', _showVerticalSlider);
+      await prefs.setDouble('defaultTimestampOffset', _defaultTimestampOffset);
       await prefs.setString('settingsVersion', '4.2.1');
       debugPrint('Settings saved to SharedPreferences');
     } catch (e) {

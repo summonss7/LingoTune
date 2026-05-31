@@ -21,8 +21,8 @@ BASE_URL = "https://api.deepseek.com/v1"
 MODEL = "deepseek-reasoner"
 
 # Directory paths
-PROMPTS_DIR = r"D:\ProjectAI\LingoTune\prompts\arabic"
-LYRICS_DIR = r"D:\ProjectAI\LingoTune\lyrics\arabic"
+PROMPTS_DIR = r"D:\Ai-Projects\LingoTune\prompts\arabic"
+LYRICS_DIR = r"D:\Ai-Projects\LingoTune\lyrics\arabic"
 
 # Ensure directories exist
 os.makedirs(PROMPTS_DIR, exist_ok=True)

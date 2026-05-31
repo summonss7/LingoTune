@@ -570,6 +570,13 @@
      "@translationsOnlyLoaded": {"placeholders": {"count": {"type": "int"}}},
      "pleaseSetDeepSeekApiKey": "Veuillez définir la clé API DeepSeek dans les paramètres",
      "lyricsGeneratedSuccessfullyMsg": "Paroles générées avec succès",
-     "exportShareSubject": "LingoTune export : {title} avec paroles et traductions",
-     "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}}
+      "exportShareSubject": "LingoTune export : {title} avec paroles et traductions",
+      "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}},
+      "timestampOffset": "Décalage des horodatages",
+      "timestampOffsetSubtitle": "Décalage par défaut en minutes pour les horodatages générés",
+      "resetTimestamps": "Réinitialiser les horodatages",
+      "resetTimestampsConfirm": "Réinitialiser tous les horodatages aux valeurs par défaut ?",
+      "resetTimestampsSuccess": "Horodatages réinitialisés aux valeurs par défaut",
+      "saveAfterReset": "Enregistrer les modifications",
+      "saveAfterResetConfirm": "Enregistrer les modifications après la réinitialisation ?"
 }

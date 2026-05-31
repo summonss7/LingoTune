@@ -14,6 +14,7 @@ import '../widgets/settings/text_settings_section.dart';
 import '../widgets/settings/font_size_control.dart';
 import '../widgets/settings/scroll_offset_control.dart';
 import '../widgets/settings/default_auto_scroll_focus_offset_control.dart';
+import '../widgets/settings/timestamp_offset_control.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -222,6 +223,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: Switch(
               value: settingsProvider.addToLibraryWhenAddingToPlaylist,
               onChanged: (value) => settingsProvider.setAddToLibraryWhenAddingToPlaylist(value),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.timer_outlined),
+            title: Text(l10n.timestampOffset),
+            subtitle: Text(l10n.timestampOffsetSubtitle),
+            trailing: TimestampOffsetControl(
+              offset: (settingsProvider.defaultTimestampOffset / 60.0).clamp(0, 180),
             ),
           ),
           const Divider(),

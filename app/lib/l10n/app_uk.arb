@@ -570,6 +570,13 @@
      "@translationsOnlyLoaded": {"placeholders": {"count": {"type": "int"}}},
      "pleaseSetDeepSeekApiKey": "Встановіть DeepSeek API ключ у налаштуваннях",
      "lyricsGeneratedSuccessfullyMsg": "Тексти згенеровано успішно",
-     "exportShareSubject": "LingoTune експорт: {title} з текстами та перекладами",
-     "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}}
+      "exportShareSubject": "LingoTune експорт: {title} з текстами та перекладами",
+      "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}},
+      "timestampOffset": "Зміщення часових міток",
+      "timestampOffsetSubtitle": "Зміщення за замовчуванням у хвилинах для згенерованих міток",
+      "resetTimestamps": "Скинути мітки",
+      "resetTimestampsConfirm": "Скинути всі часові мітки до значень за замовчуванням?",
+      "resetTimestampsSuccess": "Часові мітки скинуті",
+      "saveAfterReset": "Зберегти зміни",
+      "saveAfterResetConfirm": "Зберегти зміни після скидання міток?"
 }

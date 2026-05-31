@@ -1806,4 +1806,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String exportShareSubject(String title) {
     return 'LingoTune Export: $title mit Lyrics und Übersetzungen';
   }
+
+  @override
+  String get timestampOffset => 'Zeitstempel-Versatz';
+
+  @override
+  String get timestampOffsetSubtitle => 'Standardversatz in Minuten für generierte Zeitstempel';
+
+  @override
+  String get resetTimestamps => 'Zeitstempel zurücksetzen';
+
+  @override
+  String get resetTimestampsConfirm => 'Alle Zeitstempel auf Standardwerte zurücksetzen?';
+
+  @override
+  String get resetTimestampsSuccess => 'Zeitstempel auf Standardwerte zurückgesetzt';
+
+  @override
+  String get saveAfterReset => 'Änderungen speichern';
+
+  @override
+  String get saveAfterResetConfirm => 'Änderungen nach dem Zurücksetzen speichern?';
 }

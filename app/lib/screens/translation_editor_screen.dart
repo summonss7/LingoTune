@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart' as p;
 import '../models/song.dart';
 import '../models/lyric_line.dart';
@@ -11,6 +12,7 @@ import '../services/translation_api_service.dart';
 import '../services/translation_service.dart';
 import '../services/lyrics_service.dart';
 import '../services/database_service.dart';
+import '../constants/generation_constants.dart';
 import 'package:lingotune/l10n/app_localizations.dart';
 
 class TranslationEditorScreen extends StatefulWidget {
@@ -55,6 +57,7 @@ class _TranslationEditorScreenState extends State<TranslationEditorScreen> {
     {'code': 'zh', 'name': 'Chinese'},
     {'code': 'ja', 'name': 'Japanese'},
     {'code': 'ko', 'name': 'Korean'},
+    {'code': 'sk', 'name': 'Slovak'},
   ];
 
   @override
@@ -552,6 +555,77 @@ class _TranslationEditorScreenState extends State<TranslationEditorScreen> {
     });
   }
 
+  Future<void> _showResetTimestampsDialog() async {
+    final l10n = AppLocalizations.of(context)!;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.resetTimestamps),
+        content: Text(l10n.resetTimestampsConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(l10n.resetTimestamps),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final defaultOffset = prefs.getDouble('defaultTimestampOffset') ?? 1800.0;
+    final timingStep = GenerationConstants.timingStep;
+
+    setState(() {
+      for (var i = 0; i < widget.lyricLines.length; i++) {
+        final newStartTime = defaultOffset + (i * timingStep);
+        widget.lyricLines[i] = widget.lyricLines[i].copyWith(
+          startTime: newStartTime,
+          originalStartTime: newStartTime,
+        );
+      }
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.resetTimestampsSuccess),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.saveAfterReset),
+        content: Text(l10n.saveAfterResetConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSave == true) {
+      await _saveLrcFile();
+    }
+  }
+
   void _selectTranslation(int index) {
     if (index < 0 || index >= widget.translationService.translations.length) return;
 
@@ -590,6 +664,11 @@ class _TranslationEditorScreenState extends State<TranslationEditorScreen> {
               onPressed: _autoTranslate,
               tooltip: 'Auto-translate',
             ),
+          IconButton(
+            icon: const Icon(Icons.restore),
+            onPressed: _showResetTimestampsDialog,
+            tooltip: 'Reset timestamps',
+          ),
           IconButton(
             icon: const Icon(Icons.lyrics),
             onPressed: _loadLrcFile,

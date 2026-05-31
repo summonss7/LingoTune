@@ -1806,4 +1806,25 @@ class AppLocalizationsRo extends AppLocalizations {
   String exportShareSubject(String title) {
     return 'LingoTune export: $title cu versuri și traduceri';
   }
+
+  @override
+  String get timestampOffset => 'Decalaj marcaje temporale';
+
+  @override
+  String get timestampOffsetSubtitle => 'Decalaj implicit în minute pentru marcajele generate';
+
+  @override
+  String get resetTimestamps => 'Resetează marcajele';
+
+  @override
+  String get resetTimestampsConfirm => 'Resetați toate marcajele la valorile implicite?';
+
+  @override
+  String get resetTimestampsSuccess => 'Marcajele au fost resetate';
+
+  @override
+  String get saveAfterReset => 'Salvează modificările';
+
+  @override
+  String get saveAfterResetConfirm => 'Salvați modificările după resetarea marcajelor?';
 }

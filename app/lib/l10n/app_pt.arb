@@ -570,6 +570,13 @@
      "@translationsOnlyLoaded": {"placeholders": {"count": {"type": "int"}}},
      "pleaseSetDeepSeekApiKey": "Configure a chave API DeepSeek nas configurações",
      "lyricsGeneratedSuccessfullyMsg": "Letras geradas com sucesso",
-     "exportShareSubject": "LingoTune exportação: {title} com letras e traduções",
-     "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}}
+      "exportShareSubject": "LingoTune exportação: {title} com letras e traduções",
+      "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}},
+      "timestampOffset": "Deslocamento de marcas de tempo",
+      "timestampOffsetSubtitle": "Deslocamento padrão em minutos para marcas geradas",
+      "resetTimestamps": "Redefinir marcas de tempo",
+      "resetTimestampsConfirm": "Redefinir todas as marcas de tempo para os valores padrão?",
+      "resetTimestampsSuccess": "Marcas de tempo redefinidas",
+      "saveAfterReset": "Salvar alterações",
+      "saveAfterResetConfirm": "Salvar alterações após redefinir as marcas?"
 }

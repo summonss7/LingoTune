@@ -90,7 +90,7 @@ python -m pip install --upgrade pip
 ### 1. Клонирование/распаковка проекта
 
 ```bash
-cd D:\ProjectAI\LingoTune
+cd D:\Ai-Projects\LingoTune
 ```
 
 ### 2. Установка зависимостей Flutter

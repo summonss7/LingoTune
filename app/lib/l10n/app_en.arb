@@ -662,10 +662,17 @@
      },
      "pleaseSetDeepSeekApiKey": "Please set DeepSeek API key in settings",
      "lyricsGeneratedSuccessfullyMsg": "Lyrics generated successfully",
-     "exportShareSubject": "LingoTune export: {title} with lyrics and translations",
-     "@exportShareSubject": {
-       "placeholders": {
-         "title": {"type": "String"}
-       }
-     }
+      "exportShareSubject": "LingoTune export: {title} with lyrics and translations",
+      "@exportShareSubject": {
+        "placeholders": {
+          "title": {"type": "String"}
+        }
+      },
+      "timestampOffset": "Timestamp Offset",
+      "timestampOffsetSubtitle": "Default offset in minutes for generated timestamps",
+      "resetTimestamps": "Reset Timestamps",
+      "resetTimestampsConfirm": "Reset all timestamps to default values?",
+      "resetTimestampsSuccess": "Timestamps reset to default values",
+      "saveAfterReset": "Save Changes",
+      "saveAfterResetConfirm": "Save changes after resetting timestamps?"
 }

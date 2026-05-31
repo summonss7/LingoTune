@@ -602,7 +602,7 @@ class _LyricGeneratorDialogState extends State<LyricGeneratorDialog> {
       for (final line in lines) {
         final minutes = startTime ~/ 60;
         final seconds = (startTime % 60).toInt();
-        final milliseconds = ((startTime % 1) * 1000).round().clamp(0, 999);
+        final milliseconds = ((startTime % 1) * 1000).truncate().clamp(0, 999);
 
         buffer.write('[${minutes.toString().padLeft(2, '0')}:'
             '${seconds.toString().padLeft(2, '0')}.'

@@ -1806,4 +1806,25 @@ class AppLocalizationsUk extends AppLocalizations {
   String exportShareSubject(String title) {
     return 'LingoTune експорт: $title з текстами та перекладами';
   }
+
+  @override
+  String get timestampOffset => 'Зміщення часових міток';
+
+  @override
+  String get timestampOffsetSubtitle => 'Зміщення за замовчуванням у хвилинах для згенерованих міток';
+
+  @override
+  String get resetTimestamps => 'Скинути мітки';
+
+  @override
+  String get resetTimestampsConfirm => 'Скинути всі часові мітки до значень за замовчуванням?';
+
+  @override
+  String get resetTimestampsSuccess => 'Часові мітки скинуті';
+
+  @override
+  String get saveAfterReset => 'Зберегти зміни';
+
+  @override
+  String get saveAfterResetConfirm => 'Зберегти зміни після скидання міток?';
 }

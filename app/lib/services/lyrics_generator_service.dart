@@ -32,18 +32,21 @@ class LyricsGeneratorService {
           final minutes = int.parse(match.group(1)!);
           final seconds = int.parse(match.group(2)!);
           final fraction = match.group(3)!;
+
           final milliseconds = fraction.length == 2
               ? int.parse(fraction) * 10
               : int.parse(fraction);
-          final text = match.group(4)!.trim();
 
-          final startTime = minutes * 60.0 + seconds + milliseconds / 1000.0;
+          final startTime = minutes * 60.0 + seconds.toDouble() + (milliseconds / 1000.0);
+
+          final text = match.group(4)!.trim();
 
           if (text.isNotEmpty) {
             lines.add(LyricLine(
               startTime: startTime + 1800.0,
               text: text,
             ));
+            debugPrint('LRC parsed: [$minutes:${seconds.toString().padLeft(2, '0')}.${milliseconds.toString().padLeft(3, '0')}]${text} → ${startTime + 1800.0}s');
           }
         }
       }
@@ -365,7 +368,7 @@ class LyricsGeneratorService {
         }
         final minutes = adjustedTime ~/ 60;
         final seconds = (adjustedTime % 60).toInt();
-        final milliseconds = ((adjustedTime % 1) * 1000).round().clamp(0, 999);
+        final milliseconds = ((adjustedTime % 1) * 1000).truncate().clamp(0, 999);
 
         buffer.write('[${minutes.toString().padLeft(2, '0')}:'
             '${seconds.toString().padLeft(2, '0')}.'

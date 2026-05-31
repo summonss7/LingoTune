@@ -661,10 +661,17 @@
      },
      "pleaseSetDeepSeekApiKey": "Установите DeepSeek API ключ в настройках",
      "lyricsGeneratedSuccessfullyMsg": "Тексты сгенерированы успешно",
-     "exportShareSubject": "LingoTune экспорт: {title} с лирикой и переводами",
-     "@exportShareSubject": {
-       "placeholders": {
-         "title": {"type": "String"}
-       }
-     }
+      "exportShareSubject": "LingoTune экспорт: {title} с лирикой и переводами",
+      "@exportShareSubject": {
+        "placeholders": {
+          "title": {"type": "String"}
+        }
+      },
+      "timestampOffset": "Смещение временных меток",
+      "timestampOffsetSubtitle": "Смещение по умолчанию в минутах для генерируемых меток",
+      "resetTimestamps": "Сбросить метки",
+      "resetTimestampsConfirm": "Сбросить все временные метки к значениям по умолчанию?",
+      "resetTimestampsSuccess": "Временные метки сброшены",
+      "saveAfterReset": "Сохранить изменения",
+      "saveAfterResetConfirm": "Сохранить изменения после сброса меток?"
 }

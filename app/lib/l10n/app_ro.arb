@@ -570,6 +570,13 @@
      "@translationsOnlyLoaded": {"placeholders": {"count": {"type": "int"}}},
      "pleaseSetDeepSeekApiKey": "Setați cheia API DeepSeek în setări",
      "lyricsGeneratedSuccessfullyMsg": "Versuri generate cu succes",
-     "exportShareSubject": "LingoTune export: {title} cu versuri și traduceri",
-     "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}}
+      "exportShareSubject": "LingoTune export: {title} cu versuri și traduceri",
+      "@exportShareSubject": {"placeholders": {"title": {"type": "String"}}},
+      "timestampOffset": "Decalaj marcaje temporale",
+      "timestampOffsetSubtitle": "Decalaj implicit în minute pentru marcajele generate",
+      "resetTimestamps": "Resetează marcajele",
+      "resetTimestampsConfirm": "Resetați toate marcajele la valorile implicite?",
+      "resetTimestampsSuccess": "Marcajele au fost resetate",
+      "saveAfterReset": "Salvează modificările",
+      "saveAfterResetConfirm": "Salvați modificările după resetarea marcajelor?"
 }

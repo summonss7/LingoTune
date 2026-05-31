@@ -1,6 +1,6 @@
 @echo off
 echo ====================================
-echo Building LingoTune-v3.84.0 APK
+echo Building LingoTune-v4.6.12 APK
 echo ====================================
 
 cd app
@@ -35,11 +35,11 @@ echo ====================================
 echo Copying APK to builds folder
 echo ====================================
 if not exist "..\builds" mkdir "..\builds"
-copy /Y "build\app\outputs\flutter-apk\app-release.apk" "..\builds\LingoTune-v3.84.0.apk"
+copy /Y "build\app\outputs\flutter-apk\app-release.apk" "..\builds\LingoTune-v4.6.12.apk"
 
 echo.
 echo ====================================
 echo BUILD SUCCESSFUL!
-echo APK: D:\ProjectAI\LingoTune\builds\LingoTune-v3.84.0.apk
+echo APK: D:\Ai-Projects\LingoTune\builds\LingoTune-v4.6.12.apk
 echo ====================================
 pause

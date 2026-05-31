@@ -11,8 +11,8 @@ import zipfile
 from typing import List, Dict, Tuple
 
 # Configuration
-INPUT_DIR = r"D:\ProjectAI\LingoTune\input"
-OUTPUT_DIR = r"D:\ProjectAI\LingoTune\output"
+INPUT_DIR = r"D:\Ai-Projects\LingoTune\input"
+OUTPUT_DIR = r"D:\Ai-Projects\LingoTune\output"
 TIMING_STEP = 5.0
 START_MINUTE = 30.0
 
