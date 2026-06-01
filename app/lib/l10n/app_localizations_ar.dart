@@ -1827,4 +1827,16 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get saveAfterResetConfirm => 'حفظ التغييرات بعد إعادة التعيين؟';
+
+  @override
+  String get repeatOff => 'إيقاف التكرار';
+
+  @override
+  String get repeatAll => 'تكرار الكل';
+
+  @override
+  String get repeatOne => 'تكرار واحد';
+
+  @override
+  String get repeatAllPlaylists => 'تكرار جميع قوائم التشغيل';
 }

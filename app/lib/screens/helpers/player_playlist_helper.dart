@@ -68,6 +68,7 @@ class PlayerPlaylistHelper {
     LoopMode loopMode,
     dynamic audioService,
     Function playSong,
+    Function? playNextPlaylist,
   ) async {
     if (playlistSongs == null || playlistSongs!.isEmpty) {
       return;
@@ -95,6 +96,8 @@ class PlayerPlaylistHelper {
         await playSong(nextSong);
       } else if (loopMode == LoopMode.all && playlistSongs!.isNotEmpty) {
         await playSong(playlistSongs!.first);
+      } else if (loopMode == LoopMode.allPlaylists && playNextPlaylist != null) {
+        await playNextPlaylist();
       }
     }
   }
@@ -124,7 +127,7 @@ class PlayerPlaylistHelper {
     if (playlistSongs == null || playlistSongs!.isEmpty) {
       return false;
     }
-    if (loopMode == LoopMode.one || loopMode == LoopMode.all) {
+    if (loopMode == LoopMode.one || loopMode == LoopMode.all || loopMode == LoopMode.allPlaylists) {
       return true;
     }
     if (isShuffleEnabled) {

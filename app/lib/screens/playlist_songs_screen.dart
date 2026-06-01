@@ -551,6 +551,149 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
     }
   }
 
+  Widget _buildSongList() {
+    final l10n = AppLocalizations.of(context)!;
+    return ValueListenableBuilder<String?>(
+      valueListenable: widget.audioService.currentSongIdNotifier,
+      builder: (context, currentSongId, _) {
+        return ReorderableListView.builder(
+          proxyDecorator: (child, index, animation) {
+            return AnimatedBuilder(
+              animation: animation,
+              builder: (BuildContext context, Widget? child) {
+                return Transform.translate(
+                  offset: Offset(0, 50 * animation.value),
+                  child: child,
+                );
+              },
+              child: child,
+            );
+          },
+          onReorder: (oldIndex, newIndex) {
+            if (_isReorderMode) {
+              _onReorder(oldIndex, newIndex);
+            }
+          },
+          padding: const EdgeInsets.all(16),
+          itemCount: _songs.length,
+          itemBuilder: (context, index) {
+            final song = _songs[index];
+            final isSelected = _selectedSongs.containsKey(song.id);
+            final isCurrentlyPlaying = song.id == currentSongId;
+            return Card(
+              key: ValueKey(song.id),
+              margin: const EdgeInsets.only(bottom: 8),
+              color: isCurrentlyPlaying
+                  ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5)
+                  : null,
+              shape: isCurrentlyPlaying
+                  ? RoundedRectangleBorder(
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                    )
+                  : null,
+              child: ListTile(
+                leading: _isSelectionMode
+                    ? Checkbox(
+                        value: isSelected,
+                        onChanged: (_) => _toggleSongSelection(song),
+                      )
+                    : Stack(
+                        children: [
+                          CoverArtService.buildCoverArtWidget(
+                            title: song.title,
+                            coverArtPath: song.coverArtPath,
+                            coverArtVersion: song.coverArtVersion,
+                            size: 56,
+                          ),
+                          if (isCurrentlyPlaying)
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.graphic_eq,
+                                  color: Theme.of(context).colorScheme.onPrimary,
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                          if (!widget.playlist.isSystem)
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: () => _editCoverArt(song),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  padding: const EdgeInsets.all(4),
+                                  child: const Icon(
+                                    Icons.edit,
+                                    size: 12,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                title: Text(
+                  song.title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isCurrentlyPlaying
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+                ),
+                subtitle: Text(song.artist),
+                trailing: _isSelectionMode
+                    ? null
+                    : _isReorderMode
+                        ? const Icon(Icons.drag_handle)
+                        : !widget.playlist.isSystem
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.auto_awesome, color: _getGeneratorButtonColor(song)),
+                                    onPressed: () => _showGenerateDialog(song),
+                                    tooltip: l10n.generateLyrics,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.remove_circle),
+                                    onPressed: () => _removeSong(song),
+                                    color: Colors.red,
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.auto_awesome, color: _getGeneratorButtonColor(song)),
+                                    onPressed: () => _showGenerateDialog(song),
+                                    tooltip: l10n.generateLyrics,
+                                  ),
+                                  const Icon(Icons.play_arrow),
+                                ],
+                              ),
+                onTap: _isSelectionMode ? () => _toggleSongSelection(song) : () => _playSong(song),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -660,150 +803,48 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
       ),
       body: Column(
         children: [
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-          : _isImporting
-              ? Center(
-                   child: Column(
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+             : _isImporting
+                 ? Center(
+                      child: Column(
+                         mainAxisAlignment: MainAxisAlignment.center,
+                         children: [
+                           const CircularProgressIndicator(),
+                           const SizedBox(height: 16),
+                           Text(l10n.importingSongs),
+                         ],
+                       ),
+                    )
+                : _songs.isEmpty
+                    ? Center(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const CircularProgressIndicator(),
+                        Icon(
+                          Icons.music_note,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                        ),
                         const SizedBox(height: 16),
-                        Text(l10n.importingSongs),
+                        Text(
+                          l10n.noSongsInPlaylist,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.addSongsFromLibraryHint,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                             ),
+                        ),
                       ],
                     ),
-                 )
-              : _songs.isEmpty
-                  ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.music_note,
-                        size: 64,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                       const SizedBox(height: 16),
-                       Text(
-                         l10n.noSongsInPlaylist,
-                         style: Theme.of(context).textTheme.titleLarge,
-                       ),
-                       const SizedBox(height: 8),
-                       Text(
-                         l10n.addSongsFromLibraryHint,
-                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                               color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                       ),
-                     ],
-                   ),
-                 )
-              : ReorderableListView.builder(
-                  proxyDecorator: (child, index, animation) {
-                    return AnimatedBuilder(
-                      animation: animation,
-                      builder: (BuildContext context, Widget? child) {
-                        return Transform.translate(
-                          offset: Offset(0, 50 * animation.value),
-                          child: child,
-                        );
-                      },
-                      child: child,
-                    );
-                  },
-                  onReorder: (oldIndex, newIndex) {
-                    if (_isReorderMode) {
-                      _onReorder(oldIndex, newIndex);
-                    }
-                  },
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _songs.length,
-                  itemBuilder: (context, index) {
-                    final song = _songs[index];
-                    final isSelected = _selectedSongs.containsKey(song.id);
-                    return Card(
-                      key: ValueKey(song.id),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: _isSelectionMode
-                            ? Checkbox(
-                                value: isSelected,
-                                onChanged: (_) => _toggleSongSelection(song),
-                              )
-                            : Stack(
-                                children: [
-                                  CoverArtService.buildCoverArtWidget(
-                                    title: song.title,
-                                    coverArtPath: song.coverArtPath,
-                                    coverArtVersion: song.coverArtVersion,
-                                    size: 56,
-                                  ),
-                                  if (!widget.playlist.isSystem)
-                                    Positioned(
-                                      bottom: 0,
-                                      right: 0,
-                                      child: GestureDetector(
-                                        onTap: () => _editCoverArt(song),
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(context).colorScheme.primary,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          padding: const EdgeInsets.all(4),
-                                          child: const Icon(
-                                            Icons.edit,
-                                            size: 12,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                        title: Text(
-                          song.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(song.artist),
-                        trailing: _isSelectionMode
-                            ? null
-                            : _isReorderMode
-                                ? const Icon(Icons.drag_handle)
-                                : !widget.playlist.isSystem
-                                     ? Row(
-                                           mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              IconButton(
-                                                icon: Icon(Icons.auto_awesome, color: _getGeneratorButtonColor(song)),
-                                                onPressed: () => _showGenerateDialog(song),
-                                                tooltip: l10n.generateLyrics,
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(Icons.remove_circle),
-                                                onPressed: () => _removeSong(song),
-                                                color: Colors.red,
-                                              ),
-                                           ],
-                                         )
-                                        : Row(
-                                           mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              IconButton(
-                                                icon: Icon(Icons.auto_awesome, color: _getGeneratorButtonColor(song)),
-                                                onPressed: () => _showGenerateDialog(song),
-                                                tooltip: l10n.generateLyrics,
-                                              ),
-                                             const Icon(Icons.play_arrow),
-                                          ],
-                                       ),
-                         onTap: _isSelectionMode ? () => _toggleSongSelection(song) : () => _playSong(song),
-                       ),
-                     );
-                   },
-                 ),
-          ),
-          ListenableBuilder(
+                  )
+                : _buildSongList(),
+           ),
+           ListenableBuilder(
             listenable: widget.audioService,
             builder: (context, _) => MiniPlayerWidget(
               audioService: widget.audioService,

@@ -20,6 +20,7 @@ class AudioService extends ChangeNotifier {
   BackgroundAudioHandler? _backgroundHandler;
   List<Song>? _currentPlaylist;
   Song? _currentSong;
+  final ValueNotifier<String?> currentSongIdNotifier = ValueNotifier(null);
 
   StreamSubscription? _playbackEventSubscription;
   StreamSubscription? _positionSubscription;
@@ -205,6 +206,9 @@ class AudioService extends ChangeNotifier {
         _loopMode = LoopMode.one;
         break;
       case LoopMode.one:
+        _loopMode = LoopMode.allPlaylists;
+        break;
+      case LoopMode.allPlaylists:
         _loopMode = LoopMode.off;
         break;
     }
@@ -302,6 +306,7 @@ class AudioService extends ChangeNotifier {
 
   void setCurrentSong(Song song) {
     _currentSong = song;
+    currentSongIdNotifier.value = song.id;
     debugPrint('✓ AudioService: Current song set to: ${song.title}');
   }
 
@@ -324,6 +329,7 @@ class AudioService extends ChangeNotifier {
 
     await loadAudio(song.audioPath);
     _currentSong = song;
+    currentSongIdNotifier.value = song.id;
     notifyListeners();
 
     if (_backgroundHandler != null) {
@@ -408,6 +414,7 @@ class AudioService extends ChangeNotifier {
     _playerStateSubscription?.cancel();
     _player.dispose();
     _backgroundHandler?.stop();
+    currentSongIdNotifier.dispose();
     super.dispose();
   }
 }

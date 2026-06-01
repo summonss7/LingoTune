@@ -578,5 +578,9 @@
       "resetTimestampsConfirm": "Réinitialiser tous les horodatages aux valeurs par défaut ?",
       "resetTimestampsSuccess": "Horodatages réinitialisés aux valeurs par défaut",
       "saveAfterReset": "Enregistrer les modifications",
-      "saveAfterResetConfirm": "Enregistrer les modifications après la réinitialisation ?"
+      "saveAfterResetConfirm": "Enregistrer les modifications après la réinitialisation ?",
+      "repeatOff": "Répétition désactivée",
+      "repeatAll": "Répéter tout",
+      "repeatOne": "Répéter un",
+      "repeatAllPlaylists": "Répéter toutes les listes"
 }

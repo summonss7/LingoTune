@@ -1827,4 +1827,16 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get saveAfterResetConfirm => 'Salvați modificările după resetarea marcajelor?';
+
+  @override
+  String get repeatOff => 'Repetare dezactivată';
+
+  @override
+  String get repeatAll => 'Repetă tot';
+
+  @override
+  String get repeatOne => 'Repetă unul';
+
+  @override
+  String get repeatAllPlaylists => 'Repetă toate listele';
 }

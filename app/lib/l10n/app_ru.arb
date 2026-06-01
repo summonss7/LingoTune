@@ -673,5 +673,9 @@
       "resetTimestampsConfirm": "Сбросить все временные метки к значениям по умолчанию?",
       "resetTimestampsSuccess": "Временные метки сброшены",
       "saveAfterReset": "Сохранить изменения",
-      "saveAfterResetConfirm": "Сохранить изменения после сброса меток?"
+      "saveAfterResetConfirm": "Сохранить изменения после сброса меток?",
+      "repeatOff": "Повтор выкл",
+      "repeatAll": "Повтор всех",
+      "repeatOne": "Повтор одной",
+      "repeatAllPlaylists": "Повтор всех плейлистов"
 }

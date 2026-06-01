@@ -578,5 +578,9 @@
       "resetTimestampsConfirm": "Resetați toate marcajele la valorile implicite?",
       "resetTimestampsSuccess": "Marcajele au fost resetate",
       "saveAfterReset": "Salvează modificările",
-      "saveAfterResetConfirm": "Salvați modificările după resetarea marcajelor?"
+      "saveAfterResetConfirm": "Salvați modificările după resetarea marcajelor?",
+      "repeatOff": "Repetare dezactivată",
+      "repeatAll": "Repetă tot",
+      "repeatOne": "Repetă unul",
+      "repeatAllPlaylists": "Repetă toate listele"
 }

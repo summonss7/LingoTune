@@ -1827,4 +1827,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get saveAfterResetConfirm => 'Save changes after resetting timestamps?';
+
+  @override
+  String get repeatOff => 'Repeat off';
+
+  @override
+  String get repeatAll => 'Repeat all';
+
+  @override
+  String get repeatOne => 'Repeat one';
+
+  @override
+  String get repeatAllPlaylists => 'Repeat all playlists';
 }

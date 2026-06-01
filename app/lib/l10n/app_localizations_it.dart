@@ -1827,4 +1827,16 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get saveAfterResetConfirm => 'Salvare le modifiche dopo il ripristino dei timestamp?';
+
+  @override
+  String get repeatOff => 'Ripetizione disattivata';
+
+  @override
+  String get repeatAll => 'Ripeti tutto';
+
+  @override
+  String get repeatOne => 'Ripeti uno';
+
+  @override
+  String get repeatAllPlaylists => 'Ripeti tutte le playlist';
 }

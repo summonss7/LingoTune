@@ -3436,6 +3436,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save changes after resetting timestamps?'**
   String get saveAfterResetConfirm;
+
+  /// No description provided for @repeatOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat off'**
+  String get repeatOff;
+
+  /// No description provided for @repeatAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat all'**
+  String get repeatAll;
+
+  /// No description provided for @repeatOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat one'**
+  String get repeatOne;
+
+  /// No description provided for @repeatAllPlaylists.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat all playlists'**
+  String get repeatAllPlaylists;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

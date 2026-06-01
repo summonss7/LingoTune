@@ -1827,4 +1827,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get saveAfterResetConfirm => 'Сохранить изменения после сброса меток?';
+
+  @override
+  String get repeatOff => 'Повтор выкл';
+
+  @override
+  String get repeatAll => 'Повтор всех';
+
+  @override
+  String get repeatOne => 'Повтор одной';
+
+  @override
+  String get repeatAllPlaylists => 'Повтор всех плейлистов';
 }

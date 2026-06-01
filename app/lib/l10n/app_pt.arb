@@ -578,5 +578,9 @@
       "resetTimestampsConfirm": "Redefinir todas as marcas de tempo para os valores padrão?",
       "resetTimestampsSuccess": "Marcas de tempo redefinidas",
       "saveAfterReset": "Salvar alterações",
-      "saveAfterResetConfirm": "Salvar alterações após redefinir as marcas?"
+      "saveAfterResetConfirm": "Salvar alterações após redefinir as marcas?",
+      "repeatOff": "Repetição desativada",
+      "repeatAll": "Repetir tudo",
+      "repeatOne": "Repetir uma",
+      "repeatAllPlaylists": "Repetir todas as listas"
 }

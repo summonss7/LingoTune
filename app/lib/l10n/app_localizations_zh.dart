@@ -1827,4 +1827,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get saveAfterResetConfirm => '重置后保存更改？';
+
+  @override
+  String get repeatOff => '重复关闭';
+
+  @override
+  String get repeatAll => '重复全部';
+
+  @override
+  String get repeatOne => '单曲循环';
+
+  @override
+  String get repeatAllPlaylists => '重复所有播放列表';
 }

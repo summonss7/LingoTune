@@ -68,7 +68,8 @@ app/lib/
 │   ├── playlist_service.dart   # Управление плейлистами
 │   ├── cover_art_service.dart   # Обложки альбомов
 │   ├── folder_config_service.dart # Конфигурация папок
-│   └── settings_export_service.dart # Экспорт настроек
+│   ├── settings_export_service.dart # Экспорт настроек
+│   └── export_import_service.dart # Экспорт/импорт
 │
 ├── screens/                     # Экраны приложения
 │   ├── main.dart               # Главный экран
@@ -94,6 +95,7 @@ app/lib/
 │   ├── selection_mode_actions.dart # Действия выбора
 │   ├── lyrics_search_dialog.dart # Поиск текстов
 │   ├── library_manager_widget.dart # Управление библиотекой
+│   ├── mini_player_widget.dart  # Мини-плеер
 │   └── settings/                # Виджеты настроек
 │       ├── settings_section.dart
 │       ├── api_key_tile.dart
@@ -101,7 +103,9 @@ app/lib/
 │       ├── language_settings_tile.dart
 │       ├── theme_settings_tile.dart
 │       ├── folder_settings_tile.dart
-│       └── font_size_control.dart
+│       ├── font_size_control.dart
+│       ├── vertical_focus_offset_slider.dart
+│       └── timestamp_offset_control.dart
 │
 ├── utils/                       # Утилиты и хелперы
 │   ├── snackbar_helper.dart     # Уведомления
@@ -195,10 +199,11 @@ class Playlist {
 - Воспроизведение/пауза/стоп
 - Перемотка
 - Переключение песен
-- Режимы повтора (off, all, one)
+- Режимы повтора (off, all, one, allPlaylists)
 - Перемешивание (shuffle)
 - Управление скоростью
 - Фоновое воспроизведение с уведомлением
+- `currentSongIdNotifier` — ValueNotifier для отслеживания текущей песни
 
 **Зависимости:** just_audio, audio_service, audio_session
 

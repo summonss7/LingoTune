@@ -264,6 +264,11 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   }
 
   Future<void> _playNextSong() async {
+    if (_loopMode == LoopMode.allPlaylists) {
+      await _playNextFromAllPlaylists();
+      return;
+    }
+    
     await _playerPlaylistHelper.playNextSong(
       widget.playlistSongs,
       _currentSong.id,
@@ -271,7 +276,54 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       _loopMode,
       widget.audioService,
       _playSong,
+      null,
     );
+  }
+
+  Future<void> _playNextFromAllPlaylists() async {
+    if (widget.playlistSongs == null || widget.playlistSongs!.isEmpty) {
+      return;
+    }
+
+    final currentIndex = widget.playlistSongs!.indexWhere((s) => s.id == _currentSong.id);
+    
+    if (currentIndex < widget.playlistSongs!.length - 1) {
+      await _playSong(widget.playlistSongs![currentIndex + 1]);
+    } else {
+      try {
+        final db = DatabaseService();
+        final playlists = await db.getAllPlaylists();
+        
+        if (playlists.isEmpty) {
+          return;
+        }
+
+        String currentPlaylistId = '';
+        if (widget.audioService.currentPlaylist != null && widget.audioService.currentPlaylist!.isNotEmpty) {
+          final firstSongId = widget.audioService.currentPlaylist!.first.id;
+          for (final p in playlists) {
+            final pSongs = await db.getSongsInPlaylist(p.id!);
+            if (pSongs.any((s) => s.id == firstSongId)) {
+              currentPlaylistId = p.id!;
+              break;
+            }
+          }
+        }
+
+        final currentPlaylistIndex = playlists.indexWhere((p) => p.id == currentPlaylistId);
+        final nextPlaylistIndex = (currentPlaylistIndex + 1) % playlists.length;
+        final nextPlaylist = playlists[nextPlaylistIndex];
+        
+        final nextPlaylistSongs = await db.getSongsInPlaylist(nextPlaylist.id!);
+        
+        if (nextPlaylistSongs.isNotEmpty) {
+          widget.audioService.setCurrentPlaylist(nextPlaylistSongs);
+          await _playSong(nextPlaylistSongs.first);
+        }
+      } catch (e) {
+        debugPrint('✗ Error playing from next playlist: $e');
+      }
+    }
   }
 
   bool _canPlayPrevious() {
@@ -284,6 +336,9 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   }
 
   bool _canPlayNext() {
+    if (_loopMode == LoopMode.allPlaylists) {
+      return true;
+    }
     return _playerPlaylistHelper.canPlayNext(
       widget.playlistSongs,
       _currentSong.id,
@@ -1053,6 +1108,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         icon = Icons.repeat_one;
         color = Theme.of(context).colorScheme.primary;
         break;
+      case LoopMode.allPlaylists:
+        icon = Icons.repeat;
+        color = Theme.of(context).colorScheme.primary;
+        break;
     }
 
     final localizations = AppLocalizations.of(context)!;
@@ -1071,15 +1130,36 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
               )
             : null,
       ),
-      child: IconButton(
-        icon: Icon(
-          icon,
-          color: color,
-          weight: isLoopEnabled ? 900 : 400,
-        ),
-        onPressed: _toggleLoop,
-        tooltip: localizations.repeat,
-        iconSize: iconSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          IconButton(
+            icon: Icon(
+              icon,
+              color: color,
+              weight: isLoopEnabled ? 900 : 400,
+            ),
+            onPressed: _toggleLoop,
+            tooltip: _loopMode == LoopMode.off
+                ? localizations.repeatOff
+                : _loopMode == LoopMode.all
+                    ? localizations.repeatAll
+                    : _loopMode == LoopMode.one
+                        ? localizations.repeatOne
+                        : localizations.repeatAllPlaylists,
+            iconSize: iconSize,
+          ),
+          if (_loopMode == LoopMode.allPlaylists)
+            Positioned(
+              right: 4,
+              bottom: 4,
+              child: Icon(
+                Icons.list,
+                size: 10,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1678,9 +1758,11 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                       initialData: Duration.zero,
                       builder: (context, durationSnapshot) {
                         final duration = durationSnapshot.data ?? Duration.zero;
+                        final maxMs = duration.inMilliseconds > 0 ? duration.inMilliseconds.toDouble() : 1.0;
+                        final valueMs = position.inMilliseconds.toDouble().clamp(0.0, maxMs);
                         return Slider(
-                          value: position.inMilliseconds.toDouble(),
-                          max: duration.inMilliseconds.toDouble(),
+                          value: valueMs,
+                          max: maxMs,
                           onChanged: (value) {
                             widget.audioService.seek(Duration(milliseconds: value.toInt()));
                           },

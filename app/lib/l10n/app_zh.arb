@@ -578,5 +578,9 @@
       "resetTimestampsConfirm": "将所有时间戳重置为默认值？",
       "resetTimestampsSuccess": "时间戳已重置为默认值",
       "saveAfterReset": "保存更改",
-      "saveAfterResetConfirm": "重置后保存更改？"
+      "saveAfterResetConfirm": "重置后保存更改？",
+      "repeatOff": "重复关闭",
+      "repeatAll": "重复全部",
+      "repeatOne": "单曲循环",
+      "repeatAllPlaylists": "重复所有播放列表"
 }

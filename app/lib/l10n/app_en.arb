@@ -674,5 +674,9 @@
       "resetTimestampsConfirm": "Reset all timestamps to default values?",
       "resetTimestampsSuccess": "Timestamps reset to default values",
       "saveAfterReset": "Save Changes",
-      "saveAfterResetConfirm": "Save changes after resetting timestamps?"
+      "saveAfterResetConfirm": "Save changes after resetting timestamps?",
+      "repeatOff": "Repeat off",
+      "repeatAll": "Repeat all",
+      "repeatOne": "Repeat one",
+      "repeatAllPlaylists": "Repeat all playlists"
 }

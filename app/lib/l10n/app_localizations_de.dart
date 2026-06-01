@@ -1827,4 +1827,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get saveAfterResetConfirm => 'Änderungen nach dem Zurücksetzen speichern?';
+
+  @override
+  String get repeatOff => 'Wiederholung aus';
+
+  @override
+  String get repeatAll => 'Alle wiederholen';
+
+  @override
+  String get repeatOne => 'Eines wiederholen';
+
+  @override
+  String get repeatAllPlaylists => 'Alle Wiedergabelisten wiederholen';
 }

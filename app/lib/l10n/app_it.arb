@@ -578,5 +578,9 @@
       "resetTimestampsConfirm": "Ripristinare tutti i timestamp ai valori predefiniti?",
       "resetTimestampsSuccess": "Timestamp ripristinati ai valori predefiniti",
       "saveAfterReset": "Salva modifiche",
-      "saveAfterResetConfirm": "Salvare le modifiche dopo il ripristino dei timestamp?"
+      "saveAfterResetConfirm": "Salvare le modifiche dopo il ripristino dei timestamp?",
+      "repeatOff": "Ripetizione disattivata",
+      "repeatAll": "Ripeti tutto",
+      "repeatOne": "Ripeti uno",
+      "repeatAllPlaylists": "Ripeti tutte le playlist"
 }

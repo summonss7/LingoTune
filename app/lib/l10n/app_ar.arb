@@ -578,5 +578,9 @@
       "resetTimestampsConfirm": "إعادة تعيين جميع الطوابع الزمنية إلى القيم الافتراضية؟",
       "resetTimestampsSuccess": "تم إعادة تعيين الطوابع الزمنية",
       "saveAfterReset": "حفظ التغييرات",
-      "saveAfterResetConfirm": "حفظ التغييرات بعد إعادة التعيين؟"
+      "saveAfterResetConfirm": "حفظ التغييرات بعد إعادة التعيين؟",
+      "repeatOff": "إيقاف التكرار",
+      "repeatAll": "تكرار الكل",
+      "repeatOne": "تكرار واحد",
+      "repeatAllPlaylists": "تكرار جميع قوائم التشغيل"
 }

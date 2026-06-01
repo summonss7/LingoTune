@@ -1827,4 +1827,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get saveAfterResetConfirm => '¿Guardar cambios después de restablecer las marcas?';
+
+  @override
+  String get repeatOff => 'Repetir desactivado';
+
+  @override
+  String get repeatAll => 'Repetir todo';
+
+  @override
+  String get repeatOne => 'Repetir uno';
+
+  @override
+  String get repeatAllPlaylists => 'Repetir todas las listas';
 }

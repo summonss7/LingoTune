@@ -578,5 +578,9 @@
       "resetTimestampsConfirm": "Alle Zeitstempel auf Standardwerte zurücksetzen?",
       "resetTimestampsSuccess": "Zeitstempel auf Standardwerte zurückgesetzt",
       "saveAfterReset": "Änderungen speichern",
-      "saveAfterResetConfirm": "Änderungen nach dem Zurücksetzen speichern?"
+      "saveAfterResetConfirm": "Änderungen nach dem Zurücksetzen speichern?",
+      "repeatOff": "Wiederholung aus",
+      "repeatAll": "Alle wiederholen",
+      "repeatOne": "Eines wiederholen",
+      "repeatAllPlaylists": "Alle Wiedergabelisten wiederholen"
 }

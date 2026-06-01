@@ -1827,4 +1827,16 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get saveAfterResetConfirm => 'Зберегти зміни після скидання міток?';
+
+  @override
+  String get repeatOff => 'Повтор вимкнено';
+
+  @override
+  String get repeatAll => 'Повторювати всі';
+
+  @override
+  String get repeatOne => 'Повторювати одну';
+
+  @override
+  String get repeatAllPlaylists => 'Повторювати всі плейлисти';
 }
