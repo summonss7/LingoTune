@@ -1839,4 +1839,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get repeatAllPlaylists => 'تكرار جميع قوائم التشغيل';
+
+  @override
+  String get playbackSpeed => 'سرعة التشغيل';
+
+  @override
+  String get speedNormal => 'عادي';
 }

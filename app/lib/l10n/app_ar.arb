@@ -582,5 +582,7 @@
       "repeatOff": "إيقاف التكرار",
       "repeatAll": "تكرار الكل",
       "repeatOne": "تكرار واحد",
-      "repeatAllPlaylists": "تكرار جميع قوائم التشغيل"
+      "repeatAllPlaylists": "تكرار جميع قوائم التشغيل",
+      "playbackSpeed": "سرعة التشغيل",
+      "speedNormal": "عادي"
 }

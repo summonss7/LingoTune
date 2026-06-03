@@ -1839,4 +1839,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get repeatAllPlaylists => '重复所有播放列表';
+
+  @override
+  String get playbackSpeed => '播放速度';
+
+  @override
+  String get speedNormal => '正常';
 }

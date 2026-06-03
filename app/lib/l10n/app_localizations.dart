@@ -3460,6 +3460,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Repeat all playlists'**
   String get repeatAllPlaylists;
+
+  /// No description provided for @playbackSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback Speed'**
+  String get playbackSpeed;
+
+  /// No description provided for @speedNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get speedNormal;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

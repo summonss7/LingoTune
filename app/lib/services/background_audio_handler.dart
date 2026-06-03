@@ -197,6 +197,10 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     }
   }
 
+  void setPlaybackSpeed(double speed) {
+    _player.setSpeed(speed);
+  }
+
   Future<void> setPlaylist(List<Song> playlist, int startIndex) async {
     final mediaItems = playlist.map((song) => audio_pkg.MediaItem(
       id: song.audioPath,

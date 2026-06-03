@@ -582,5 +582,7 @@
       "repeatOff": "Wiederholung aus",
       "repeatAll": "Alle wiederholen",
       "repeatOne": "Eines wiederholen",
-      "repeatAllPlaylists": "Alle Wiedergabelisten wiederholen"
+      "repeatAllPlaylists": "Alle Wiedergabelisten wiederholen",
+      "playbackSpeed": "Wiedergabegeschwindigkeit",
+      "speedNormal": "Normal"
 }

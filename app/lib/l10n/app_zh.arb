@@ -582,5 +582,7 @@
       "repeatOff": "重复关闭",
       "repeatAll": "重复全部",
       "repeatOne": "单曲循环",
-      "repeatAllPlaylists": "重复所有播放列表"
+      "repeatAllPlaylists": "重复所有播放列表",
+      "playbackSpeed": "播放速度",
+      "speedNormal": "正常"
 }

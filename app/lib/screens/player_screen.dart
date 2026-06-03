@@ -77,6 +77,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   final PlayerExportHelper _playerExportHelper = PlayerExportHelper();
 
   double _autoScrollFocusOffset = 0.0;
+  double _playbackSpeed = 1.0;
   bool _isFirstLoad = true;
   bool _isInBackground = false;
   bool _isReloading = false;
@@ -132,7 +133,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         widget.translationService.currentTranslation == null) {
       debugPrint('✓ Restoring currentTranslation from available translations');
       await _selectLanguageBasedOnSettings();
-      await _updateLyricsWithTranslations();
+      await _updateAllLyricsWithTranslations();
       if (mounted) setState(() {});
     }
   }
@@ -155,7 +156,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
     await _loadAllTranslations(_currentSong.id, _currentSong.title);
     await _selectLanguageBasedOnSettings();
-    await _updateLyricsWithTranslations();
+    await _updateAllLyricsWithTranslations();
     if (mounted) setState(() {});
   }
   
@@ -179,7 +180,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         
         await _loadAllTranslations(_currentSong.id, _currentSong.title);
         await _selectLanguageBasedOnSettings();
-        await _updateLyricsWithTranslations();
+        await _updateAllLyricsWithTranslations();
         if (mounted) setState(() {});
         
         debugPrint('=== Reloaded from DB ===');
@@ -409,7 +410,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
     await _selectLanguageBasedOnSettings();
 
-    await _updateLyricsWithTranslations();
+    await _updateAllLyricsWithTranslations();
 
     await widget.audioService.play();
 
@@ -445,6 +446,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     _currentSong = widget.song;
     _isShuffleEnabled = widget.audioService.isShuffleEnabled;
     _loopMode = widget.audioService.loopMode;
+    _playbackSpeed = widget.audioService.playbackSpeed;
     _loadSettings();
     _startPositionUpdates();
 
@@ -474,7 +476,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       }
 
       if (widget.translationService.translations.isNotEmpty) {
-        await _updateLyricsWithTranslations();
+        await _updateAllLyricsWithTranslations();
       }
       if (mounted) {
         setState(() {});
@@ -494,7 +496,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       await _loadAllTranslations(widget.song.id, widget.song.title);
     }
 
-    await _updateLyricsWithTranslations();
+    await _updateAllLyricsWithTranslations();
 
     if (_isShuffleEnabled && widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
       debugPrint('✓ Shuffle enabled on init, generating shuffled indices');
@@ -568,6 +570,16 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       widget.translationService,
       showTranscript: _cachedShowTranscription,
       focusIndex: widget.lyricsService.currentIndex,
+    );
+  }
+
+  Future<void> _updateAllLyricsWithTranslations() async {
+    _playerTranslationHelper.markDirty();
+    await _playerTranslationHelper.updateLyricsWithTranslations(
+      context,
+      widget.lyricsService.lyricLines,
+      widget.translationService,
+      showTranscript: _cachedShowTranscription,
     );
   }
 
@@ -759,14 +771,14 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
         await _loadAllTranslations(_currentSong.id, _currentSong.title);
         await _selectLanguageBasedOnSettings();
-        await _updateLyricsWithTranslations();
+        await _updateAllLyricsWithTranslations();
 
         if (mounted) setState(() {});
         return;
       }
     }
 
-    await _updateLyricsWithTranslations();
+    await _updateAllLyricsWithTranslations();
     if (mounted) setState(() {});
   }
 
@@ -818,10 +830,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
           // Загружаем все переводы для песни
           await _loadAllTranslations(_currentSong.id, _currentSong.title);
           
-          // Применяем переводы к текущим строкам
-          await _updateLyricsWithTranslations();
+          await _updateAllLyricsWithTranslations();
           
-          // Обновляем состояние UI
           setState(() {});
           
           debugPrint('=== After reloading ===');
@@ -910,7 +920,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
             await prefs.setBool('showTranscription', !show);
             _cachedShowTranscription = !show;
             _playerTranslationHelper.markDirty();
-            await _updateLyricsWithTranslations();
+            await _updateAllLyricsWithTranslations();
             setState(() {});
             if (mounted) {
               final l10n = AppLocalizations.of(context)!;
@@ -941,7 +951,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                 ),
               );
               if (saved == true) {
-                await _updateLyricsWithTranslations();
+                await _updateAllLyricsWithTranslations();
                 setState(() {});
               }
             } else if (value == 'add') {
@@ -1043,7 +1053,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                       final translation = widget.translationService.translations[index];
                       final db = DatabaseService();
                       await db.setSelectedLanguage(_currentSong.id, translation.language);
-                      await _updateLyricsWithTranslations();
+                      await _updateAllLyricsWithTranslations();
                       if (mounted) {
                         final l10n = AppLocalizations.of(context)!;
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -1160,6 +1170,90 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  void _showSpeedDialog() {
+    final speeds = [0.5, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 2.0];
+    final l10n = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(l10n.playbackSpeed),
+        children: speeds.map((speed) {
+          final isSelected = (speed - _playbackSpeed).abs() < 0.01;
+          return SimpleDialogOption(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _playbackSpeed = speed;
+              });
+              widget.audioService.setPlaybackRate(speed);
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  speed == 1.0
+                      ? '${speed}x (${l10n.speedNormal})'
+                      : '${speed}x',
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected
+                        ? Theme.of(this.context).colorScheme.primary
+                        : null,
+                  ),
+                ),
+                if (isSelected)
+                  Icon(
+                    Icons.check,
+                    color: Theme.of(this.context).colorScheme.primary,
+                    size: 20,
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSpeedButton({double iconSize = 32.0}) {
+    final isNotDefault = (_playbackSpeed - 1.0).abs() > 0.01;
+    final speedText = _playbackSpeed == 1.0
+        ? '1x'
+        : '${_playbackSpeed.toStringAsFixed(_playbackSpeed == _playbackSpeed.roundToDouble() ? 1 : 2)}x';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isNotDefault
+            ? Theme.of(context).colorScheme.primaryContainer
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: isNotDefault
+            ? Border.all(
+                color: Theme.of(context).colorScheme.primary,
+                width: 2,
+              )
+            : null,
+      ),
+      child: IconButton(
+        icon: Text(
+          speedText,
+          style: TextStyle(
+            fontSize: iconSize * 0.45,
+            fontWeight: FontWeight.bold,
+            color: isNotDefault
+                ? Theme.of(context).colorScheme.primary
+                : null,
+          ),
+        ),
+        onPressed: _showSpeedDialog,
+        tooltip: AppLocalizations.of(context)!.playbackSpeed,
+        iconSize: iconSize,
+        padding: const EdgeInsets.all(4.0),
       ),
     );
   }
@@ -1286,7 +1380,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       if (lrcFound > 0 && lrcPath != null) {
         await db.updateSongLrcPath(_currentSong.id, lrcPath);
         await widget.lyricsService.loadLrcFile(lrcPath);
-        await _updateLyricsWithTranslations();
+        await _updateAllLyricsWithTranslations();
         debugPrint('✓ LRC file loaded: $lrcPath');
 
         if (mounted) {
@@ -1299,7 +1393,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       if (translationsAdded > 0) {
         debugPrint('Reloading translations from database...');
         await _loadAllTranslations(_currentSong.id, _currentSong.title);
-        await _updateLyricsWithTranslations();
+        await _updateAllLyricsWithTranslations();
         debugPrint('✓ Translations attached to LRC lines');
 
         if (mounted) {
@@ -1564,7 +1658,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         debugPrint('✓ Added translation: ${translation.languageName} (${translation.language})');
       }
       
-      _updateLyricsWithTranslations();
+      _updateAllLyricsWithTranslations();
       
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
@@ -1922,6 +2016,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                           iconSize: iconSize,
                           padding: const EdgeInsets.all(4.0),
                         ),
+                        _buildSpeedButton(iconSize: iconSize),
                         IconButton(
                           icon: const Icon(Icons.skip_next),
                           onPressed: _canPlayNext() ? _playNextSong : null,
@@ -1987,7 +2082,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         type: currentTranslation.type,
       );
 
-      await _updateLyricsWithTranslations();
+      await _updateAllLyricsWithTranslations();
 
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;

@@ -582,5 +582,7 @@
       "repeatOff": "Повтор вимкнено",
       "repeatAll": "Повторювати всі",
       "repeatOne": "Повторювати одну",
-      "repeatAllPlaylists": "Повторювати всі плейлисти"
+      "repeatAllPlaylists": "Повторювати всі плейлисти",
+      "playbackSpeed": "Швидкість відтворення",
+      "speedNormal": "Звичайна"
 }

@@ -1839,4 +1839,10 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get repeatAllPlaylists => 'Repetă toate listele';
+
+  @override
+  String get playbackSpeed => 'Viteză de redare';
+
+  @override
+  String get speedNormal => 'Normală';
 }

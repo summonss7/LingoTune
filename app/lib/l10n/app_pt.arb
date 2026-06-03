@@ -582,5 +582,7 @@
       "repeatOff": "Repetição desativada",
       "repeatAll": "Repetir tudo",
       "repeatOne": "Repetir uma",
-      "repeatAllPlaylists": "Repetir todas as listas"
+      "repeatAllPlaylists": "Repetir todas as listas",
+      "playbackSpeed": "Velocidade de reprodução",
+      "speedNormal": "Normal"
 }

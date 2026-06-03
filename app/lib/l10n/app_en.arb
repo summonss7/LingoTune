@@ -678,5 +678,7 @@
       "repeatOff": "Repeat off",
       "repeatAll": "Repeat all",
       "repeatOne": "Repeat one",
-      "repeatAllPlaylists": "Repeat all playlists"
+      "repeatAllPlaylists": "Repeat all playlists",
+      "playbackSpeed": "Playback Speed",
+      "speedNormal": "Normal"
 }

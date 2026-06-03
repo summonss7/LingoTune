@@ -15,6 +15,7 @@ class AudioService extends ChangeNotifier {
   Duration _position = Duration.zero;
   LoopMode _loopMode = LoopMode.off;
   bool _isShuffleEnabled = false;
+  double _playbackSpeed = 1.0;
   List<int>? _shuffledIndices;
   Function()? onSongComplete;
   BackgroundAudioHandler? _backgroundHandler;
@@ -36,6 +37,7 @@ class AudioService extends ChangeNotifier {
   Duration get position => _position;
   LoopMode get loopMode => _loopMode;
   bool get isShuffleEnabled => _isShuffleEnabled;
+  double get playbackSpeed => _playbackSpeed;
   List<Song>? get currentPlaylist => _currentPlaylist;
   Song? get currentSong => _currentSong;
   List<int>? get shuffledPlaylist => _shuffledIndices;
@@ -51,7 +53,8 @@ class AudioService extends ChangeNotifier {
       final loopIndex = prefs.getInt('loopMode') ?? 0;
       _loopMode = LoopMode.values[loopIndex.clamp(0, LoopMode.values.length - 1)];
       _isShuffleEnabled = prefs.getBool('isShuffleEnabled') ?? false;
-      debugPrint('✓ AudioService: Loaded playback settings - loop: $_loopMode, shuffle: $_isShuffleEnabled');
+      _playbackSpeed = prefs.getDouble('playbackSpeed') ?? 1.0;
+      debugPrint('✓ AudioService: Loaded playback settings - loop: $_loopMode, shuffle: $_isShuffleEnabled, speed: $_playbackSpeed');
     } catch (e) {
       debugPrint('✗ Error loading playback settings: $e');
     }
@@ -62,6 +65,7 @@ class AudioService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('loopMode', _loopMode.index);
       await prefs.setBool('isShuffleEnabled', _isShuffleEnabled);
+      await prefs.setDouble('playbackSpeed', _playbackSpeed);
     } catch (e) {
       debugPrint('✗ Error saving playback settings: $e');
     }
@@ -107,6 +111,7 @@ class AudioService extends ChangeNotifier {
       
       if (_backgroundHandler != null) {
         await _backgroundHandler!.loadSong(audioPath);
+        _backgroundHandler!.setPlaybackSpeed(_playbackSpeed);
         debugPrint('✓ AudioService: Loaded audio in BackgroundHandler');
       } else {
         debugPrint('⚠ AudioService: BackgroundHandler is null, loading in local player');
@@ -117,6 +122,7 @@ class AudioService extends ChangeNotifier {
         }
       }
       _isInitialized = true;
+      _player.setSpeed(_playbackSpeed);
       notifyListeners();
     } catch (e) {
       debugPrint('✗ Error loading audio: $e');
@@ -194,7 +200,11 @@ class AudioService extends ChangeNotifier {
   }
 
   void setPlaybackRate(double rate) {
+    _playbackSpeed = rate;
     _player.setSpeed(rate);
+    _backgroundHandler?.setPlaybackSpeed(rate);
+    _savePlaybackSettings();
+    notifyListeners();
   }
 
   void toggleLoop() {

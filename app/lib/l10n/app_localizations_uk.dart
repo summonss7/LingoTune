@@ -1839,4 +1839,10 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get repeatAllPlaylists => 'Повторювати всі плейлисти';
+
+  @override
+  String get playbackSpeed => 'Швидкість відтворення';
+
+  @override
+  String get speedNormal => 'Звичайна';
 }

@@ -1839,4 +1839,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get repeatAllPlaylists => 'Repetir todas as listas';
+
+  @override
+  String get playbackSpeed => 'Velocidade de reprodução';
+
+  @override
+  String get speedNormal => 'Normal';
 }
