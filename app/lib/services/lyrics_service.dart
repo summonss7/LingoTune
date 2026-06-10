@@ -5,9 +5,11 @@ import '../models/lyric_line.dart';
 class LyricsService extends ChangeNotifier {
   List<LyricLine> _lyricLines = [];
   int _currentIndex = -1;
+  double _positionOffset = 0.15;
 
   List<LyricLine> get lyricLines => _lyricLines;
   int get currentIndex => _currentIndex;
+  double get positionOffset => _positionOffset;
   LyricLine? get currentLyric =>
       _currentIndex >= 0 && _currentIndex < _lyricLines.length
           ? _lyricLines[_currentIndex]
@@ -81,9 +83,14 @@ class LyricsService extends ChangeNotifier {
     return lines;
   }
 
+  void setPositionOffset(double offset) {
+    _positionOffset = offset.clamp(0.0, 1.0);
+  }
+
   void updatePosition(double position) {
-    final newIndex = _findCurrentLineIndex(position);
-    
+    final adjustedPosition = position - _positionOffset;
+    final newIndex = _findCurrentLineIndex(adjustedPosition >= 0 ? adjustedPosition : 0.0);
+
     if (newIndex != _currentIndex) {
       _currentIndex = newIndex;
       notifyListeners();

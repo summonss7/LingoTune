@@ -81,6 +81,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   bool _isFirstLoad = true;
   bool _isInBackground = false;
   bool _isReloading = false;
+  bool _isSongLoading = false;
 
   List<Song> get playlistSongs => widget.playlistSongs ?? [];
 
@@ -367,70 +368,60 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   }
 
   Future<void> _playSong(Song song) async {
-    debugPrint('=== DEBUG: _playSong called for: ${song.title} ===');
-    debugPrint('Clearing old translations...');
-
-    widget.translationService.clear();
-
-    setState(() {
-    });
-
-    await widget.audioService.loadAudio(song.audioPath);
-
-    if (song.lrcPath != null && song.lrcPath!.isNotEmpty) {
-      await widget.lyricsService.loadLrcFile(song.lrcPath!);
+    if (_isSongLoading) {
+      debugPrint('⚠ _playSong: already loading another song, skipping: ${song.title}');
+      return;
     }
+    _isSongLoading = true;
+    _positionTimer?.cancel();
 
-    setState(() {
-      _currentSong = song;
-    });
+    try {
+      debugPrint('=== DEBUG: _playSong called for: ${song.title} ===');
 
-    debugPrint('Loading all translations for song: ${song.title}');
-    await _loadAllTranslations(song.id, song.title);
+      widget.translationService.clear();
 
-    debugPrint('Translations loaded: ${widget.translationService.translations.length} total');
-    for (int i = 0; i < widget.translationService.translations.length; i++) {
-      final t = widget.translationService.translations[i];
-      debugPrint('Translation $i: ${t.languageName} (${t.language}) type: ${t.type}');
-    }
+      if (song.lrcPath != null && song.lrcPath!.isNotEmpty) {
+        await widget.lyricsService.loadLrcFile(song.lrcPath!);
+      }
 
-    debugPrint('Transcript available: ${widget.translationService.transcriptTranslation != null}');
-    if (widget.translationService.transcriptTranslation != null) {
-    debugPrint('Transcript: ${widget.translationService.transcriptTranslation!.languageName} with ${widget.translationService.transcriptTranslation!.lines.length} lines');
-    }
+      setState(() {
+        _currentSong = song;
+        _lastScrolledIndex = -1;
+        _lastProcessedIndex = -1;
+        _lastProcessedLanguageIndex = -1;
+      });
 
-    final prefs = await SharedPreferences.getInstance();
-    final showTranscript = prefs.getBool('showTranscription') ?? false;
-    debugPrint('Show transcription setting: $showTranscript');
-
-    debugPrint('Loading saved language for song...');
-    final db = DatabaseService();
-    final savedLanguage = await db.getSelectedLanguage(song.id);
-    debugPrint('Saved language from database: $savedLanguage');
-
-    await _selectLanguageBasedOnSettings();
-
-    await _updateAllLyricsWithTranslations();
-
-    await widget.audioService.play();
-
-    final handler = widget.audioService.backgroundHandler;
-    if (handler != null) {
-      debugPrint('=== Updating background notification for: ${song.title} ===');
+      await _loadAllTranslations(song.id, song.title);
+      await _selectLanguageBasedOnSettings();
+      await _updateAllLyricsWithTranslations();
 
       widget.audioService.setCurrentSong(song);
 
-      if (widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
-        final currentIndex = widget.playlistSongs!.indexWhere((s) => s.id == song.id);
-        debugPrint('Calling playSong from BackgroundHandler with index: $currentIndex');
+      final handler = widget.audioService.backgroundHandler;
+      if (handler != null) {
+        debugPrint('=== Playing via BackgroundHandler: ${song.title} ===');
 
-        await handler.playSong(song, currentIndex >= 0 ? currentIndex : 0);
-        widget.audioService.setCurrentPlaylist(widget.playlistSongs!);
+        if (widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
+          final currentIndex = widget.playlistSongs!.indexWhere((s) => s.id == song.id);
+          final index = currentIndex >= 0 ? currentIndex : 0;
+
+          await handler.setPlaylist(widget.playlistSongs!, index);
+          widget.audioService.setCurrentPlaylist(widget.playlistSongs!);
+
+          await handler.playSong(song, index);
+        } else {
+          await handler.playSong(song, 0);
+        }
+
+        debugPrint('✓ Background: playing ${song.title}');
+      } else {
+        debugPrint('=== Playing via local player: ${song.title} ===');
+        await widget.audioService.loadAudio(song.audioPath);
+        await widget.audioService.play();
       }
-
-      debugPrint('✓ Background notification updated');
-    } else {
-      debugPrint('⚠ Background handler is null, notification may not appear');
+    } finally {
+      _isSongLoading = false;
+      _startPositionUpdates();
     }
   }
 
@@ -516,6 +507,15 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     widget.audioService.setCurrentSong(widget.song);
     if (widget.audioService.backgroundHandler != null) {
       debugPrint('✓ Background handler is active');
+
+      widget.audioService.backgroundHandler!.onSkipToNextRequested = () {
+        debugPrint('✓ PlayerScreen: skipToNext from notification');
+        if (mounted) _playNextSong();
+      };
+      widget.audioService.backgroundHandler!.onSkipToPreviousRequested = () {
+        debugPrint('✓ PlayerScreen: skipToPrevious from notification');
+        if (mounted) _playPreviousSong();
+      };
 
       if (widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
         final currentIndex = widget.playlistSongs!.indexWhere((s) => s.id == widget.song.id);
@@ -787,6 +787,13 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     WidgetsBinding.instance.removeObserver(this);
     _positionTimer?.cancel();
     _scrollController.dispose();
+
+    final handler = widget.audioService.backgroundHandler;
+    if (handler != null) {
+      handler.onSkipToNextRequested = null;
+      handler.onSkipToPreviousRequested = null;
+    }
+
     super.dispose();
   }
 

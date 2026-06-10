@@ -16,6 +16,8 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   Function(bool)? onShuffleToggled;
   Function(LoopMode)? onLoopToggled;
+  Function()? onSkipToNextRequested;
+  Function()? onSkipToPreviousRequested;
 
   StreamSubscription? _playbackEventSubscription;
   StreamSubscription? _positionSubscription;
@@ -220,7 +222,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     try {
       final session = await AudioSession.instance;
       await session.setActive(true);
-      
+
       if (song.audioPath.startsWith('content://')) {
         await _player.setUrl(song.audioPath);
       } else {
@@ -252,6 +254,35 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       _syncPlaybackState();
     } catch (e) {
       debugPrint('✗ BackgroundAudioHandler: Error playing song: $e');
+    }
+  }
+
+  Future<void> updateNotification(Song song, int index) async {
+    try {
+      final duration = _player.duration ?? Duration.zero;
+
+      final newMediaItem = audio_pkg.MediaItem(
+        id: song.audioPath,
+        title: song.title,
+        artist: song.artist,
+        artUri: song.coverArtPath != null ? Uri.file(song.coverArtPath!) : null,
+        duration: duration,
+      );
+
+      mediaItem.add(newMediaItem);
+
+      final queueList = queue.value;
+      if (index >= 0 && index < queueList.length) {
+        playbackState.add(playbackState.value.copyWith(queueIndex: index));
+
+        final updatedQueue = queueList[index].copyWith(duration: duration);
+        queueList[index] = updatedQueue;
+        queue.add(queueList);
+      }
+
+      debugPrint('✓ BackgroundAudioHandler: Notification updated for: ${song.title}');
+    } catch (e) {
+      debugPrint('✗ BackgroundAudioHandler: Error updating notification: $e');
     }
   }
 
@@ -344,31 +375,34 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   @override
   Future<void> skipToNext() async {
-    final queueList = queue.value;
-    final currentIndex = playbackState.value.queueIndex ?? 0;
-
-    if (queueList.isEmpty) {
+    if (onSkipToNextRequested != null) {
+      debugPrint('✓ BackgroundAudioHandler: skipToNext → delegating to PlayerScreen');
+      onSkipToNextRequested!();
       return;
     }
-
+    debugPrint('⚠ BackgroundAudioHandler: skipToNext — no callback, using fallback');
+    final queueList = queue.value;
+    final currentIndex = playbackState.value.queueIndex ?? 0;
+    if (queueList.isEmpty) return;
     final nextIndex = (currentIndex + 1) % queueList.length;
     await skipToQueueItem(nextIndex);
   }
 
   @override
   Future<void> skipToPrevious() async {
-    final queueList = queue.value;
-    final currentIndex = playbackState.value.queueIndex ?? 0;
-
-    if (queueList.isEmpty) {
+    if (onSkipToPreviousRequested != null) {
+      debugPrint('✓ BackgroundAudioHandler: skipToPrevious → delegating to PlayerScreen');
+      onSkipToPreviousRequested!();
       return;
     }
-
+    debugPrint('⚠ BackgroundAudioHandler: skipToPrevious — no callback, using fallback');
+    final queueList = queue.value;
+    final currentIndex = playbackState.value.queueIndex ?? 0;
+    if (queueList.isEmpty) return;
     if (_player.position.inSeconds > 3) {
       await seek(Duration.zero);
       return;
     }
-
     final previousIndex = (currentIndex - 1 + queueList.length) % queueList.length;
     await skipToQueueItem(previousIndex);
   }
