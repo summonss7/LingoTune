@@ -31,6 +31,7 @@ class SettingsProvider with ChangeNotifier {
   bool _addToLibraryWhenAddingToPlaylist = false;
   bool _showVerticalSlider = false;
   double _defaultTimestampOffset = 1800.0;
+  double _lyricsPositionOffset = 0.15;
 
   double get fontSize => _fontSize;
   String get defaultTranslationLanguage => _defaultTranslationLanguage;
@@ -60,6 +61,7 @@ class SettingsProvider with ChangeNotifier {
   bool get addToLibraryWhenAddingToPlaylist => _addToLibraryWhenAddingToPlaylist;
   bool get showVerticalSlider => _showVerticalSlider;
   double get defaultTimestampOffset => _defaultTimestampOffset;
+  double get lyricsPositionOffset => _lyricsPositionOffset;
 
   Future<void> loadSettings() async {
     debugPrint('=== SettingsProvider: Loading settings ===');
@@ -129,6 +131,7 @@ class SettingsProvider with ChangeNotifier {
       _addToLibraryWhenAddingToPlaylist = prefs.getBool('addToLibraryWhenAddingToPlaylist') ?? false;
       _showVerticalSlider = prefs.getBool('showVerticalSlider') ?? false;
       _defaultTimestampOffset = prefs.getDouble('defaultTimestampOffset') ?? 1800.0;
+      _lyricsPositionOffset = prefs.getDouble('lyricsPositionOffset') ?? 0.15;
 
       debugPrint('Font size: $_fontSize');
       debugPrint('Translation language: $_defaultTranslationLanguage');
@@ -155,6 +158,7 @@ class SettingsProvider with ChangeNotifier {
       debugPrint('Add to library when adding to playlist: $_addToLibraryWhenAddingToPlaylist');
       debugPrint('Show vertical slider: $_showVerticalSlider');
       debugPrint('Default timestamp offset: $_defaultTimestampOffset (${(_defaultTimestampOffset / 60).toInt()} min)');
+      debugPrint('Lyrics position offset: $_lyricsPositionOffset s');
 
       notifyListeners();
       debugPrint('Settings loaded and notified listeners');
@@ -465,6 +469,17 @@ class SettingsProvider with ChangeNotifier {
     debugPrint('Default timestamp offset updated and notified listeners');
   }
 
+  Future<void> setLyricsPositionOffset(double value) async {
+    debugPrint('=== SettingsProvider: Setting lyrics position offset ===');
+    debugPrint('Old: $_lyricsPositionOffset s, New: $value s');
+
+    _lyricsPositionOffset = value;
+    await _save();
+    notifyListeners();
+
+    debugPrint('Lyrics position offset updated and notified listeners');
+  }
+
   Future<void> _save() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -496,6 +511,7 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setBool('addToLibraryWhenAddingToPlaylist', _addToLibraryWhenAddingToPlaylist);
       await prefs.setBool('showVerticalSlider', _showVerticalSlider);
       await prefs.setDouble('defaultTimestampOffset', _defaultTimestampOffset);
+      await prefs.setDouble('lyricsPositionOffset', _lyricsPositionOffset);
       await prefs.setString('settingsVersion', '4.2.1');
       debugPrint('Settings saved to SharedPreferences');
     } catch (e) {

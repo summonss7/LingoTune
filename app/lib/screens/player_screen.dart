@@ -16,6 +16,7 @@ import '../models/loop_mode.dart';
 import '../services/audio_service.dart';
 import '../services/lyrics_service.dart';
 import '../services/translation_service.dart';
+import '../services/study_mode_service.dart';
 import '../services/settings_provider.dart';
 import '../services/export_import_service.dart';
 import '../services/database_service.dart';
@@ -54,7 +55,8 @@ class PlayerScreen extends StatefulWidget {
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+class _PlayerScreenState extends State<PlayerScreen>
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   Timer? _positionTimer;
   bool _highlightNextLine = true;
   bool _isEditMode = false;
@@ -71,10 +73,13 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   int _lastProcessedIndex = -1;
   int _lastProcessedLanguageIndex = -1;
 
-  final PlayerTranslationHelper _playerTranslationHelper = PlayerTranslationHelper();
+  final PlayerTranslationHelper _playerTranslationHelper =
+      PlayerTranslationHelper();
   final PlayerPlaylistHelper _playerPlaylistHelper = PlayerPlaylistHelper();
   final PlayerImportHelper _playerImportHelper = PlayerImportHelper();
   final PlayerExportHelper _playerExportHelper = PlayerExportHelper();
+
+  late final StudyModeService _studyModeService;
 
   double _autoScrollFocusOffset = 0.0;
   double _playbackSpeed = 1.0;
@@ -83,32 +88,51 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   bool _isReloading = false;
   bool _isSongLoading = false;
 
+  SettingsProvider? _settingsProvider;
+
   List<Song> get playlistSongs => widget.playlistSongs ?? [];
 
   @override
   bool get wantKeepAlive => true;
 
+  void _onSettingsChanged() {
+    final sp = _settingsProvider;
+    if (sp != null) {
+      widget.lyricsService.setPositionOffset(sp.lyricsPositionOffset);
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final sp = Provider.of<SettingsProvider>(context, listen: false);
+    if (_settingsProvider != sp) {
+      _settingsProvider?.removeListener(_onSettingsChanged);
+      _settingsProvider = sp;
+      _settingsProvider!.addListener(_onSettingsChanged);
+      widget.lyricsService.setPositionOffset(sp.lyricsPositionOffset);
+    }
     debugPrint('=== PlayerScreen: didChangeDependencies ===');
     debugPrint('Widget song: ${widget.song.title}');
     debugPrint('Current song: ${_currentSong.title}');
     debugPrint('AudioService song: ${widget.audioService.currentSong?.title}');
-    debugPrint('Lyrics lines in service: ${widget.lyricsService.lyricLines.length}');
-    debugPrint('Translations in service: ${widget.translationService.translations.length}');
+    debugPrint(
+        'Lyrics lines in service: ${widget.lyricsService.lyricLines.length}');
+    debugPrint(
+        'Translations in service: ${widget.translationService.translations.length}');
 
     if (_isReloading) {
       debugPrint('=== Skipping didChangeDependencies: reload in progress ===');
       return;
     }
-  
+
     if (_currentSong.id != widget.song.id) {
       final actualPlayingPath = widget.audioService.currentSong?.audioPath;
       if (actualPlayingPath != null &&
           actualPlayingPath != widget.song.audioPath &&
           actualPlayingPath == _currentSong.audioPath) {
-        debugPrint('=== Skipping didChangeDependencies: audioService plays _currentSong, not widget.song ===');
+        debugPrint(
+            '=== Skipping didChangeDependencies: audioService plays _currentSong, not widget.song ===');
         return;
       }
 
@@ -117,7 +141,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       _isShuffleEnabled = widget.audioService.isShuffleEnabled;
       _loopMode = widget.audioService.loopMode;
       _reloadSongDataWithSettings();
-    } else if (widget.song.lrcPath != _currentSong.lrcPath || widget.lyricsService.lyricLines.isEmpty) {
+    } else if (widget.song.lrcPath != _currentSong.lrcPath ||
+        widget.lyricsService.lyricLines.isEmpty) {
       debugPrint('=== Reloading because lrcPath changed OR lyrics empty ===');
       _reloadSongData();
     } else if (widget.translationService.translations.isEmpty) {
@@ -141,9 +166,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
   Future<void> _reloadSongDataWithSettings() async {
     await _loadSettings();
-    
+
     final prefs = await SharedPreferences.getInstance();
-    final defaultOffset = prefs.getDouble('defaultAutoScrollFocusOffset') ?? 50.0;
+    final defaultOffset =
+        prefs.getDouble('defaultAutoScrollFocusOffset') ?? 50.0;
     await prefs.setDouble('autoScrollFocusOffset', defaultOffset);
     if (!mounted) return;
     setState(() {
@@ -160,7 +186,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     await _updateAllLyricsWithTranslations();
     if (mounted) setState(() {});
   }
-  
+
   Future<void> _reloadSongData() async {
     if (_isReloading) {
       debugPrint('⚠ _reloadSongData already in progress, skipping');
@@ -170,23 +196,25 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     try {
       final db = DatabaseService();
       final updatedSong = await db.getSong(_currentSong.id);
-      
+
       if (updatedSong != null && mounted) {
         _currentSong = updatedSong;
-        
+
         if (_currentSong.lrcPath != null && _currentSong.lrcPath!.isNotEmpty) {
           debugPrint('Reloading LRC file from DB: ${_currentSong.lrcPath}');
           await widget.lyricsService.loadLrcFile(_currentSong.lrcPath!);
         }
-        
+
         await _loadAllTranslations(_currentSong.id, _currentSong.title);
         await _selectLanguageBasedOnSettings();
         await _updateAllLyricsWithTranslations();
         if (mounted) setState(() {});
-        
+
         debugPrint('=== Reloaded from DB ===');
-        debugPrint('Lyrics after reload: ${widget.lyricsService.lyricLines.length}');
-        debugPrint('Translations after reload: ${widget.translationService.translations.length}');
+        debugPrint(
+            'Lyrics after reload: ${widget.lyricsService.lyricLines.length}');
+        debugPrint(
+            'Translations after reload: ${widget.translationService.translations.length}');
       }
     } finally {
       _isReloading = false;
@@ -198,7 +226,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     super.deactivate();
     debugPrint('=== PlayerScreen: deactivate ===');
     debugPrint('Current song: ${_currentSong.title}');
-    debugPrint('Translations in service before deactivate: ${widget.translationService.translations.length}');
+    debugPrint(
+        'Translations in service before deactivate: ${widget.translationService.translations.length}');
   }
 
   String _getShortLanguageName(String languageName, String languageCode) {
@@ -240,7 +269,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     setState(() {
       _isShuffleEnabled = !_isShuffleEnabled;
       widget.audioService.toggleShuffle();
-      
+
       if (_isShuffleEnabled) {
         _generateShuffledIndices();
       }
@@ -252,6 +281,195 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       widget.audioService.toggleLoop();
       _loopMode = widget.audioService.loopMode;
     });
+  }
+
+  Future<void> _toggleStudyMode() async {
+    if (_studyModeService.isActive && !_studyModeService.isUserPaused) {
+      await _studyModeService.stop();
+      if (mounted) setState(() {});
+      return;
+    }
+    if (widget.lyricsService.lyricLines.isEmpty) {
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.studyModeNoLyrics),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+    final started = await _studyModeService.start();
+    if (started && mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.studyModeStarted),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      setState(() {});
+    }
+  }
+
+  Future<void> _openStudyModeSettings() async {
+    if (_studyModeService.isActive && !_studyModeService.isUserPaused) {
+      await _studyModeService.pauseSession();
+    }
+    if (!mounted) return;
+    _showStudyModeSettingsDialog();
+  }
+
+  static const List<double> _studySpeechRates = [
+    0.3,
+    0.5,
+    0.7,
+    0.85,
+    1.0,
+    1.25
+  ];
+
+  void _showStudyModeSettingsDialog() {
+    final l10n = AppLocalizations.of(context)!;
+    StudyModeOrder currentOrder = _studyModeService.order;
+    double currentRate = _studyModeService.speechRate;
+    OverlayTiming currentTiming = _studyModeService.overlayTiming;
+    double currentDuck = _studyModeService.duckVolume;
+
+    Widget timingChip(String label, OverlayTiming value, OverlayTiming current,
+        ValueChanged<OverlayTiming> onPick) {
+      return ChoiceChip(
+        label: Text(label),
+        selected: current == value,
+        onSelected: (_) => onPick(value),
+      );
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return AlertDialog(
+              title: Text(l10n.studyModeSettings),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.studyModeOrder,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    RadioListTile<StudyModeOrder>(
+                      value: StudyModeOrder.translationFirst,
+                      groupValue: currentOrder,
+                      title: Text(l10n.studyModeOrderTranslationFirst),
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => currentOrder = v);
+                        _studyModeService.setOrder(v);
+                      },
+                    ),
+                    RadioListTile<StudyModeOrder>(
+                      value: StudyModeOrder.originalFirst,
+                      groupValue: currentOrder,
+                      title: Text(l10n.studyModeOrderOriginalFirst),
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => currentOrder = v);
+                        _studyModeService.setOrder(v);
+                      },
+                    ),
+                    RadioListTile<StudyModeOrder>(
+                      value: StudyModeOrder.overlay,
+                      groupValue: currentOrder,
+                      title: Text(l10n.studyModeOrderOverlay),
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => currentOrder = v);
+                        _studyModeService.setOrder(v);
+                      },
+                    ),
+                    if (currentOrder == StudyModeOrder.overlay) ...[
+                      const SizedBox(height: 4),
+                      Text(l10n.studyModeOverlayTiming,
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          timingChip(l10n.studyModeOverlayAtStart,
+                              OverlayTiming.start, currentTiming, (v) {
+                            setState(() => currentTiming = v);
+                            _studyModeService.setOverlayTiming(v);
+                          }),
+                          timingChip(l10n.studyModeOverlayAtEnd,
+                              OverlayTiming.end, currentTiming, (v) {
+                            setState(() => currentTiming = v);
+                            _studyModeService.setOverlayTiming(v);
+                          }),
+                          timingChip(l10n.studyModeOverlayAtBoth,
+                              OverlayTiming.both, currentTiming, (v) {
+                            setState(() => currentTiming = v);
+                            _studyModeService.setOverlayTiming(v);
+                          }),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                          '${l10n.studyModeDuckVolume}: ${(currentDuck * 100).round()}%',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Slider(
+                        value: currentDuck,
+                        min: 0.0,
+                        max: 1.0,
+                        divisions: 10,
+                        label: '${(currentDuck * 100).round()}%',
+                        onChanged: (v) {
+                          setState(() => currentDuck = v);
+                          _studyModeService.setDuckVolume(v);
+                        },
+                      ),
+                    ],
+                    const Divider(),
+                    Text(l10n.studyModeSpeechRate,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: _studySpeechRates.map((rate) {
+                        final selected = (currentRate - rate).abs() < 0.001;
+                        return ChoiceChip(
+                          label: Text('${rate}x'),
+                          selected: selected,
+                          onSelected: (_) {
+                            setState(() => currentRate = rate);
+                            _studyModeService.setSpeechRate(rate);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(l10n.close),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _playPreviousSong() async {
@@ -270,7 +488,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       await _playNextFromAllPlaylists();
       return;
     }
-    
+
     await _playerPlaylistHelper.playNextSong(
       widget.playlistSongs,
       _currentSong.id,
@@ -287,21 +505,23 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       return;
     }
 
-    final currentIndex = widget.playlistSongs!.indexWhere((s) => s.id == _currentSong.id);
-    
+    final currentIndex =
+        widget.playlistSongs!.indexWhere((s) => s.id == _currentSong.id);
+
     if (currentIndex < widget.playlistSongs!.length - 1) {
       await _playSong(widget.playlistSongs![currentIndex + 1]);
     } else {
       try {
         final db = DatabaseService();
         final playlists = await db.getAllPlaylists();
-        
+
         if (playlists.isEmpty) {
           return;
         }
 
         String currentPlaylistId = '';
-        if (widget.audioService.currentPlaylist != null && widget.audioService.currentPlaylist!.isNotEmpty) {
+        if (widget.audioService.currentPlaylist != null &&
+            widget.audioService.currentPlaylist!.isNotEmpty) {
           final firstSongId = widget.audioService.currentPlaylist!.first.id;
           for (final p in playlists) {
             final pSongs = await db.getSongsInPlaylist(p.id!);
@@ -312,12 +532,13 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
           }
         }
 
-        final currentPlaylistIndex = playlists.indexWhere((p) => p.id == currentPlaylistId);
+        final currentPlaylistIndex =
+            playlists.indexWhere((p) => p.id == currentPlaylistId);
         final nextPlaylistIndex = (currentPlaylistIndex + 1) % playlists.length;
         final nextPlaylist = playlists[nextPlaylistIndex];
-        
+
         final nextPlaylistSongs = await db.getSongsInPlaylist(nextPlaylist.id!);
-        
+
         if (nextPlaylistSongs.isNotEmpty) {
           widget.audioService.setCurrentPlaylist(nextPlaylistSongs);
           await _playSong(nextPlaylistSongs.first);
@@ -369,11 +590,15 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
   Future<void> _playSong(Song song) async {
     if (_isSongLoading) {
-      debugPrint('⚠ _playSong: already loading another song, skipping: ${song.title}');
+      debugPrint(
+          '⚠ _playSong: already loading another song, skipping: ${song.title}');
       return;
     }
     _isSongLoading = true;
     _positionTimer?.cancel();
+    if (_studyModeService.isActive) {
+      await _studyModeService.stop();
+    }
 
     try {
       debugPrint('=== DEBUG: _playSong called for: ${song.title} ===');
@@ -402,7 +627,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         debugPrint('=== Playing via BackgroundHandler: ${song.title} ===');
 
         if (widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
-          final currentIndex = widget.playlistSongs!.indexWhere((s) => s.id == song.id);
+          final currentIndex =
+              widget.playlistSongs!.indexWhere((s) => s.id == song.id);
           final index = currentIndex >= 0 ? currentIndex : 0;
 
           await handler.setPlaylist(widget.playlistSongs!, index);
@@ -429,24 +655,32 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    debugPrint('=== PlayerScreen: initState (shouldResume: ${widget.shouldResume}) ===');
+    debugPrint(
+        '=== PlayerScreen: initState (shouldResume: ${widget.shouldResume}) ===');
     debugPrint('Song: ${widget.song.title}');
     debugPrint('LRC path: ${widget.song.lrcPath}');
-    debugPrint('Translations in service: ${widget.translationService.translations.length}');
+    debugPrint(
+        'Translations in service: ${widget.translationService.translations.length}');
 
     _currentSong = widget.song;
     _isShuffleEnabled = widget.audioService.isShuffleEnabled;
     _loopMode = widget.audioService.loopMode;
     _playbackSpeed = widget.audioService.playbackSpeed;
+    _studyModeService = StudyModeService(
+        widget.audioService, widget.lyricsService, widget.translationService);
     _loadSettings();
     _startPositionUpdates();
 
     _initSongData();
 
     widget.audioService.onSongComplete = () {
-      if (mounted) {
-        _playNextSong();
+      if (!mounted) return;
+      if (_studyModeService.isActive) {
+        debugPrint(
+            '=== Study mode active, completion handled by StudyModeService ===');
+        return;
       }
+      _playNextSong();
     };
 
     _initBackgroundAudio();
@@ -456,12 +690,15 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     if (widget.shouldResume) {
       debugPrint('=== Resuming player — checking player state ===');
 
-      if (_isShuffleEnabled && widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
+      if (_isShuffleEnabled &&
+          widget.playlistSongs != null &&
+          widget.playlistSongs!.isNotEmpty) {
         debugPrint('✓ Regenerating shuffled indices for resumed shuffle mode');
         _generateShuffledIndices();
       }
 
-      if (widget.audioService.player.processingState == ProcessingState.completed) {
+      if (widget.audioService.player.processingState ==
+          ProcessingState.completed) {
         debugPrint('⚠ Player in completed state on resume, seeking to start');
         await widget.audioService.seek(Duration.zero);
       }
@@ -477,19 +714,24 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     }
 
     if (widget.song.lrcPath != null && widget.song.lrcPath!.isNotEmpty) {
-      debugPrint('Loading LRC file from song in initState: ${widget.song.lrcPath}');
+      debugPrint(
+          'Loading LRC file from song in initState: ${widget.song.lrcPath}');
       await widget.lyricsService.loadLrcFile(widget.song.lrcPath!);
-      debugPrint('LRC loaded successfully, lyric lines count: ${widget.lyricsService.lyricLines.length}');
+      debugPrint(
+          'LRC loaded successfully, lyric lines count: ${widget.lyricsService.lyricLines.length}');
     }
 
     if (widget.translationService.translations.isEmpty) {
-      debugPrint('Translations are empty in initState, loading from database...');
+      debugPrint(
+          'Translations are empty in initState, loading from database...');
       await _loadAllTranslations(widget.song.id, widget.song.title);
     }
 
     await _updateAllLyricsWithTranslations();
 
-    if (_isShuffleEnabled && widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
+    if (_isShuffleEnabled &&
+        widget.playlistSongs != null &&
+        widget.playlistSongs!.isNotEmpty) {
       debugPrint('✓ Shuffle enabled on init, generating shuffled indices');
       _generateShuffledIndices();
     }
@@ -518,13 +760,16 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       };
 
       if (widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
-        final currentIndex = widget.playlistSongs!.indexWhere((s) => s.id == widget.song.id);
+        final currentIndex =
+            widget.playlistSongs!.indexWhere((s) => s.id == widget.song.id);
 
         widget.audioService.setCurrentPlaylist(widget.playlistSongs!);
 
         await widget.audioService.backgroundHandler!.setPlaylist(
           widget.playlistSongs!,
-          currentIndex >= 0 && currentIndex < widget.playlistSongs!.length ? currentIndex : 0,
+          currentIndex >= 0 && currentIndex < widget.playlistSongs!.length
+              ? currentIndex
+              : 0,
         );
       }
     }
@@ -532,13 +777,18 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final defaultOffset = prefs.getDouble('defaultAutoScrollFocusOffset') ?? 50.0;
+    final defaultOffset =
+        prefs.getDouble('defaultAutoScrollFocusOffset') ?? 50.0;
 
     // При первом запуске - сбросить на дефолт
     if (_isFirstLoad) {
       await prefs.setDouble('autoScrollFocusOffset', defaultOffset);
       _isFirstLoad = false;
     }
+
+    final lyricsPositionOffset =
+        prefs.getDouble('lyricsPositionOffset') ?? 0.15;
+    widget.lyricsService.setPositionOffset(lyricsPositionOffset);
 
     setState(() {
       _highlightNextLine = prefs.getBool('highlightNextLine') ?? true;
@@ -583,7 +833,6 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     );
   }
 
-
   void _scrollToCurrentLine() {
     final currentIndex = widget.lyricsService.currentIndex;
     final totalLines = widget.lyricsService.lyricLines.length;
@@ -595,7 +844,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       final lines = widget.lyricsService.lyricLines;
       int scrollDuration;
       if (currentIndex > 0 && currentIndex < lines.length) {
-        final intervalMs = ((lines[currentIndex].startTime - lines[currentIndex - 1].startTime) * 1000).toInt();
+        final intervalMs = ((lines[currentIndex].startTime -
+                    lines[currentIndex - 1].startTime) *
+                1000)
+            .toInt();
         scrollDuration = (intervalMs * 0.4).round().clamp(80, 300);
       } else {
         scrollDuration = 150;
@@ -614,7 +866,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
             final renderBox = keyContext.findRenderObject() as RenderBox;
             final scrollable = Scrollable.of(keyContext);
             if (scrollable != null) {
-              final viewportBox = scrollable.context.findRenderObject() as RenderBox;
+              final viewportBox =
+                  scrollable.context.findRenderObject() as RenderBox;
               final itemScreenPos = renderBox.localToGlobal(Offset.zero);
               final itemRelativeY = viewportBox.globalToLocal(itemScreenPos).dy;
               final itemAbsolute = _scrollController.offset + itemRelativeY;
@@ -635,8 +888,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         final maxExtent = _scrollController.position.maxScrollExtent;
         if (totalLines > 1 && maxExtent > 0) {
           final avgHeight = maxExtent / totalLines;
-          final jumpTarget = (avgHeight * currentIndex - avgHeight * 2)
-              .clamp(0.0, maxExtent);
+          final jumpTarget =
+              (avgHeight * currentIndex - avgHeight * 2).clamp(0.0, maxExtent);
 
           await _scrollController.animateTo(
             jumpTarget,
@@ -651,9 +904,11 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
               final renderBox = keyContext.findRenderObject() as RenderBox;
               final scrollable = Scrollable.of(keyContext);
               if (scrollable != null) {
-                final viewportBox = scrollable.context.findRenderObject() as RenderBox;
+                final viewportBox =
+                    scrollable.context.findRenderObject() as RenderBox;
                 final itemScreenPos = renderBox.localToGlobal(Offset.zero);
-                final itemRelativeY = viewportBox.globalToLocal(itemScreenPos).dy;
+                final itemRelativeY =
+                    viewportBox.globalToLocal(itemScreenPos).dy;
                 final itemAbsolute = _scrollController.offset + itemRelativeY;
                 final maxExtent2 = _scrollController.position.maxScrollExtent;
                 final targetOffset = (itemAbsolute - scrollOffset + focusOffset)
@@ -672,7 +927,6 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     }
   }
 
-
   Future<void> _exportCurrentSong() async {
     await _playerExportHelper.exportCurrentSong(
       context,
@@ -684,13 +938,15 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     _positionTimer?.cancel();
     _positionTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       if (widget.audioService.isInitialized) {
-        final position = widget.audioService.position.inMilliseconds.toDouble() / 1000;
+        final position =
+            widget.audioService.position.inMilliseconds.toDouble() / 1000;
         widget.lyricsService.updatePosition(position);
 
         final currentLineIndex = widget.lyricsService.currentIndex;
         final currentLangIndex = widget.translationService.currentLanguageIndex;
-        final needsTranslationUpdate = currentLineIndex != _lastProcessedIndex ||
-            currentLangIndex != _lastProcessedLanguageIndex;
+        final needsTranslationUpdate =
+            currentLineIndex != _lastProcessedIndex ||
+                currentLangIndex != _lastProcessedLanguageIndex;
 
         if (needsTranslationUpdate) {
           _lastProcessedIndex = currentLineIndex;
@@ -714,13 +970,15 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
       if (_isInBackground) {
-        debugPrint('=== PlayerScreen: resumed from background, restarting updates ===');
+        debugPrint(
+            '=== PlayerScreen: resumed from background, restarting updates ===');
         _isInBackground = false;
         _lastScrolledIndex = -1;
         _startPositionUpdates();
         _syncWithActuallyPlayingSong();
       }
-    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       _isInBackground = true;
     }
   }
@@ -759,8 +1017,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         } catch (_) {}
       }
 
-      if (actualSong != null && actualSong.audioPath != _currentSong.audioPath) {
-        debugPrint('Song changed while in background! Switching from "${_currentSong.title}" to "${actualSong.title}"');
+      if (actualSong != null &&
+          actualSong.audioPath != _currentSong.audioPath) {
+        debugPrint(
+            'Song changed while in background! Switching from "${_currentSong.title}" to "${actualSong.title}"');
         _currentSong = actualSong;
 
         if (_currentSong.lrcPath != null && _currentSong.lrcPath!.isNotEmpty) {
@@ -785,8 +1045,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _settingsProvider?.removeListener(_onSettingsChanged);
     _positionTimer?.cancel();
     _scrollController.dispose();
+    _studyModeService.dispose();
 
     final handler = widget.audioService.backgroundHandler;
     if (handler != null) {
@@ -797,9 +1059,9 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     super.dispose();
   }
 
-    String _formatDuration(Duration duration) {
-      return LrcFormatter.formatDuration(duration);
-    }
+  String _formatDuration(Duration duration) {
+    return LrcFormatter.formatDuration(duration);
+  }
 
   Future<void> _showTextLoaderDialog() async {
     final result = await showDialog<bool>(
@@ -813,38 +1075,43 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
     if (result == true) {
       try {
-        debugPrint('=== Dialog closed with result=true, reloading song data ===');
+        debugPrint(
+            '=== Dialog closed with result=true, reloading song data ===');
         final db = DatabaseService();
-        
+
         // Перезагружаем данные песни из базы данных
         final updatedSong = await db.getSong(_currentSong.id);
-        
+
         if (updatedSong != null) {
           debugPrint('=== Updated song loaded from DB ===');
           debugPrint('Updated song lrcPath: ${updatedSong!.lrcPath}');
-          debugPrint('Updated song originalLanguage: ${updatedSong!.originalLanguage}');
-          
+          debugPrint(
+              'Updated song originalLanguage: ${updatedSong!.originalLanguage}');
+
           // Обновляем текущую песню
           _currentSong = updatedSong!;
-          
+
           // Если есть LRC файл, загружаем его
-          if (updatedSong!.lrcPath != null && updatedSong!.lrcPath!.isNotEmpty) {
+          if (updatedSong!.lrcPath != null &&
+              updatedSong!.lrcPath!.isNotEmpty) {
             debugPrint('Loading LRC file: ${updatedSong!.lrcPath}');
             await widget.lyricsService.loadLrcFile(updatedSong!.lrcPath!);
-            debugPrint('LRC loaded, lyric lines count: ${widget.lyricsService.lyricLines.length}');
+            debugPrint(
+                'LRC loaded, lyric lines count: ${widget.lyricsService.lyricLines.length}');
           }
-          
+
           // Загружаем все переводы для песни
           await _loadAllTranslations(_currentSong.id, _currentSong.title);
-          
+
           await _updateAllLyricsWithTranslations();
-          
+
           setState(() {});
-          
+
           debugPrint('=== After reloading ===');
           debugPrint('Lyrics lines: ${widget.lyricsService.lyricLines.length}');
-          debugPrint('Translations: ${widget.translationService.translations.length}');
-          
+          debugPrint(
+              'Translations: ${widget.translationService.translations.length}');
+
           // Показываем сообщение об успехе
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -872,16 +1139,17 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   }
 
   Widget _buildAppBarContent(BuildContext context) {
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
     final sw = MediaQuery.of(context).size.width;
     final hd = widget.translationService.translations.isNotEmpty;
     final dw = hd ? sw * 0.22 : 0.0;
     final avail = sw - 56.0 - dw - (hd ? 12.0 : 4.0);
-    int cnt = 5;
-    if (!_isEditMode) cnt++;
-    if (_isEditMode) cnt++;
+    int cnt = 5; // study, study-settings, swap, transcription, popup
+    if (_isEditMode) cnt++; // save
     final bs = (avail / cnt).clamp(18.0, 44.0);
     final iconSz = (bs * 0.72).clamp(12.0, 24.0);
+    final hdrBtnSize = iconSz.clamp(20.0, 26.0);
 
     Widget btn(IconData icon, VoidCallback onTap, {Color? color}) {
       return SizedBox(
@@ -900,16 +1168,14 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        if (!_isEditMode)
-          btn(
-            _autoScroll ? Icons.play_arrow : Icons.pause,
-            () => setState(() => _autoScroll = !_autoScroll),
-            color: _autoScroll ? Colors.green : Colors.grey,
-          ),
-        btn(Icons.share, _exportCurrentSong),
-        btn(
-          _isEditMode ? Icons.edit_off : Icons.edit_note,
-          () => setState(() => _isEditMode = !_isEditMode),
+        _buildStudyModeButton(iconSize: hdrBtnSize),
+        IconButton(
+          icon: const Icon(Icons.tune),
+          iconSize: hdrBtnSize,
+          padding: EdgeInsets.zero,
+          constraints: BoxConstraints.tightFor(width: bs, height: bs),
+          tooltip: AppLocalizations.of(context)!.studyModeOpenSettings,
+          onPressed: _openStudyModeSettings,
         ),
         if (_isEditMode) btn(Icons.save, _saveLrcChanges),
         btn(
@@ -933,7 +1199,9 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
               final l10n = AppLocalizations.of(context)!;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(!show ? l10n.transcriptionEnabled : l10n.transcriptionDisabled),
+                  content: Text(!show
+                      ? l10n.transcriptionEnabled
+                      : l10n.transcriptionDisabled),
                   duration: const Duration(seconds: 2),
                 ),
               );
@@ -946,7 +1214,15 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
           constraints: BoxConstraints(minWidth: bs, minHeight: bs),
           position: PopupMenuPosition.under,
           onSelected: (String value) async {
-            if (value == 'edit') {
+            if (value == 'autoScroll') {
+              setState(() => _autoScroll = !_autoScroll);
+            } else if (value == 'songSpeed') {
+              _showSpeedDialog();
+            } else if (value == 'share') {
+              await _exportCurrentSong();
+            } else if (value == 'editMode') {
+              setState(() => _isEditMode = !_isEditMode);
+            } else if (value == 'edit') {
               final saved = await Navigator.of(context).push<bool>(
                 MaterialPageRoute(
                   builder: (context) => TranslationEditorScreen(
@@ -969,49 +1245,101 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
               await _deleteCurrentTranslation();
             }
           },
-          itemBuilder: (BuildContext context) => [
-            PopupMenuItem<String>(
-              value: 'edit',
-              child: Row(
-                children: [
-                  const Icon(Icons.edit, size: 20),
-                  const SizedBox(width: 12),
-                  Text(AppLocalizations.of(context)!.editTranslations),
-                ],
-              ),
-            ),
-            PopupMenuItem<String>(
-              value: 'add',
-              child: Row(
-                children: [
-                  const Icon(Icons.archive, size: 20),
-                  const SizedBox(width: 12),
-                  Text(AppLocalizations.of(context)!.loadTranslationsFromFile),
-                ],
-              ),
-            ),
-            PopupMenuItem<String>(
-              value: 'loadText',
-              child: Row(
-                children: [
-                  const Icon(Icons.description, size: 20),
-                  const SizedBox(width: 12),
-                  Text(AppLocalizations.of(context)!.loadTextMenu),
-                ],
-              ),
-            ),
-            if (widget.translationService.translations.isNotEmpty)
+          itemBuilder: (BuildContext context) {
+            final l10n = AppLocalizations.of(context)!;
+            return [
               PopupMenuItem<String>(
-                value: 'delete',
+                value: 'autoScroll',
                 child: Row(
                   children: [
-                    const Icon(Icons.delete, size: 20),
+                    Icon(
+                      _autoScroll
+                          ? Icons.check_box
+                          : Icons.check_box_outline_blank,
+                      size: 20,
+                    ),
                     const SizedBox(width: 12),
-                    Text(AppLocalizations.of(context)!.deleteTranslation),
+                    Text(l10n.autoScroll),
                   ],
                 ),
               ),
-          ],
+              PopupMenuItem<String>(
+                value: 'songSpeed',
+                child: Row(
+                  children: [
+                    const Icon(Icons.speed, size: 20),
+                    const SizedBox(width: 12),
+                    Text(
+                        '${l10n.playbackSpeed}: ${_playbackSpeed == _playbackSpeed.roundToDouble() ? _playbackSpeed.toStringAsFixed(1) : _playbackSpeed}x'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'share',
+                child: Row(
+                  children: [
+                    const Icon(Icons.share, size: 20),
+                    const SizedBox(width: 12),
+                    Text(l10n.exportCurrentSong),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'editMode',
+                child: Row(
+                  children: [
+                    Icon(_isEditMode ? Icons.edit_off : Icons.edit_note,
+                        size: 20),
+                    const SizedBox(width: 12),
+                    Text(_isEditMode ? l10n.exitEditMode : l10n.editTimestamps),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit, size: 20),
+                    const SizedBox(width: 12),
+                    Text(l10n.editTranslations),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'add',
+                child: Row(
+                  children: [
+                    const Icon(Icons.archive, size: 20),
+                    const SizedBox(width: 12),
+                    Text(l10n.loadTranslationsFromFile),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'loadText',
+                child: Row(
+                  children: [
+                    const Icon(Icons.description, size: 20),
+                    const SizedBox(width: 12),
+                    Text(l10n.loadTextMenu),
+                  ],
+                ),
+              ),
+              if (widget.translationService.translations.isNotEmpty)
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete, size: 20),
+                      const SizedBox(width: 12),
+                      Text(l10n.deleteTranslation),
+                    ],
+                  ),
+                ),
+            ];
+          },
         ),
         if (hd) SizedBox(width: 8),
         if (hd)
@@ -1044,9 +1372,13 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                       ),
                     ),
                   ),
-                SizedBox(width: widget.translationService.translations.length > 1 ? 6 : 0),
+                SizedBox(
+                    width: widget.translationService.translations.length > 1
+                        ? 6
+                        : 0),
                 DropdownButton<String>(
-                  value: widget.translationService.currentLanguageIndex.toString(),
+                  value:
+                      widget.translationService.currentLanguageIndex.toString(),
                   icon: const Icon(Icons.arrow_drop_down, size: 20),
                   underline: const SizedBox(),
                   style: TextStyle(
@@ -1057,44 +1389,61 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                     if (value != null) {
                       final index = int.parse(value);
                       widget.translationService.selectLanguage(index);
-                      final translation = widget.translationService.translations[index];
+                      final translation =
+                          widget.translationService.translations[index];
                       final db = DatabaseService();
-                      await db.setSelectedLanguage(_currentSong.id, translation.language);
+                      await db.setSelectedLanguage(
+                          _currentSong.id, translation.language);
                       await _updateAllLyricsWithTranslations();
                       if (mounted) {
                         final l10n = AppLocalizations.of(context)!;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(l10n.languageSelected(translation.languageName)),
+                            content: Text(l10n
+                                .languageSelected(translation.languageName)),
                             duration: const Duration(seconds: 2),
                           ),
                         );
                       }
-                      setState(() { });
+                      setState(() {});
                     }
                   },
-                  items: widget.translationService.translations.asMap().entries.map((entry) {
+                  items: widget.translationService.translations
+                      .asMap()
+                      .entries
+                      .map((entry) {
                     final translation = entry.value;
-                    final isSelected = entry.key == widget.translationService.currentLanguageIndex;
-                    final shortName = _getShortLanguageName(translation.languageName, translation.language);
-                    final emoji = _getLanguageEmoji(translation.language, translation.type);
+                    final isSelected = entry.key ==
+                        widget.translationService.currentLanguageIndex;
+                    final shortName = _getShortLanguageName(
+                        translation.languageName, translation.language);
+                    final emoji = _getLanguageEmoji(
+                        translation.language, translation.type);
                     return DropdownMenuItem<String>(
                       value: entry.key.toString(),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(emoji, style: TextStyle(fontSize: isLandscape ? 14 : 16)),
+                          Text(emoji,
+                              style:
+                                  TextStyle(fontSize: isLandscape ? 14 : 16)),
                           const SizedBox(width: 6),
                           Text(
                             shortName,
                             style: TextStyle(
                               fontSize: isLandscape ? 12 : 14,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
                             ),
                           ),
                           if (isSelected)
-                            Icon(Icons.check, size: isLandscape ? 14 : 16, color: Theme.of(context).colorScheme.primary),
+                            Icon(Icons.check,
+                                size: isLandscape ? 14 : 16,
+                                color: Theme.of(context).colorScheme.primary),
                         ],
                       ),
                     );
@@ -1111,7 +1460,7 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
   Widget _buildLoopButton(bool isLandscape, {double iconSize = 32.0}) {
     IconData icon;
     Color? color;
-    
+
     switch (_loopMode) {
       case LoopMode.off:
         icon = Icons.repeat;
@@ -1207,7 +1556,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                       ? '${speed}x (${l10n.speedNormal})'
                       : '${speed}x',
                   style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                     color: isSelected
                         ? Theme.of(this.context).colorScheme.primary
                         : null,
@@ -1227,19 +1577,16 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     );
   }
 
-  Widget _buildSpeedButton({double iconSize = 32.0}) {
-    final isNotDefault = (_playbackSpeed - 1.0).abs() > 0.01;
-    final speedText = _playbackSpeed == 1.0
-        ? '1x'
-        : '${_playbackSpeed.toStringAsFixed(_playbackSpeed == _playbackSpeed.roundToDouble() ? 1 : 2)}x';
-
+  Widget _buildStudyModeButton({double iconSize = 32.0}) {
+    final isActive = _studyModeService.isActive;
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       decoration: BoxDecoration(
-        color: isNotDefault
+        color: isActive
             ? Theme.of(context).colorScheme.primaryContainer
             : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
-        border: isNotDefault
+        border: isActive
             ? Border.all(
                 color: Theme.of(context).colorScheme.primary,
                 width: 2,
@@ -1247,18 +1594,14 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
             : null,
       ),
       child: IconButton(
-        icon: Text(
-          speedText,
-          style: TextStyle(
-            fontSize: iconSize * 0.45,
-            fontWeight: FontWeight.bold,
-            color: isNotDefault
-                ? Theme.of(context).colorScheme.primary
-                : null,
-          ),
+        icon: Icon(
+          Icons.record_voice_over,
+          color: isActive ? Theme.of(context).colorScheme.primary : null,
+          weight: isActive ? 900 : 400,
         ),
-        onPressed: _showSpeedDialog,
-        tooltip: AppLocalizations.of(context)!.playbackSpeed,
+        onPressed: _toggleStudyMode,
+        onLongPress: _openStudyModeSettings,
+        tooltip: '${l10n.studyModeTooltip}\n${l10n.studyModeLongPressHint}',
         iconSize: iconSize,
         padding: const EdgeInsets.all(4.0),
       ),
@@ -1284,7 +1627,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       );
 
       if (result != null && result.files.isNotEmpty) {
-        final zipPath = (result.files.single.path ?? result.files.single.identifier) as String;
+        final zipPath = (result.files.single.path ??
+            result.files.single.identifier) as String;
         await _processTranslationZipArchive(zipPath);
       } else {
         debugPrint('No file selected');
@@ -1432,7 +1776,9 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
-            backgroundColor: translationsAdded > 0 || lrcFound > 0 ? Colors.green : Colors.orange,
+            backgroundColor: translationsAdded > 0 || lrcFound > 0
+                ? Colors.green
+                : Colors.orange,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -1451,9 +1797,11 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     }
   }
 
-  Future<Map<String, dynamic>> _scanTranslationsForSong(List<String> extractedFiles) async {
+  Future<Map<String, dynamic>> _scanTranslationsForSong(
+      List<String> extractedFiles) async {
     try {
-      debugPrint('=== Scanning translations for song: ${widget.song.title} ===');
+      debugPrint(
+          '=== Scanning translations for song: ${widget.song.title} ===');
       debugPrint('Song ID: ${widget.song.id}');
       debugPrint('Total extracted files: ${extractedFiles.length}');
       int translationsAdded = 0;
@@ -1469,11 +1817,13 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         debugPrint('  File name: "$fileName"');
         debugPrint('  File path: $filePath');
 
-        if (fileName.endsWith('.lrc') || fileName.toLowerCase().endsWith('.lrc')) {
+        if (fileName.endsWith('.lrc') ||
+            fileName.toLowerCase().endsWith('.lrc')) {
           lrcPathToSave = filePath;
           lrcFound++;
           debugPrint('  ✓ Found LRC file: "$fileName"');
-        } else if (fileName.endsWith('.json') || fileName.toLowerCase().endsWith('.json')) {
+        } else if (fileName.endsWith('.json') ||
+            fileName.toLowerCase().endsWith('.json')) {
           debugPrint('  ✓ This is a JSON file');
 
           try {
@@ -1490,7 +1840,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
             final data = json.decode(content) as Map<String, dynamic>;
 
-            if (!data.containsKey('translations') || data['translations'] == null) {
+            if (!data.containsKey('translations') ||
+                data['translations'] == null) {
               debugPrint('  ⚠ No translations key in file: $fileName');
               errorsCount++;
               continue;
@@ -1509,11 +1860,14 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
               try {
                 final translationData = t as Map<String, dynamic>;
 
-                final language = translationData['language'] as String? ?? 'unknown';
-                final languageName = translationData['languageName'] as String? ?? 'Unknown';
+                final language =
+                    translationData['language'] as String? ?? 'unknown';
+                final languageName =
+                    translationData['languageName'] as String? ?? 'Unknown';
                 final type = translationData['type'] as String?;
 
-                debugPrint('  Translation found: $languageName ($language) type: $type');
+                debugPrint(
+                    '  Translation found: $languageName ($language) type: $type');
 
                 await db.addTranslationFile(
                   widget.song.id,
@@ -1540,7 +1894,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         }
       }
 
-      debugPrint('=== Translation scan completed for song: ${widget.song.title} ===');
+      debugPrint(
+          '=== Translation scan completed for song: ${widget.song.title} ===');
       debugPrint('LRC files found: $lrcFound');
       debugPrint('LRC path: $lrcPathToSave');
       debugPrint('Total translations added to database: $translationsAdded');
@@ -1553,7 +1908,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         'errorsCount': errorsCount,
       };
     } catch (e) {
-      debugPrint('✗ Fatal error scanning translations for song ${widget.song.title}: $e');
+      debugPrint(
+          '✗ Fatal error scanning translations for song ${widget.song.title}: $e');
       return {
         'lrcFound': 0,
         'lrcPath': null,
@@ -1629,29 +1985,30 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     }
   }
 
-  Future<void> _loadTranslationFile(File file, String languageName, String? type) async {
+  Future<void> _loadTranslationFile(
+      File file, String languageName, String? type) async {
     try {
       debugPrint('Loading translation file ${file.path}');
-      
+
       final content = await file.readAsString();
       final data = json.decode(content) as Map<String, dynamic>;
-      
+
       if (!data.containsKey('translations')) {
         throw Exception('Invalid JSON format: missing "translations" key');
       }
-      
+
       final translations = data['translations'] as List;
       if (translations.isEmpty) {
         throw Exception('No translations found in file');
       }
-      
+
       for (final t in translations) {
         final translationData = t as Map<String, dynamic>;
         translationData['languageName'] = languageName;
         if (type != null) {
           translationData['type'] = type;
         }
-        
+
         final translation = Translation.fromJson(translationData);
         final translationWithFilePath = Translation(
           language: translation.language,
@@ -1660,13 +2017,14 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
           lines: translation.lines,
           filePath: file.path,
         );
-        
+
         widget.translationService.addTranslation(translationWithFilePath);
-        debugPrint('✓ Added translation: ${translation.languageName} (${translation.language})');
+        debugPrint(
+            '✓ Added translation: ${translation.languageName} (${translation.language})');
       }
-      
+
       _updateAllLyricsWithTranslations();
-      
+
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1713,8 +2071,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
 
       await file.writeAsString(lrcContent);
 
-      if (widget.translationService.translations.isNotEmpty || widget.translationService.transcriptTranslation != null) {
-        widget.translationService.updateLineTimestamps(widget.lyricsService.lyricLines);
+      if (widget.translationService.translations.isNotEmpty ||
+          widget.translationService.transcriptTranslation != null) {
+        widget.translationService
+            .updateLineTimestamps(widget.lyricsService.lyricLines);
         await widget.translationService.saveAllTranslations();
         debugPrint('All translation files saved successfully');
       }
@@ -1774,9 +2134,12 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                       final lines = widget.lyricsService.lyricLines;
                       if (_lineKeys.length < lines.length) {
                         WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted && _lineKeys.length < widget.lyricsService.lyricLines.length) {
+                          if (mounted &&
+                              _lineKeys.length <
+                                  widget.lyricsService.lyricLines.length) {
                             setState(() {
-                              while (_lineKeys.length < widget.lyricsService.lyricLines.length) {
+                              while (_lineKeys.length <
+                                  widget.lyricsService.lyricLines.length) {
                                 _lineKeys.add(GlobalKey());
                               }
                             });
@@ -1792,8 +2155,10 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                         itemCount: lines.length,
                         itemBuilder: (context, index) {
                           final line = lines[index];
-                          final isCurrent = index == widget.lyricsService.currentIndex;
-                          final isNext = _highlightNextLine && index == widget.lyricsService.currentIndex + 1;
+                          final isCurrent =
+                              index == widget.lyricsService.currentIndex;
+                          final isNext = _highlightNextLine &&
+                              index == widget.lyricsService.currentIndex + 1;
 
                           return Padding(
                             key: _lineKeys[index],
@@ -1810,13 +2175,24 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                               isEditMode: _isEditMode,
                               onTap: () async {
                                 if (_isEditMode) {
-                                  final currentTime = widget.audioService.position.inMilliseconds.toDouble() / 1000;
-                                  widget.lyricsService.updateLineTimestamp(index, currentTime);
-                                  widget.translationService.updateLineTimestamps(widget.lyricsService.lyricLines);
+                                  final currentTime = widget
+                                          .audioService.position.inMilliseconds
+                                          .toDouble() /
+                                      1000;
+                                  widget.lyricsService
+                                      .updateLineTimestamp(index, currentTime);
+                                  widget.translationService
+                                      .updateLineTimestamps(
+                                          widget.lyricsService.lyricLines);
                                   setState(() {});
                                 } else {
                                   _lastScrolledIndex = -1;
-                                  widget.audioService.seek(Duration(milliseconds: (line.startTime * 1000).toInt()));
+                                  if (_studyModeService.isActive) {
+                                    await _studyModeService.stop();
+                                  }
+                                  widget.audioService.seek(Duration(
+                                      milliseconds:
+                                          (line.startTime * 1000).toInt()));
                                 }
                               },
                             ),
@@ -1826,7 +2202,9 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                     },
                   ),
                 ),
-                if (_autoScroll && !_isEditMode && Provider.of<SettingsProvider>(context).showVerticalSlider)
+                if (_autoScroll &&
+                    !_isEditMode &&
+                    Provider.of<SettingsProvider>(context).showVerticalSlider)
                   VerticalFocusOffsetSlider(
                     offset: _autoScrollFocusOffset,
                     onChanged: _onFocusOffsetChanged,
@@ -1859,56 +2237,72 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                       initialData: Duration.zero,
                       builder: (context, durationSnapshot) {
                         final duration = durationSnapshot.data ?? Duration.zero;
-                        final maxMs = duration.inMilliseconds > 0 ? duration.inMilliseconds.toDouble() : 1.0;
-                        final valueMs = position.inMilliseconds.toDouble().clamp(0.0, maxMs);
+                        final maxMs = duration.inMilliseconds > 0
+                            ? duration.inMilliseconds.toDouble()
+                            : 1.0;
+                        final valueMs = position.inMilliseconds
+                            .toDouble()
+                            .clamp(0.0, maxMs);
                         return Slider(
                           value: valueMs,
                           max: maxMs,
                           onChanged: (value) {
-                            widget.audioService.seek(Duration(milliseconds: value.toInt()));
+                            if (_studyModeService.isActive) {
+                              _studyModeService.stop();
+                            }
+                            widget.audioService
+                                .seek(Duration(milliseconds: value.toInt()));
                           },
                         );
                       },
                     );
                   },
                 ),
-                 Row(
-                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                   children: [
-                      StreamBuilder<Duration>(
-                        stream: widget.audioService.player.positionStream,
-                        initialData: Duration.zero,
-                        builder: (context, snapshot) {
-                          final position = snapshot.data ?? Duration.zero;
-                          return Text(_formatDuration(position), style: TextStyle(fontSize: isLandscape ? 12 : null));
-                        },
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: isLandscape ? 8.0 : 16.0),
-                          child: Text(
-                            _currentSong.title,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: isLandscape ? 11 : 13,
-                              fontWeight: FontWeight.w500,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                            ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    StreamBuilder<Duration>(
+                      stream: widget.audioService.player.positionStream,
+                      initialData: Duration.zero,
+                      builder: (context, snapshot) {
+                        final position = snapshot.data ?? Duration.zero;
+                        return Text(_formatDuration(position),
+                            style:
+                                TextStyle(fontSize: isLandscape ? 12 : null));
+                      },
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: isLandscape ? 8.0 : 16.0),
+                        child: Text(
+                          _currentSong.title,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: isLandscape ? 11 : 13,
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.7),
                           ),
                         ),
                       ),
-                      StreamBuilder<Duration?>(
-                        stream: widget.audioService.player.durationStream,
-                        initialData: Duration.zero,
-                        builder: (context, snapshot) {
-                          final duration = snapshot.data ?? Duration.zero;
-                          return Text(_formatDuration(duration), style: TextStyle(fontSize: isLandscape ? 12 : null));
-                        },
-                      ),
-                   ],
-                 ),
+                    ),
+                    StreamBuilder<Duration?>(
+                      stream: widget.audioService.player.durationStream,
+                      initialData: Duration.zero,
+                      builder: (context, snapshot) {
+                        final duration = snapshot.data ?? Duration.zero;
+                        return Text(_formatDuration(duration),
+                            style:
+                                TextStyle(fontSize: isLandscape ? 12 : null));
+                      },
+                    ),
+                  ],
+                ),
                 SizedBox(height: isLandscape ? 4.0 : 8.0),
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -1919,7 +2313,9 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                     final buttonCount = 7;
                     final fabVisualSize = baseFabSize;
                     final totalSpacing = baseSpacing * 2;
-                    final totalButtonWidth = buttonCount * (baseIconSize + 16) + fabVisualSize + totalSpacing;
+                    final totalButtonWidth = buttonCount * (baseIconSize + 16) +
+                        fabVisualSize +
+                        totalSpacing;
                     double iconSize;
                     double fabSize;
                     double spacing;
@@ -1929,109 +2325,151 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
                       spacing = baseSpacing;
                     } else {
                       final ratio = availableWidth / totalButtonWidth;
-                      iconSize = (baseIconSize * ratio).clamp(18.0, baseIconSize);
+                      iconSize =
+                          (baseIconSize * ratio).clamp(18.0, baseIconSize);
                       fabSize = (baseFabSize * ratio).clamp(36.0, baseFabSize);
                       spacing = (baseSpacing * ratio).clamp(4.0, baseSpacing);
                     }
                     final fabIconSize = (fabSize * 0.5).clamp(18.0, 28.0);
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: _isShuffleEnabled 
-                                ? Theme.of(context).colorScheme.primaryContainer 
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            border: _isShuffleEnabled
-                                ? Border.all(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    width: 2,
-                                  )
-                                : null,
-                          ),
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.shuffle,
-                              color: _isShuffleEnabled 
-                                  ? Theme.of(context).colorScheme.primary 
-                                  : null,
-                              weight: _isShuffleEnabled ? 900 : 400,
+                    return AnimatedBuilder(
+                      animation: _studyModeService,
+                      builder: (context, _) {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: _isShuffleEnabled
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                border: _isShuffleEnabled
+                                    ? Border.all(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        width: 2,
+                                      )
+                                    : null,
+                              ),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.shuffle,
+                                  color: _isShuffleEnabled
+                                      ? Theme.of(context).colorScheme.primary
+                                      : null,
+                                  weight: _isShuffleEnabled ? 900 : 400,
+                                ),
+                                onPressed: _toggleShuffle,
+                                tooltip: AppLocalizations.of(context)!.shuffle,
+                                iconSize: iconSize,
+                                padding: const EdgeInsets.all(4.0),
+                              ),
                             ),
-                            onPressed: _toggleShuffle,
-                            tooltip: AppLocalizations.of(context)!.shuffle,
-                            iconSize: iconSize,
-                            padding: const EdgeInsets.all(4.0),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.skip_previous),
-                          onPressed: _canPlayPrevious() ? _playPreviousSong : null,
-                          iconSize: iconSize,
-                          padding: const EdgeInsets.all(4.0),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.replay_10),
-                          onPressed: () {
-                            final currentPosition =
-                                widget.audioService.position.inSeconds - 10;
-                            widget.audioService.seek(Duration(
-                                seconds: currentPosition > 0 ? currentPosition : 0));
-                          },
-                          iconSize: iconSize,
-                          padding: const EdgeInsets.all(4.0),
-                        ),
-                        SizedBox(
-                          width: fabSize,
-                          height: fabSize,
-                          child: StreamBuilder<bool>(
-                            stream:
-                                widget.audioService.player.playingStream,
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return FloatingActionButton(
-                                  onPressed: null,
-                                  child: Icon(Icons.circle_outlined, size: fabIconSize, color: Colors.grey),
-                                );
-                              }
-                              final isPlaying = snapshot.data ?? false;
-                              return FloatingActionButton(
-                                onPressed: () {
-                                  if (isPlaying) {
-                                    widget.audioService.pause();
-                                  } else {
-                                    widget.audioService.play();
+                            IconButton(
+                              icon: const Icon(Icons.skip_previous),
+                              onPressed:
+                                  _canPlayPrevious() ? _playPreviousSong : null,
+                              iconSize: iconSize,
+                              padding: const EdgeInsets.all(4.0),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.replay_10),
+                              onPressed: () {
+                                final currentPosition =
+                                    widget.audioService.position.inSeconds - 10;
+                                widget.audioService.seek(Duration(
+                                    seconds: currentPosition > 0
+                                        ? currentPosition
+                                        : 0));
+                              },
+                              iconSize: iconSize,
+                              padding: const EdgeInsets.all(4.0),
+                            ),
+                            SizedBox(
+                              width: fabSize,
+                              height: fabSize,
+                              child: StreamBuilder<bool>(
+                                stream:
+                                    widget.audioService.player.playingStream,
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return FloatingActionButton(
+                                      onPressed: null,
+                                      child: Icon(Icons.circle_outlined,
+                                          size: fabIconSize,
+                                          color: Colors.grey),
+                                    );
                                   }
+                                  final isPlaying = snapshot.data ?? false;
+                                  final studyActive =
+                                      _studyModeService.isActive;
+                                  final studyPaused =
+                                      _studyModeService.isUserPaused;
+                                  final studySpeaking =
+                                      _studyModeService.isSpeaking;
+                                  final IconData fabIconData;
+                                  if (studyActive && studySpeaking) {
+                                    fabIconData = Icons.record_voice_over;
+                                  } else if (studyActive) {
+                                    fabIconData = studyPaused
+                                        ? Icons.play_arrow
+                                        : Icons.pause;
+                                  } else {
+                                    fabIconData = isPlaying
+                                        ? Icons.pause
+                                        : Icons.play_arrow;
+                                  }
+                                  return FloatingActionButton(
+                                    onPressed: () {
+                                      if (studyActive) {
+                                        if (studyPaused) {
+                                          _studyModeService.resumeSession();
+                                        } else {
+                                          _studyModeService.pauseSession();
+                                        }
+                                        return;
+                                      }
+                                      if (isPlaying) {
+                                        widget.audioService.pause();
+                                      } else {
+                                        widget.audioService.play();
+                                      }
+                                    },
+                                    child: Icon(fabIconData, size: fabIconSize),
+                                  );
                                 },
-                                child: Icon(
-                                    isPlaying ? Icons.pause : Icons.play_arrow,
-                                    size: fabIconSize),
-                              );
-                            },
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.forward_10),
-                          onPressed: () {
-                            final currentPosition =
-                                widget.audioService.position.inSeconds + 10;
-                            widget.audioService.seek(Duration(
-                                seconds: currentPosition < widget.audioService.duration.inSeconds
-                                    ? currentPosition
-                                    : widget.audioService.duration.inSeconds));
-                          },
-                          iconSize: iconSize,
-                          padding: const EdgeInsets.all(4.0),
-                        ),
-                        _buildSpeedButton(iconSize: iconSize),
-                        IconButton(
-                          icon: const Icon(Icons.skip_next),
-                          onPressed: _canPlayNext() ? _playNextSong : null,
-                          iconSize: iconSize,
-                          padding: const EdgeInsets.all(4.0),
-                        ),
-                        _buildLoopButton(isLandscape, iconSize: iconSize),
-                      ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.forward_10),
+                              onPressed: () {
+                                final currentPosition =
+                                    widget.audioService.position.inSeconds + 10;
+                                widget.audioService.seek(Duration(
+                                    seconds: currentPosition <
+                                            widget
+                                                .audioService.duration.inSeconds
+                                        ? currentPosition
+                                        : widget
+                                            .audioService.duration.inSeconds));
+                              },
+                              iconSize: iconSize,
+                              padding: const EdgeInsets.all(4.0),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.skip_next),
+                              onPressed: _canPlayNext() ? _playNextSong : null,
+                              iconSize: iconSize,
+                              padding: const EdgeInsets.all(4.0),
+                            ),
+                            _buildLoopButton(isLandscape, iconSize: iconSize),
+                          ],
+                        );
+                      },
                     );
                   },
                 ),
@@ -2055,7 +2493,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.deleteTranslationTitle),
-        content: Text(l10n.deleteTranslationConfirm(currentTranslation.languageName)),
+        content: Text(
+            l10n.deleteTranslationConfirm(currentTranslation.languageName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -2075,7 +2514,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
     }
 
     try {
-      debugPrint('Deleting translation: ${currentTranslation.languageName} (${currentTranslation.language})');
+      debugPrint(
+          'Deleting translation: ${currentTranslation.languageName} (${currentTranslation.language})');
 
       final db = DatabaseService();
       await db.removeTranslationFile(
@@ -2095,7 +2535,8 @@ class _PlayerScreenState extends State<PlayerScreen> with AutomaticKeepAliveClie
         final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l10n.translationDeleted(currentTranslation.languageName)),
+            content:
+                Text(l10n.translationDeleted(currentTranslation.languageName)),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),

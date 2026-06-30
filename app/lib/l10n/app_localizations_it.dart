@@ -1845,4 +1845,67 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get speedNormal => 'Normale';
+
+  @override
+  String get lyricsPositionOffset => 'Ritardo sincronizzazione testo';
+
+  @override
+  String get lyricsPositionOffsetSubtitle => 'Ritardo evidenziazione in secondi (aumenta se l\'evidenziazione anticipa)';
+
+  @override
+  String get studyMode => 'Studio';
+
+  @override
+  String get studyModeTooltip => 'Modalità studio: leggi la traduzione poi riproduci ogni riga';
+
+  @override
+  String get studyModeStarted => 'Modalità studio avviata';
+
+  @override
+  String get studyModeStopped => 'Modalità studio fermata';
+
+  @override
+  String get studyModeNoLyrics => 'Nessun testo sincronizzato per questa canzone';
+
+  @override
+  String get studyModeSettings => 'Impostazioni modalità studio';
+
+  @override
+  String get studyModeOrder => 'Ordine';
+
+  @override
+  String get studyModeOrderTranslationFirst => 'Prima traduzione';
+
+  @override
+  String get studyModeOrderOriginalFirst => 'Prima originale';
+
+  @override
+  String get studyModeOrderOverlay => 'Sovrapposto (originale basso)';
+
+  @override
+  String get studyModeSpeechRate => 'Velocità voce';
+
+  @override
+  String get studyModeLongPressHint => 'Pressione lunga per impostazioni';
+
+  @override
+  String get exportCurrentSong => 'Esporta canzone';
+
+  @override
+  String get studyModeOverlayTiming => 'Quando parlare';
+
+  @override
+  String get studyModeOverlayAtStart => 'A inizio riga';
+
+  @override
+  String get studyModeOverlayAtEnd => 'A fine riga';
+
+  @override
+  String get studyModeOverlayAtBoth => 'Inizio e fine';
+
+  @override
+  String get studyModeDuckVolume => 'Volume originale';
+
+  @override
+  String get studyModeOpenSettings => 'Impostazioni modalità studio';
 }

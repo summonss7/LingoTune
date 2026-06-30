@@ -1845,4 +1845,67 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get speedNormal => 'Normal';
+
+  @override
+  String get lyricsPositionOffset => 'Retardo de sincronización de letra';
+
+  @override
+  String get lyricsPositionOffsetSubtitle => 'Retraso del resaltado en segundos (aumenta si el resaltado se adelanta)';
+
+  @override
+  String get studyMode => 'Estudio';
+
+  @override
+  String get studyModeTooltip => 'Modo estudio: leer traducción y luego reproducir cada línea';
+
+  @override
+  String get studyModeStarted => 'Modo estudio iniciado';
+
+  @override
+  String get studyModeStopped => 'Modo estudio detenido';
+
+  @override
+  String get studyModeNoLyrics => 'No hay letras sincronizadas para esta canción';
+
+  @override
+  String get studyModeSettings => 'Ajustes del modo estudio';
+
+  @override
+  String get studyModeOrder => 'Orden';
+
+  @override
+  String get studyModeOrderTranslationFirst => 'Primero traducción';
+
+  @override
+  String get studyModeOrderOriginalFirst => 'Primero original';
+
+  @override
+  String get studyModeOrderOverlay => 'Superpuesto (original bajo)';
+
+  @override
+  String get studyModeSpeechRate => 'Velocidad de voz';
+
+  @override
+  String get studyModeLongPressHint => 'Pulsación larga para ajustes';
+
+  @override
+  String get exportCurrentSong => 'Exportar canción';
+
+  @override
+  String get studyModeOverlayTiming => 'Cuándo hablar';
+
+  @override
+  String get studyModeOverlayAtStart => 'Al inicio de la línea';
+
+  @override
+  String get studyModeOverlayAtEnd => 'Al final de la línea';
+
+  @override
+  String get studyModeOverlayAtBoth => 'Inicio y final';
+
+  @override
+  String get studyModeDuckVolume => 'Volumen del original';
+
+  @override
+  String get studyModeOpenSettings => 'Ajustes del modo estudio';
 }

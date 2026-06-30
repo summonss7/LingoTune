@@ -1845,4 +1845,67 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get speedNormal => 'Normal';
+
+  @override
+  String get lyricsPositionOffset => 'Verzögerung der Textsynchronisierung';
+
+  @override
+  String get lyricsPositionOffsetSubtitle => 'Hervorhebungsverzögerung in Sekunden (erhöhen, wenn die Hervorhebung voreilt)';
+
+  @override
+  String get studyMode => 'Lernen';
+
+  @override
+  String get studyModeTooltip => 'Lernmodus: Übersetzung vorlesen, dann jede Zeile abspielen';
+
+  @override
+  String get studyModeStarted => 'Lernmodus gestartet';
+
+  @override
+  String get studyModeStopped => 'Lernmodus gestoppt';
+
+  @override
+  String get studyModeNoLyrics => 'Keine synchronisierten Texte für dieses Lied';
+
+  @override
+  String get studyModeSettings => 'Lernmodus-Einstellungen';
+
+  @override
+  String get studyModeOrder => 'Reihenfolge';
+
+  @override
+  String get studyModeOrderTranslationFirst => 'Zuerst Übersetzung';
+
+  @override
+  String get studyModeOrderOriginalFirst => 'Zuerst Original';
+
+  @override
+  String get studyModeOrderOverlay => 'Überlagert (leises Original)';
+
+  @override
+  String get studyModeSpeechRate => 'Sprechgeschwindigkeit';
+
+  @override
+  String get studyModeLongPressHint => 'Lange drücken für Einstellungen';
+
+  @override
+  String get exportCurrentSong => 'Lied exportieren';
+
+  @override
+  String get studyModeOverlayTiming => 'Wann sprechen';
+
+  @override
+  String get studyModeOverlayAtStart => 'Am Zeilenanfang';
+
+  @override
+  String get studyModeOverlayAtEnd => 'Am Zeilenende';
+
+  @override
+  String get studyModeOverlayAtBoth => 'Anfang und Ende';
+
+  @override
+  String get studyModeDuckVolume => 'Lautstärke Original';
+
+  @override
+  String get studyModeOpenSettings => 'Lernmodus-Einstellungen';
 }

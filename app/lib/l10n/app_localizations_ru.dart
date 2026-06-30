@@ -1845,4 +1845,67 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get speedNormal => 'Обычная';
+
+  @override
+  String get lyricsPositionOffset => 'Задержка синхронизации текста';
+
+  @override
+  String get lyricsPositionOffsetSubtitle => 'Задержка подсветки в секундах (увеличьте, если подсветка спешит)';
+
+  @override
+  String get studyMode => 'Изучение';
+
+  @override
+  String get studyModeTooltip => 'Режим изучения: озвучить перевод, затем фразу из песни';
+
+  @override
+  String get studyModeStarted => 'Режим изучения включён';
+
+  @override
+  String get studyModeStopped => 'Режим изучения выключен';
+
+  @override
+  String get studyModeNoLyrics => 'Нет текста с временными метками для этой песни';
+
+  @override
+  String get studyModeSettings => 'Настройки режима изучения';
+
+  @override
+  String get studyModeOrder => 'Порядок';
+
+  @override
+  String get studyModeOrderTranslationFirst => 'Сначала перевод';
+
+  @override
+  String get studyModeOrderOriginalFirst => 'Сначала оригинал';
+
+  @override
+  String get studyModeOrderOverlay => 'Поверх (тихий оригинал)';
+
+  @override
+  String get studyModeSpeechRate => 'Скорость речи';
+
+  @override
+  String get studyModeLongPressHint => 'Долгое нажатие — настройки';
+
+  @override
+  String get exportCurrentSong => 'Экспорт песни';
+
+  @override
+  String get studyModeOverlayTiming => 'Когда говорить';
+
+  @override
+  String get studyModeOverlayAtStart => 'В начале строки';
+
+  @override
+  String get studyModeOverlayAtEnd => 'В конце строки';
+
+  @override
+  String get studyModeOverlayAtBoth => 'В начале и в конце';
+
+  @override
+  String get studyModeDuckVolume => 'Громкость оригинала';
+
+  @override
+  String get studyModeOpenSettings => 'Настройки режима изучения';
 }

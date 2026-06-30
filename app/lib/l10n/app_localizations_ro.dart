@@ -1845,4 +1845,67 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get speedNormal => 'Normală';
+
+  @override
+  String get lyricsPositionOffset => 'Întârziere sincronizare versuri';
+
+  @override
+  String get lyricsPositionOffsetSubtitle => 'Întârzierea evidențierii în secunde (creșteți dacă evidențierea grăbește)';
+
+  @override
+  String get studyMode => 'Studiu';
+
+  @override
+  String get studyModeTooltip => 'Mod studiu: citește traducerea, apoi redă fiecare rând';
+
+  @override
+  String get studyModeStarted => 'Modul studiu a pornit';
+
+  @override
+  String get studyModeStopped => 'Modul studiu a fost oprit';
+
+  @override
+  String get studyModeNoLyrics => 'Nu există versuri sincronizate pentru această melodie';
+
+  @override
+  String get studyModeSettings => 'Setări mod studiu';
+
+  @override
+  String get studyModeOrder => 'Ordine';
+
+  @override
+  String get studyModeOrderTranslationFirst => 'Mai întâi traducerea';
+
+  @override
+  String get studyModeOrderOriginalFirst => 'Mai întâi originalul';
+
+  @override
+  String get studyModeOrderOverlay => 'Suprapus (original redus)';
+
+  @override
+  String get studyModeSpeechRate => 'Viteză vorbire';
+
+  @override
+  String get studyModeLongPressHint => 'Apăsați lung pentru setări';
+
+  @override
+  String get exportCurrentSong => 'Exportă melodia';
+
+  @override
+  String get studyModeOverlayTiming => 'Când să vorbească';
+
+  @override
+  String get studyModeOverlayAtStart => 'La începutul rândului';
+
+  @override
+  String get studyModeOverlayAtEnd => 'La sfârșitul rândului';
+
+  @override
+  String get studyModeOverlayAtBoth => 'Început și sfârșit';
+
+  @override
+  String get studyModeDuckVolume => 'Volumul originalului';
+
+  @override
+  String get studyModeOpenSettings => 'Setări mod studiu';
 }

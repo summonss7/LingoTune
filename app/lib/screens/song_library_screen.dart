@@ -66,6 +66,9 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
   String _sortBy = 'default';
   final Map<String, Color> _buttonColorsCache = {};
 
+  final ScrollController _scrollController = ScrollController();
+  bool _didInitialScroll = false;
+
   final SongImportHelper _songImportHelper = SongImportHelper();
   final CoverArtHelper _coverArtHelper = CoverArtHelper();
   final SongTranslationLoader _songTranslationLoader = SongTranslationLoader();
@@ -83,6 +86,30 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
     if (mounted) {
       _loadSongs();
     }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToCurrentSong() {
+    if (_didInitialScroll) return;
+    final currentSongId = widget.audioService.currentSongIdNotifier.value;
+    if (currentSongId == null || _songs.isEmpty) return;
+    final index = _songs.indexWhere((s) => s.id == currentSongId);
+    if (index < 0) return;
+
+    _didInitialScroll = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      if (maxExtent <= 0) return;
+      final avgHeight = maxExtent / _songs.length;
+      final target = (index * avgHeight - 2 * avgHeight).clamp(0.0, maxExtent);
+      _scrollController.jumpTo(target);
+    });
   }
 
   Future<void> _loadSortPreference() async {
@@ -107,6 +134,7 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
 
       _applySorting();
       await _checkTimestampsValidity();
+      _scrollToCurrentSong();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -2265,6 +2293,7 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
                       onAddSong: _importSong,
                     )
                   : ListView.builder(
+                      controller: _scrollController,
                       itemCount: _songs.length,
                       itemBuilder: (context, index) {
                         final song = _songs[index];

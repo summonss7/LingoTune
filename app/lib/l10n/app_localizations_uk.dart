@@ -1845,4 +1845,67 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get speedNormal => 'Звичайна';
+
+  @override
+  String get lyricsPositionOffset => 'Затримка синхронізації тексту';
+
+  @override
+  String get lyricsPositionOffsetSubtitle => 'Затримка підсвічування в секундах (збільште, якщо підсвічування поспішає)';
+
+  @override
+  String get studyMode => 'Вивчення';
+
+  @override
+  String get studyModeTooltip => 'Режим вивчення: озвучити переклад, потім фразу з пісні';
+
+  @override
+  String get studyModeStarted => 'Режим вивчення увімкнено';
+
+  @override
+  String get studyModeStopped => 'Режим вивчення вимкнено';
+
+  @override
+  String get studyModeNoLyrics => 'Немає тексту з мітками для цієї пісні';
+
+  @override
+  String get studyModeSettings => 'Налаштування режиму вивчення';
+
+  @override
+  String get studyModeOrder => 'Порядок';
+
+  @override
+  String get studyModeOrderTranslationFirst => 'Спочатку переклад';
+
+  @override
+  String get studyModeOrderOriginalFirst => 'Спочатку оригінал';
+
+  @override
+  String get studyModeOrderOverlay => 'Поверх (тихий оригінал)';
+
+  @override
+  String get studyModeSpeechRate => 'Швидкість мовлення';
+
+  @override
+  String get studyModeLongPressHint => 'Довге натискання — налаштування';
+
+  @override
+  String get exportCurrentSong => 'Експорт пісні';
+
+  @override
+  String get studyModeOverlayTiming => 'Коли говорити';
+
+  @override
+  String get studyModeOverlayAtStart => 'На початку рядка';
+
+  @override
+  String get studyModeOverlayAtEnd => 'В кінці рядка';
+
+  @override
+  String get studyModeOverlayAtBoth => 'На початку і в кінці';
+
+  @override
+  String get studyModeDuckVolume => 'Гучність оригіналу';
+
+  @override
+  String get studyModeOpenSettings => 'Налаштування режиму вивчення';
 }

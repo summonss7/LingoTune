@@ -15,6 +15,7 @@ import '../widgets/settings/font_size_control.dart';
 import '../widgets/settings/scroll_offset_control.dart';
 import '../widgets/settings/default_auto_scroll_focus_offset_control.dart';
 import '../widgets/settings/timestamp_offset_control.dart';
+import '../widgets/settings/lyrics_position_offset_control.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -327,6 +328,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(
                 '${l10n.scrollOffsetSubtitle}: ${_scrollOffset.toInt()} px'),
             trailing: ScrollOffsetControl(offset: _scrollOffset),
+          ),
+          ListTile(
+            leading: const Icon(Icons.timer),
+            title: Text(l10n.lyricsPositionOffset),
+            subtitle: Text(
+                '${l10n.lyricsPositionOffsetSubtitle}: ${settingsProvider.lyricsPositionOffset.toStringAsFixed(2)}s'),
+            trailing: LyricsPositionOffsetControl(
+                offset: settingsProvider.lyricsPositionOffset),
           ),
           ListTile(
             leading: const Icon(Icons.center_focus_strong),

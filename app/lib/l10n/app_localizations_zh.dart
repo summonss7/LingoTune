@@ -1845,4 +1845,67 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get speedNormal => '正常';
+
+  @override
+  String get lyricsPositionOffset => '歌词同步延迟';
+
+  @override
+  String get lyricsPositionOffsetSubtitle => '高亮延迟（秒）（如高亮提前则增加）';
+
+  @override
+  String get studyMode => '学习';
+
+  @override
+  String get studyModeTooltip => '学习模式：先朗读翻译，再播放每句';
+
+  @override
+  String get studyModeStarted => '学习模式已开始';
+
+  @override
+  String get studyModeStopped => '学习模式已停止';
+
+  @override
+  String get studyModeNoLyrics => '这首歌没有同步歌词';
+
+  @override
+  String get studyModeSettings => '学习模式设置';
+
+  @override
+  String get studyModeOrder => '顺序';
+
+  @override
+  String get studyModeOrderTranslationFirst => '先翻译';
+
+  @override
+  String get studyModeOrderOriginalFirst => '先原文';
+
+  @override
+  String get studyModeOrderOverlay => '叠加（原声降低）';
+
+  @override
+  String get studyModeSpeechRate => '语音速度';
+
+  @override
+  String get studyModeLongPressHint => '长按进行设置';
+
+  @override
+  String get exportCurrentSong => '导出歌曲';
+
+  @override
+  String get studyModeOverlayTiming => '何时朗读';
+
+  @override
+  String get studyModeOverlayAtStart => '行首';
+
+  @override
+  String get studyModeOverlayAtEnd => '行尾';
+
+  @override
+  String get studyModeOverlayAtBoth => '行首和行尾';
+
+  @override
+  String get studyModeDuckVolume => '原声音量';
+
+  @override
+  String get studyModeOpenSettings => '学习模式设置';
 }

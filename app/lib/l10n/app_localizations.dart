@@ -3472,6 +3472,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Normal'**
   String get speedNormal;
+
+  /// No description provided for @lyricsPositionOffset.
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics Sync Delay'**
+  String get lyricsPositionOffset;
+
+  /// No description provided for @lyricsPositionOffsetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight delay in seconds (increase if highlight jumps ahead)'**
+  String get lyricsPositionOffsetSubtitle;
+
+  /// No description provided for @studyMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Study'**
+  String get studyMode;
+
+  /// No description provided for @studyModeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Study mode: speak translation then play each line'**
+  String get studyModeTooltip;
+
+  /// No description provided for @studyModeStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Study mode started'**
+  String get studyModeStarted;
+
+  /// No description provided for @studyModeStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Study mode stopped'**
+  String get studyModeStopped;
+
+  /// No description provided for @studyModeNoLyrics.
+  ///
+  /// In en, this message translates to:
+  /// **'No timed lyrics for this song'**
+  String get studyModeNoLyrics;
+
+  /// No description provided for @studyModeSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Study Mode Settings'**
+  String get studyModeSettings;
+
+  /// No description provided for @studyModeOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Order'**
+  String get studyModeOrder;
+
+  /// No description provided for @studyModeOrderTranslationFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation first'**
+  String get studyModeOrderTranslationFirst;
+
+  /// No description provided for @studyModeOrderOriginalFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Original first'**
+  String get studyModeOrderOriginalFirst;
+
+  /// No description provided for @studyModeOrderOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay (quiet original)'**
+  String get studyModeOrderOverlay;
+
+  /// No description provided for @studyModeSpeechRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech rate'**
+  String get studyModeSpeechRate;
+
+  /// No description provided for @studyModeLongPressHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Long press for settings'**
+  String get studyModeLongPressHint;
+
+  /// No description provided for @exportCurrentSong.
+  ///
+  /// In en, this message translates to:
+  /// **'Export song'**
+  String get exportCurrentSong;
+
+  /// No description provided for @studyModeOverlayTiming.
+  ///
+  /// In en, this message translates to:
+  /// **'When to speak'**
+  String get studyModeOverlayTiming;
+
+  /// No description provided for @studyModeOverlayAtStart.
+  ///
+  /// In en, this message translates to:
+  /// **'At line start'**
+  String get studyModeOverlayAtStart;
+
+  /// No description provided for @studyModeOverlayAtEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'At line end'**
+  String get studyModeOverlayAtEnd;
+
+  /// No description provided for @studyModeOverlayAtBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Start and end'**
+  String get studyModeOverlayAtBoth;
+
+  /// No description provided for @studyModeDuckVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Original volume'**
+  String get studyModeDuckVolume;
+
+  /// No description provided for @studyModeOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Study mode settings'**
+  String get studyModeOpenSettings;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

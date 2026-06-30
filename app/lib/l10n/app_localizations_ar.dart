@@ -1845,4 +1845,67 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get speedNormal => 'عادي';
+
+  @override
+  String get lyricsPositionOffset => 'تأخير مزامنة الكلمات';
+
+  @override
+  String get lyricsPositionOffsetSubtitle => 'تأخير التمييز بالثواني (زده إذا كان التمييز يسبق)';
+
+  @override
+  String get studyMode => 'دراسة';
+
+  @override
+  String get studyModeTooltip => 'وضع الدراسة: قراءة الترجمة ثم تشغيل كل سطر';
+
+  @override
+  String get studyModeStarted => 'بدأ وضع الدراسة';
+
+  @override
+  String get studyModeStopped => 'تم إيقاف وضع الدراسة';
+
+  @override
+  String get studyModeNoLyrics => 'لا توجد كلمات متزامنة لهذه الأغنية';
+
+  @override
+  String get studyModeSettings => 'إعدادات وضع الدراسة';
+
+  @override
+  String get studyModeOrder => 'الترتيب';
+
+  @override
+  String get studyModeOrderTranslationFirst => 'الترجمة أولاً';
+
+  @override
+  String get studyModeOrderOriginalFirst => 'الأصل أولاً';
+
+  @override
+  String get studyModeOrderOverlay => 'متداخل (الأصل منخفض)';
+
+  @override
+  String get studyModeSpeechRate => 'سرعة الكلام';
+
+  @override
+  String get studyModeLongPressHint => 'اضغط مطولاً للإعدادات';
+
+  @override
+  String get exportCurrentSong => 'تصدير الأغنية';
+
+  @override
+  String get studyModeOverlayTiming => 'متى يتحدث';
+
+  @override
+  String get studyModeOverlayAtStart => 'في بداية السطر';
+
+  @override
+  String get studyModeOverlayAtEnd => 'في نهاية السطر';
+
+  @override
+  String get studyModeOverlayAtBoth => 'البداية والنهاية';
+
+  @override
+  String get studyModeDuckVolume => 'مستوى صوت الأصل';
+
+  @override
+  String get studyModeOpenSettings => 'إعدادات وضع الدراسة';
 }

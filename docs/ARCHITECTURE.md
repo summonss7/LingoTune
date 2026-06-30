@@ -69,6 +69,7 @@ app/lib/
 │   ├── cover_art_service.dart   # Обложки альбомов
 │   ├── folder_config_service.dart # Конфигурация папок
 │   ├── settings_export_service.dart # Экспорт настроек
+│   ├── study_mode_service.dart  # Режим изучения (TTS + воспроизведение)
 │   └── export_import_service.dart # Экспорт/импорт
 │
 ├── screens/                     # Экраны приложения
@@ -206,6 +207,21 @@ class Playlist {
 - `currentSongIdNotifier` — ValueNotifier для отслеживания текущей песни
 
 **Зависимости:** just_audio, audio_service, audio_session
+
+#### StudyModeService
+**Ответственность:** Режим изучения — озвучивание перевода (TTS) и воспроизведение песни по строкам
+
+- Три режима порядка (`StudyModeOrder`):
+  - `translationFirst` — сначала TTS перевода, затем фрагмент оригинала (песня на паузе во время речи)
+  - `originalFirst` — сначала фрагмент оригинала, затем TTS перевода (песня на паузе во время речи)
+  - `overlay` — песня играет **непрерывно без пауз**, перевод говорит поверх (ducking)
+- В режиме `overlay`: выбор момента речи (`OverlayTiming`: start / end / both) и регулируемая громкость оригинала (`duckVolume`, 0–100%)
+- Скорость речи TTS (`speechRate`) — пресеты, дефолт 0.5
+- Надёжность: watchdog-таймаут TTS, ретрай `play()` (реактивация аудиосессии после паузы), fallback по завершению песни
+- Старт с текущей позиции; пауза/возобновление сессии через FAB
+- Настройки сохраняются в `SharedPreferences`: `studyModeOrder`, `studyModeOverlayTiming`, `studyModeSpeechRate`, `studyModeDuckVolume`
+
+**Зависимости:** flutter_tts, just_audio (через AudioService)
 
 #### DatabaseService
 **Ответственность:** Управление базой данных SQLite

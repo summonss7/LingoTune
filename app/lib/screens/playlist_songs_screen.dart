@@ -69,11 +69,38 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
   String _sortBy = 'default';
   final Map<String, Color> _buttonColorsCache = {};
 
+  final ScrollController _scrollController = ScrollController();
+  bool _didInitialScroll = false;
+
   @override
   void initState() {
     super.initState();
     _loadSortPreference();
     _loadSongs();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToCurrentSong() {
+    if (_didInitialScroll) return;
+    final currentSongId = widget.audioService.currentSongIdNotifier.value;
+    if (currentSongId == null || _songs.isEmpty) return;
+    final index = _songs.indexWhere((s) => s.id == currentSongId);
+    if (index < 0) return;
+
+    _didInitialScroll = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      if (maxExtent <= 0) return;
+      final avgHeight = maxExtent / _songs.length;
+      final target = (index * avgHeight - 2 * avgHeight).clamp(0.0, maxExtent);
+      _scrollController.jumpTo(target);
+    });
   }
 
   Future<void> _loadSortPreference() async {
@@ -99,6 +126,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
 
       _applySorting();
       await _checkTimestampsValidity();
+      _scrollToCurrentSong();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -557,6 +585,7 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
       valueListenable: widget.audioService.currentSongIdNotifier,
       builder: (context, currentSongId, _) {
         return ReorderableListView.builder(
+          scrollController: _scrollController,
           proxyDecorator: (child, index, animation) {
             return AnimatedBuilder(
               animation: animation,
