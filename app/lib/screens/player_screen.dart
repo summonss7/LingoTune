@@ -88,6 +88,19 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isReloading = false;
   bool _isSongLoading = false;
 
+  // === DIAGNOSTIC (5.0.7): last study-mode lifecycle event, shown in the
+  // service-data overlay so we can trace why study fails to restart after a
+  // song switch. Remove after the root cause is fixed. ===
+  String _lastStudyEvent = 'init';
+  void _studyEvt(String msg) {
+    _lastStudyEvent = msg;
+    debugPrint('🔍 STUDY-EVT: $msg');
+    // Force the overlay to refresh immediately so we can follow the lifecycle
+    // LIVE (the 50ms position timer is cancelled during _playSong, so without
+    // this the overlay would freeze and hide the exact failure point).
+    if (mounted) setState(() {});
+  }
+
   SettingsProvider? _settingsProvider;
 
   List<Song> get playlistSongs => widget.playlistSongs ?? [];
@@ -283,9 +296,57 @@ class _PlayerScreenState extends State<PlayerScreen>
     });
   }
 
+  /// Pre-flight TTS check before starting study mode. If the current
+  /// translation language has no installed voice (common on Chinese ROMs
+  /// without the right TTS engine), either asks the user (manual toggle) or
+  /// silently switches to segments-only mode (auto-start / restart after song
+  /// switch). Returns true if study mode should proceed.
+  Future<bool> _ensureTtsReady({required bool fromUser}) async {
+    final lang = widget.translationService.currentTranslation?.language;
+    if (lang == null) return true; // no translation -> nothing to speak anyway
+    final ok = await _studyModeService.checkLanguageAvailable(lang);
+    if (ok) {
+      _studyModeService.setSpeakDisabled(false);
+      return true;
+    }
+    _studyEvt('ensureTts: lang $lang NOT available (engine=${_studyModeService.activeEngine})');
+    if (fromUser && mounted) {
+      final cont = await _showTtsUnavailableDialog();
+      if (!cont) return false;
+    }
+    // Auto-disable speech so the runner keeps advancing over segments instead
+    // of hanging in silence for ~12s on every line.
+    _studyModeService.setSpeakDisabled(true);
+    return true;
+  }
+
+  /// Shown when the translation language has no installed TTS voice.
+  /// Offers "continue without voice" (segments-only study) or cancel.
+  Future<bool> _showTtsUnavailableDialog() async {
+    final l10n = AppLocalizations.of(context)!;
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.ttsLangMissingTitle),
+            content: Text(l10n.ttsLangMissingBody),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(l10n.ttsContinueNoVoice),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
   Future<void> _toggleStudyMode() async {
     if (_studyModeService.isActive && !_studyModeService.isUserPaused) {
-      await _studyModeService.stop();
+      await _studyModeService.stop(userRequested: true);
       if (mounted) setState(() {});
       return;
     }
@@ -301,16 +362,115 @@ class _PlayerScreenState extends State<PlayerScreen>
       }
       return;
     }
+    if (!await _ensureTtsReady(fromUser: true)) return;
     final started = await _studyModeService.start();
     if (started && mounted) {
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(l10n.studyModeStarted),
+          content: Text(_studyModeService.speakDisabled
+              ? l10n.studyModeStartedNoVoice
+              : l10n.studyModeStarted),
           duration: const Duration(seconds: 2),
         ),
       );
       setState(() {});
+    }
+  }
+
+  /// Auto-starts study mode on player init if it was persisted as enabled.
+  /// Reads the flag directly from SharedPreferences because StudyModeService's
+  /// async _init() may not have completed yet at this point.
+  Future<void> _maybeAutoStartStudy() async {
+    if (!mounted) return;
+    bool persisted = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      persisted = prefs.getBool('studyModeEnabled') ?? false;
+    } catch (_) {}
+    if (!persisted) return;
+    if (widget.lyricsService.lyricLines.isEmpty) return;
+    if (_studyModeService.isActive) return;
+    debugPrint('▶ Study mode persisted ON — auto-starting on player init');
+    await _ensureTtsReady(fromUser: false);
+    await _studyModeService.start();
+    if (mounted) setState(() {});
+  }
+
+  /// Restarts study mode after a song switch or seek if it was persisted as
+  /// enabled. [delay] lets a freshly started song settle (avoids a race where
+  /// the background handler's play events conflict with study mode's immediate
+  /// seek+pause, which previously prevented the restart from "taking").
+  Future<void> _restartStudyIfNeeded({
+    Duration delay = Duration.zero,
+  }) async {
+    _studyEvt('restart: check (persist=${_studyModeService.enabledPersist}, '
+        'isActive=${_studyModeService.isActive}, '
+        'lyricsEmpty=${widget.lyricsService.lyricLines.isEmpty}, mounted=$mounted)');
+    if (!mounted) {
+      _studyEvt('restart: SKIP !mounted');
+      return;
+    }
+    if (!_studyModeService.enabledPersist) {
+      _studyEvt('restart: SKIP !persist');
+      return;
+    }
+    if (widget.lyricsService.lyricLines.isEmpty) {
+      _studyEvt('restart: SKIP lyrics empty');
+      return;
+    }
+    if (_studyModeService.isActive) {
+      _studyEvt('restart: SKIP already active');
+      return;
+    }
+    if (delay != Duration.zero) {
+      await Future.delayed(delay);
+      if (!mounted) {
+        _studyEvt('restart: SKIP !mounted after delay');
+        return;
+      }
+    }
+    debugPrint('▶ Study mode persist — restarting after song switch/seek');
+    await _ensureTtsReady(fromUser: false);
+    final started = await _studyModeService.start();
+    _studyEvt('restart: start() -> $started; '
+        'isActive=${_studyModeService.isActive} '
+        'speakDisabled=${_studyModeService.speakDisabled}');
+    if (mounted) setState(() {});
+  }
+
+  /// Triggered by StudyModeService when a song ends naturally during study
+  /// mode. `onSongComplete` is guarded while study mode is active, so the
+  /// normal loop/next wouldn't fire — this callback bridges that gap: it
+  /// advances to the next song (respecting loop mode), and `_playSong` stops &
+  /// restarts study mode (persist) for the new song.
+  Future<void> _onStudySongCompleted() async {
+    if (!mounted) return;
+    _studyEvt('onStudyCompleted: loop=${_loopMode.name}, '
+        'song=${_currentSong.id}, isActive=${_studyModeService.isActive}, '
+        'load=$_isSongLoading');
+    debugPrint('▶ Study mode completed song — triggering loop/next');
+    if (_loopMode == LoopMode.one) {
+      // Repeat current song from the start (reload so study mode restarts
+      // cleanly from line 0).
+      await _playSong(_currentSong);
+    } else {
+      // Advance (LoopMode.all/allPlaylists/shuffle wrap; off does nothing at
+      // the last song). _playSong restarts study mode via persist.
+      final prevId = _currentSong.id;
+      await _playNextSong();
+      _studyEvt('onStudyCompleted: after playNext '
+          'prev=$prevId new=${_currentSong.id} '
+          'isActive=${_studyModeService.isActive}');
+      // Only stop study mode if NOTHING actually advanced (LoopMode.off, last
+      // song). Comparing the song id is the reliable signal: by this point
+      // `_playSong` has already restarted study mode for the NEW song (so
+      // `isActive` is true regardless) — checking `isActive` here would
+      // incorrectly kill the just-restarted session (see v5.0.5 fix).
+      if (mounted && _currentSong.id == prevId && _studyModeService.isActive) {
+        _studyEvt('onStudyCompleted: nothing advanced -> stop');
+        await _studyModeService.stop();
+      }
     }
   }
 
@@ -324,11 +484,14 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   static const List<double> _studySpeechRates = [
     0.3,
+    0.4,
     0.5,
+    0.6,
     0.7,
-    0.85,
+    0.8,
+    0.9,
     1.0,
-    1.25
+    1.1
   ];
 
   void _showStudyModeSettingsDialog() {
@@ -589,15 +752,21 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Future<void> _playSong(Song song) async {
+    _studyEvt('playSong: ENTER "${song.title}" '
+        '(load=$_isSongLoading, isActive=${_studyModeService.isActive}, '
+        'persist=${_studyModeService.enabledPersist})');
     if (_isSongLoading) {
       debugPrint(
           '⚠ _playSong: already loading another song, skipping: ${song.title}');
+      _studyEvt('playSong: SKIP (already loading)');
       return;
     }
     _isSongLoading = true;
     _positionTimer?.cancel();
     if (_studyModeService.isActive) {
       await _studyModeService.stop();
+      _studyEvt('playSong: after stop '
+          'isActive=${_studyModeService.isActive}');
     }
 
     try {
@@ -615,10 +784,22 @@ class _PlayerScreenState extends State<PlayerScreen>
         _lastProcessedIndex = -1;
         _lastProcessedLanguageIndex = -1;
       });
+      // Reset the lyrics scroll to the top for the new song — otherwise the
+      // previous song's scroll offset leaves the new lyrics outside the
+      // viewport ("текст за зоной видимости" after switching songs).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scrollController.hasClients) {
+          _scrollController.jumpTo(0.0);
+        }
+      });
 
       await _loadAllTranslations(song.id, song.title);
       await _selectLanguageBasedOnSettings();
       await _updateAllLyricsWithTranslations();
+      // Refresh the AppBar (language indicator) and translation display right
+      // after translations loaded, so they appear immediately without waiting
+      // for the next position-timer tick.
+      if (mounted) setState(() {});
 
       widget.audioService.setCurrentSong(song);
 
@@ -645,9 +826,36 @@ class _PlayerScreenState extends State<PlayerScreen>
         await widget.audioService.loadAudio(song.audioPath);
         await widget.audioService.play();
       }
+      _studyEvt('playSong: post-start '
+          'state=${widget.audioService.player.processingState.name} '
+          'pos=${widget.audioService.position.inMilliseconds}ms');
+
+      // After a song switch that follows TTS speech (study mode), the Android
+      // audio session is deactivated and a plain play() can leave just_audio
+      // in a zombie state — position never advances, so lyrics don't scroll
+      // and study mode never detects line boundaries. Verify (and force) real
+      // playback advancement before restarting study. Scoped to study persist
+      // (the only path where TTS deactivates the session); no-op when healthy.
+      if (_studyModeService.enabledPersist) {
+        await widget.audioService.ensurePlaybackAdvancing();
+        _studyEvt('playSong: post-kick '
+            'state=${widget.audioService.player.processingState.name} '
+            'pos=${widget.audioService.position.inMilliseconds}ms');
+      }
+
+      // If study mode is persisted as enabled, restart it for the new song.
+      // A short delay lets the freshly started playback settle so the restart
+      // reliably "takes" (ensurePlaybackAdvancing already verified motion, so
+      // only a small breath is needed).
+      await _restartStudyIfNeeded(delay: const Duration(milliseconds: 50));
+      _studyEvt('playSong: post-restart '
+          'isActive=${_studyModeService.isActive} '
+          'phase=${_studyModeService.phase.name}');
     } finally {
       _isSongLoading = false;
       _startPositionUpdates();
+      _studyEvt('playSong: FINALLY '
+          'isActive=${_studyModeService.isActive} load=$_isSongLoading');
     }
   }
 
@@ -668,6 +876,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     _playbackSpeed = widget.audioService.playbackSpeed;
     _studyModeService = StudyModeService(
         widget.audioService, widget.lyricsService, widget.translationService);
+    // When study mode finishes a song naturally, trigger loop/next instead of
+    // pausing (onSongComplete is guarded while study mode is active, so without
+    // this the loop/repeat wouldn't fire and playback would just stop).
+    _studyModeService.onStudyCompleted = _onStudySongCompleted;
     _loadSettings();
     _startPositionUpdates();
 
@@ -676,10 +888,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     widget.audioService.onSongComplete = () {
       if (!mounted) return;
       if (_studyModeService.isActive) {
+        _studyEvt('onSongComplete: GUARDED (study active)');
         debugPrint(
             '=== Study mode active, completion handled by StudyModeService ===');
         return;
       }
+      _studyEvt('onSongComplete: NOT guarded -> playNext');
       _playNextSong();
     };
 
@@ -710,6 +924,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         setState(() {});
         await _selectLanguageBasedOnSettings();
       }
+      await _maybeAutoStartStudy();
       return;
     }
 
@@ -742,6 +957,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       setState(() {});
       await _selectLanguageBasedOnSettings();
     }
+    await _maybeAutoStartStudy();
   }
 
   Future<void> _initBackgroundAudio() async {
@@ -957,10 +1173,13 @@ class _PlayerScreenState extends State<PlayerScreen>
         if (_autoScroll && !_isEditMode) {
           _scrollToCurrentLine();
         }
+      }
 
-        if (mounted) {
-          setState(() {});
-        }
+      // Always rebuild so the AppBar (language indicator), translations and
+      // other UI refresh even when the player hasn't reported isInitialized
+      // yet (e.g. right after switching songs via the background handler).
+      if (mounted) {
+        setState(() {});
       }
     });
   }
@@ -1578,33 +1797,39 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Widget _buildStudyModeButton({double iconSize = 32.0}) {
-    final isActive = _studyModeService.isActive;
     final l10n = AppLocalizations.of(context)!;
-    return Container(
-      decoration: BoxDecoration(
-        color: isActive
-            ? Theme.of(context).colorScheme.primaryContainer
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: isActive
-            ? Border.all(
-                color: Theme.of(context).colorScheme.primary,
-                width: 2,
-              )
-            : null,
-      ),
-      child: IconButton(
-        icon: Icon(
-          Icons.record_voice_over,
-          color: isActive ? Theme.of(context).colorScheme.primary : null,
-          weight: isActive ? 900 : 400,
-        ),
-        onPressed: _toggleStudyMode,
-        onLongPress: _openStudyModeSettings,
-        tooltip: '${l10n.studyModeTooltip}\n${l10n.studyModeLongPressHint}',
-        iconSize: iconSize,
-        padding: const EdgeInsets.all(4.0),
-      ),
+    return AnimatedBuilder(
+      animation: _studyModeService,
+      builder: (context, _) {
+        final isActive = _studyModeService.isActive;
+        return Container(
+          decoration: BoxDecoration(
+            color: isActive
+                ? Theme.of(context).colorScheme.primaryContainer
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: isActive
+                ? Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  )
+                : null,
+          ),
+          child: IconButton(
+            icon: Icon(
+              Icons.record_voice_over,
+              color: isActive ? Theme.of(context).colorScheme.primary : null,
+              weight: isActive ? 900 : 400,
+            ),
+            onPressed: _toggleStudyMode,
+            onLongPress: _openStudyModeSettings,
+            tooltip:
+                '${l10n.studyModeTooltip}\n${l10n.studyModeLongPressHint}',
+            iconSize: iconSize,
+            padding: const EdgeInsets.all(4.0),
+          ),
+        );
+      },
     );
   }
 
@@ -2124,6 +2349,47 @@ class _PlayerScreenState extends State<PlayerScreen>
       ),
       body: Column(
         children: [
+          // === DEBUG: Study Mode state overlay (only when "Service Data"
+          // setting is enabled) ===
+          // NOTE (5.0.7 diagnostic): shown whenever showServiceData is on —
+          // NOT gated by studyModeService.isActive — so we can see the state
+          // even when study is inactive (the exact failure case).
+          if (Provider.of<SettingsProvider>(context).showServiceData)
+            Container(
+              width: double.infinity,
+              color: Colors.black87,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: DefaultTextStyle(
+                style: const TextStyle(
+                  color: Colors.lightGreenAccent,
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                ),
+                child: Text(
+                  () {
+                    final p = widget.audioService.player;
+                    final s = _studyModeService;
+                    return 'STUDY active=${s.isActive} '
+                        'persist=${s.enabledPersist} '
+                        'phase=${s.phase.name} '
+                        'idx=${s.currentIndex} '
+                        'paused=${s.isUserPaused} '
+                        'speak=${s.isSpeaking} '
+                        'resuming=${s.debugResuming}\n'
+                        'PLAYER playing=${p.playing} '
+                        'state=${p.processingState.name} '
+                        'pos=${widget.audioService.position.inMilliseconds}ms '
+                        'load=$_isSongLoading\n'
+                        'SEG target=${s.debugSegmentEnd?.toStringAsFixed(2) ?? "null"}s '
+                        'ticks=${s.debugSegmentTicks}\n'
+                        'TTS engine=${s.activeEngine ?? "?"} '
+                        'langAvail=${s.isLanguageAvailable} '
+                        'speakDisabled=${s.speakDisabled}\n'
+                        'EVT: $_lastStudyEvent';
+                  }(),
+                ),
+              ),
+            ),
           Expanded(
             child: Row(
               children: [
@@ -2190,9 +2456,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                                   if (_studyModeService.isActive) {
                                     await _studyModeService.stop();
                                   }
-                                  widget.audioService.seek(Duration(
+                                  await widget.audioService.seek(Duration(
                                       milliseconds:
                                           (line.startTime * 1000).toInt()));
+                                  // Resume study mode from the tapped line if
+                                  // it was persisted as enabled.
+                                  await _restartStudyIfNeeded();
                                 }
                               },
                             ),
@@ -2252,6 +2521,13 @@ class _PlayerScreenState extends State<PlayerScreen>
                             }
                             widget.audioService
                                 .seek(Duration(milliseconds: value.toInt()));
+                          },
+                          onChangeEnd: (_) {
+                            // Resume study mode from the new position if it was
+                            // persisted as enabled (small delay so the seek
+                            // position settles before start() reads it).
+                            _restartStudyIfNeeded(
+                                delay: const Duration(milliseconds: 250));
                           },
                         );
                       },
@@ -2425,6 +2701,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                                   }
                                   return FloatingActionButton(
                                     onPressed: () {
+                                      _studyEvt('FAB: pressed '
+                                          'studyActive=$studyActive '
+                                          'studyPaused=$studyPaused '
+                                          'isPlaying=$isPlaying');
                                       if (studyActive) {
                                         if (studyPaused) {
                                           _studyModeService.resumeSession();

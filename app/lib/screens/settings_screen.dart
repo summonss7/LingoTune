@@ -384,6 +384,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (value) => settingsProvider.setShowTranslationMessages(value),
             ),
           ),
+          ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: Text(l10n.serviceData),
+            subtitle: Text(l10n.serviceDataSubtitle),
+            trailing: Switch(
+              value: settingsProvider.showServiceData,
+              onChanged: (value) => settingsProvider.setShowServiceData(value),
+            ),
+          ),
           const Divider(),
           const TextSettingsSection(),
           const Divider(),

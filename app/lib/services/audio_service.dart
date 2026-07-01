@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart' hide LoopMode;
 import 'package:audio_service/audio_service.dart' as audio_pkg;
+import 'package:audio_session/audio_session.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'background_audio_handler.dart';
 import '../models/song.dart';
@@ -197,6 +198,61 @@ class AudioService extends ChangeNotifier {
     } catch (e) {
       debugPrint('✗ Error in seekToPosition(): $e');
     }
+  }
+
+  /// Ensures playback is ACTUALLY advancing (position moving), not just
+  /// reported as "playing". After a song switch — especially right after TTS
+  /// speech, which deactivates the Android audio session — a plain `play()`
+  /// can leave just_audio in a zombie state (`playing == true`, but the
+  /// position never moves). This reactivates the session, calls `play()` and
+  /// verifies the position moved within ~400ms; if it didn't, it retries and
+  /// nudges the player with a seek to the current position (which forces
+  /// just_audio to re-buffer and escape the zombie). No-op when playback is
+  /// already healthy (returns on the first advancing check).
+  Future<void> ensurePlaybackAdvancing({int maxAttempts = 5}) async {
+    const stepTimeout = Duration(seconds: 1);
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final session = await AudioSession.instance;
+        await session.setActive(true).timeout(stepTimeout);
+      } catch (e) {
+        debugPrint(
+            '⚠ AudioService.ensurePlayback: session error (attempt $attempt): $e');
+      }
+      try {
+        await play().timeout(stepTimeout);
+      } catch (e) {
+        debugPrint(
+            '✗ AudioService.ensurePlayback: play error/timeout (attempt $attempt): $e');
+      }
+      final Duration before = _position;
+      await Future.delayed(const Duration(milliseconds: 400));
+      final Duration after = _position;
+      if (after != before) {
+        debugPrint(
+            '✓ AudioService.ensurePlayback: advancing on attempt $attempt (${before.inMilliseconds}→${after.inMilliseconds}ms)');
+        return;
+      }
+      // If the song ended naturally, there's nothing to kick — bail out.
+      if (_player.processingState == ProcessingState.completed) {
+        debugPrint(
+            '⚠ AudioService.ensurePlayback: player reached completed, nothing to kick');
+        return;
+      }
+      debugPrint(
+            '⚠ AudioService.ensurePlayback: stuck at ${after.inMilliseconds}ms (attempt $attempt)');
+      // Zombie-state escape: seek to the current position to force a re-buffer.
+      if (attempt >= 2) {
+        try {
+          await seek(after).timeout(stepTimeout);
+        } catch (e) {
+          debugPrint(
+              '⚠ AudioService.ensurePlayback: zombie-nudge seek error (attempt $attempt): $e');
+        }
+      }
+    }
+    debugPrint(
+        '✗ AudioService.ensurePlayback: gave up after $maxAttempts attempts');
   }
 
   void setPlaybackRate(double rate) {

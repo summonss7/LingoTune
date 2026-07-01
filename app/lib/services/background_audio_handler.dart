@@ -188,10 +188,17 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   Future<void> loadSong(String audioPath) async {
     try {
+      // Timeouts guard against just_audio Futures that can hang indefinitely
+      // after the Android audio session was deactivated by TTS speech (study
+      // mode): a plain setFilePath() Future may never resolve in that state,
+      // which would block the caller forever. The actual load is verified
+      // separately by AudioService.ensurePlaybackAdvancing().
       if (audioPath.startsWith('content://')) {
-        await _player.setUrl(audioPath);
+        await _player.setUrl(audioPath)
+            .timeout(const Duration(seconds: 5));
       } else {
-        await _player.setFilePath(audioPath);
+        await _player.setFilePath(audioPath)
+            .timeout(const Duration(seconds: 5));
       }
       debugPrint('✓ BackgroundAudioHandler: Loaded audio: $audioPath');
     } catch (e) {
@@ -220,13 +227,25 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   Future<void> playSong(Song song, int index) async {
     try {
+      // Timeouts on every await are CRITICAL here: after the Android audio
+      // session is deactivated by TTS speech (study mode), just_audio Futures
+      // — especially `_player.play()` — can hang indefinitely (the audio
+      // actually starts, but the Future never resolves). A hanging play()
+      // blocks this method, which blocks PlayerScreen._playSong, which then
+      // never reaches study-mode restart -> study stays inactive after a song
+      // switch until the user manually presses play/pause (which issues a new
+      // play/pause that resolves the hung Future). Bounding each await breaks
+      // the deadlock; real playback is re-verified by
+      // AudioService.ensurePlaybackAdvancing() in _playSong.
       final session = await AudioSession.instance;
-      await session.setActive(true);
+      await session.setActive(true).timeout(const Duration(seconds: 2));
 
       if (song.audioPath.startsWith('content://')) {
-        await _player.setUrl(song.audioPath);
+        await _player.setUrl(song.audioPath)
+            .timeout(const Duration(seconds: 5));
       } else {
-        await _player.setFilePath(song.audioPath);
+        await _player.setFilePath(song.audioPath)
+            .timeout(const Duration(seconds: 5));
       }
 
       final duration = _player.duration ?? Duration.zero;
@@ -250,7 +269,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         queue.add(queueList);
       }
 
-      await _player.play();
+      await _player.play().timeout(const Duration(seconds: 1));
       _syncPlaybackState();
     } catch (e) {
       debugPrint('✗ BackgroundAudioHandler: Error playing song: $e');

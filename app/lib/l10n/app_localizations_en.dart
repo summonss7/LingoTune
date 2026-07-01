@@ -693,6 +693,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get serviceMessagesSubtitle => 'Show service notifications about translation and transcription';
 
+  String get serviceData => 'Service Data';
+
+  String get serviceDataSubtitle => 'Show diagnostic overlay in study mode';
+
   @override
   String get includeMp3Files => 'Include MP3 files';
 
@@ -1860,6 +1864,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get studyModeStarted => 'Study mode started';
+  String get studyModeStartedNoVoice => 'Study mode started (segments only — no voice)';
+  String get ttsLangMissingTitle => 'No voice for this language';
+  String get ttsLangMissingBody => 'Your device has no installed TTS voice for the translation language. Install a TTS engine with this language (e.g. Google or Yandex) under Settings → Text-to-speech, or continue in segments-only mode (no voiceover).';
+  String get ttsContinueNoVoice => 'Continue without voice';
 
   @override
   String get studyModeStopped => 'Study mode stopped';

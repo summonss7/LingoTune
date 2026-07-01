@@ -693,6 +693,10 @@ class AppLocalizationsRo extends AppLocalizations {
   @override
   String get serviceMessagesSubtitle => 'Arată notificări de serviciu despre traducere și transcriere';
 
+  String get serviceData => 'Date de serviciu';
+
+  String get serviceDataSubtitle => 'Afișează suprapunerea de diagnostic în modul de studiu';
+
   @override
   String get includeMp3Files => 'Include fișiere MP3';
 
@@ -1860,6 +1864,10 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get studyModeStarted => 'Modul studiu a pornit';
+  String get studyModeStartedNoVoice => 'Modul studiu a pornit (doar fragmente — fără voce)';
+  String get ttsLangMissingTitle => 'Fără voce pentru această limbă';
+  String get ttsLangMissingBody => 'Dispozitivul nu are o voce TTS instalată pentru limba de traducere. Instalează un motor TTS cu această limbă (ex. Google sau Yandex) din Setări → Sinteză vocală, sau continuă în modul doar fragmente (fără voce).';
+  String get ttsContinueNoVoice => 'Continuă fără voce';
 
   @override
   String get studyModeStopped => 'Modul studiu a fost oprit';

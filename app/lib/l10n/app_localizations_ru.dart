@@ -693,6 +693,10 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get serviceMessagesSubtitle => 'Показывать служебные уведомления о переводе и транскрипции';
 
+  String get serviceData => 'Служебные данные';
+
+  String get serviceDataSubtitle => 'Показывать отладочную плашку в режиме изучения';
+
   @override
   String get includeMp3Files => 'Включить MP3 файлы';
 
@@ -1860,6 +1864,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get studyModeStarted => 'Режим изучения включён';
+  String get studyModeStartedNoVoice => 'Режим изучения включён (только фрагменты — без озвучки)';
+  String get ttsLangMissingTitle => 'Нет голоса для этого языка';
+  String get ttsLangMissingBody => 'На устройстве не установлен голос для языка перевода. Установите TTS-движок с этим языком (например Google или Yandex) в Настройки → Синтез речи, либо продолжите в режиме только фрагменты (без озвучки).';
+  String get ttsContinueNoVoice => 'Продолжить без озвучки';
 
   @override
   String get studyModeStopped => 'Режим изучения выключен';

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:just_audio/just_audio.dart' show ProcessingState;
@@ -52,10 +53,49 @@ class StudyModeService extends ChangeNotifier {
   double _savedVolume = 1.0;
   bool _isDucked = false;
 
+  // Persisted "study mode enabled" flag. Lets the user toggle study mode once
+  // and have it automatically restart on every subsequent song and after app
+  // restart, instead of re-enabling it per song.
+  bool _enabledPersist = false;
+
   StreamSubscription<Duration>? _posSub;
   StreamSubscription? _playerStateSub;
   Completer<bool>? _segmentCompleter;
   Completer<void>? _speakCompleter;
+
+  /// Invoked when study mode reaches the END of the song naturally (all lines
+  /// processed / song completed). If set, the player is NOT paused here — the
+  /// callback is expected to trigger the normal song-completion flow (loop /
+  /// next), which respects the loop mode and restarts study mode (persist) for
+  /// the next song. If null, falls back to [stop] (pause).
+  VoidCallback? onStudyCompleted;
+
+  // Polling timers for segment/line boundary detection. We poll
+  // _audio.position (kept fresh by AudioService's own reliable positionStream
+  // subscription) instead of subscribing to just_audio's positionStream
+  // directly: dynamic subscriptions on that broadcast stream proved unreliable
+  // right after the TTS audio-session handoff and never fired the boundary
+  // callback, which stalled all three study modes.
+  Timer? _segmentTimer;
+  Timer? _overlayTimer;
+
+  // === DEBUG fields (temporary diagnostic) ===
+  double? _currentSegmentEnd;
+  int _debugSegmentTicks = 0;
+  bool _debugResuming = false;
+
+  // Whether the current translation language is actually speakable by the
+  // system TTS engine (checked via isLanguageAvailable). On some devices
+  // (e.g. Chinese ROMs without Google/Russian voices) this is false, and
+  // speaking would otherwise hang in silence for a long time.
+  bool _langAvailable = true;
+  // The system TTS engine in use (for diagnostics).
+  String? _activeEngine;
+  // When true, _speak() is a no-op (resolves immediately) so study mode runs
+  // in "segments only" mode. Set automatically by the fail-fast watchdog when
+  // TTS repeatedly fails to produce speech, or manually from the UI ("continue
+  // without voice").
+  bool _speakDisabled = false;
 
   bool get isActive => _isActive;
   bool get isUserPaused => _isUserPaused;
@@ -67,6 +107,35 @@ class StudyModeService extends ChangeNotifier {
   double get speechRate => _speechRate;
   OverlayTiming get overlayTiming => _overlayTiming;
   double get duckVolume => _duckVolume;
+
+  // === DEBUG getters (temporary diagnostic) ===
+  double? get debugSegmentEnd => _currentSegmentEnd;
+  int get debugSegmentTicks => _debugSegmentTicks;
+  bool get debugResuming => _debugResuming;
+
+  /// Whether the current translation language is installed/speakable on this
+  /// device's TTS engine.
+  bool get isLanguageAvailable => _langAvailable;
+
+  /// Whether TTS speech is currently being skipped (segments-only mode).
+  bool get speakDisabled => _speakDisabled;
+
+  /// The active system TTS engine name (for diagnostics), or null if unknown.
+  String? get activeEngine => _activeEngine;
+
+  /// Enables/disables "segments only" mode (no TTS). Used by the UI when the
+  /// user chooses to continue without a voice, and by the fail-fast watchdog
+  /// when TTS keeps hanging.
+  void setSpeakDisabled(bool value) {
+    if (_speakDisabled == value) return;
+    _speakDisabled = value;
+    debugPrint(
+        '🎧 StudyModeService: TTS speech ${value ? 'DISABLED' : 'enabled'}');
+    notifyListeners();
+  }
+
+  /// Whether study mode should stay enabled across songs / app restarts.
+  bool get enabledPersist => _enabledPersist;
 
   StudyModeService(this._audio, this._lyrics, this._translations) {
     _init();
@@ -88,6 +157,7 @@ class StudyModeService extends ChangeNotifier {
       _overlayTiming = OverlayTiming
           .values[timingIndex.clamp(0, OverlayTiming.values.length - 1)];
       _duckVolume = prefs.getDouble('studyModeDuckVolume') ?? 0.3;
+      _enabledPersist = prefs.getBool('studyModeEnabled') ?? false;
       notifyListeners();
     } catch (e) {
       debugPrint('✗ StudyModeService loadSettings error: $e');
@@ -141,6 +211,14 @@ class StudyModeService extends ChangeNotifier {
 
   Future<void> _initTts() async {
     try {
+      // Remember the active TTS engine for diagnostics.
+      try {
+        final engine = await _tts.getDefaultEngine;
+        _activeEngine = engine?.toString();
+        debugPrint('🎧 StudyModeService: TTS engine = $_activeEngine');
+      } catch (e) {
+        debugPrint('⚠ StudyModeService: getDefaultEngine error: $e');
+      }
       await _tts.setSpeechRate(_speechRate);
       await _tts.setPitch(1.0);
       await _tts.setVolume(1.0);
@@ -154,6 +232,11 @@ class StudyModeService extends ChangeNotifier {
 
   /// Speaks [text] and resolves when speech finishes, errors out, or is stopped.
   Future<void> _speak(String text) {
+    // Segments-only mode: skip TTS entirely so the runner keeps advancing
+    // (used when no voice is installed, or after TTS repeatedly hung).
+    if (_speakDisabled) {
+      return Future.value();
+    }
     final completer = Completer<void>();
     _speakCompleter = completer;
     _tts.setCompletionHandler(() {
@@ -170,16 +253,23 @@ class StudyModeService extends ChangeNotifier {
       debugPrint('✗ StudyMode TTS speak() error: $e');
       if (!completer.isCompleted) completer.complete();
     });
-    // Watchdog: force-complete if TTS never fires completion (prevents loop stall).
-    final estSeconds = (text.length / 8).ceil().clamp(4, 60);
-    final watchdog = Timer(Duration(seconds: estSeconds + 6), () {
+    // Fail-fast watchdog: if TTS never fires completion (typical when the
+    // engine accepts speak() but can't actually speak the language — common on
+    // Chinese ROMs without the right voice), resolve quickly and auto-disable
+    // TTS so the rest of the song runs in segments-only mode instead of
+    // hanging for up to a minute per line. Cap at ~12s (was up to 66s).
+    final estSeconds = (text.length / 8).ceil().clamp(4, 9);
+    final watchdogSeconds = (estSeconds + 3).clamp(5, 12);
+    final watchdog = Timer(Duration(seconds: watchdogSeconds), () {
       if (!completer.isCompleted) {
         debugPrint(
-            '⚠ StudyMode TTS watchdog timeout (${estSeconds + 6}s), forcing completion');
+            '⚠ StudyMode TTS watchdog timeout (${watchdogSeconds}s) — disabling TTS for this session');
         try {
           _tts.stop();
         } catch (_) {}
         if (!completer.isCompleted) completer.complete();
+        // Auto-disable so subsequent lines don't hang again.
+        setSpeakDisabled(true);
       }
     });
     return completer.future.then((v) {
@@ -197,18 +287,25 @@ class StudyModeService extends ChangeNotifier {
   Future<void> _setTtsLanguage(String languageCode) async {
     final locale = _mapLanguageToLocale(languageCode);
     _ttsLanguage = locale;
-    if (!_ttsReady) return;
+    bool available = true;
     try {
-      final available = await _tts.isLanguageAvailable(locale);
-      if (available == true) {
+      final res = await _tts.isLanguageAvailable(locale);
+      available = res == true;
+      if (available) {
         await _tts.setLanguage(locale);
         debugPrint('✓ StudyModeService: TTS language set to $locale');
       } else {
-        debugPrint('⚠ StudyModeService: TTS language $locale not available');
+        debugPrint(
+            '⚠ StudyModeService: TTS language $locale NOT available on this '
+            'device (no installed voice). Speech will be skipped.');
       }
     } catch (e) {
+      available = false;
       debugPrint('⚠ StudyModeService: TTS setLanguage($locale) error: $e');
     }
+    final changed = _langAvailable != available;
+    _langAvailable = available;
+    if (changed) notifyListeners();
   }
 
   String _mapLanguageToLocale(String code) {
@@ -275,6 +372,15 @@ class StudyModeService extends ChangeNotifier {
     _isDucked = false;
   }
 
+  /// Checks whether the system TTS engine can speak [languageCode] and caches
+  /// the result (also exposed via [isLanguageAvailable]). Used by the UI as a
+  /// pre-flight check before starting study mode, so we can warn the user and
+  /// offer "continue without voice" instead of hanging in silence.
+  Future<bool> checkLanguageAvailable(String languageCode) async {
+    await _setTtsLanguage(languageCode);
+    return _langAvailable;
+  }
+
   /// Starts study mode from the line closest to the current playback position.
   Future<bool> start() async {
     if (_isActive) return true;
@@ -307,7 +413,25 @@ class StudyModeService extends ChangeNotifier {
     debugPrint(
         '▶ StudyModeService: started from line $idx (${lines.length} lines, order=$_order)');
     _startRunner();
+    _persistEnabled(true);
     return true;
+  }
+
+  /// Persists the "study mode enabled" flag so the mode can be automatically
+  /// restored on the next song / app restart.
+  Future<void> _persistEnabled(bool value) async {
+    if (_enabledPersist == value) return;
+    _enabledPersist = value;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('studyModeEnabled', value);
+    } catch (_) {}
+  }
+
+  /// Public toggle for the persisted flag only (does not start the runner).
+  /// Used by the UI to remember the user's choice across songs.
+  Future<void> setEnabledPersist(bool value) async {
+    await _persistEnabled(value);
   }
 
   void _startRunner() {
@@ -351,7 +475,11 @@ class StudyModeService extends ChangeNotifier {
 
       if (_isActive && !_isUserPaused && !_disposed) {
         debugPrint('✓ StudyModeService: reached end of song');
-        await stop();
+        if (onStudyCompleted != null) {
+          onStudyCompleted!();
+        } else {
+          await stop();
+        }
       }
     } catch (e) {
       debugPrint('✗ StudyModeService loop error: $e');
@@ -361,10 +489,15 @@ class StudyModeService extends ChangeNotifier {
 
   Future<bool> _handleTranslationFirst(int index, String? text) async {
     final lines = _lyrics.lyricLines;
-    try {
-      await _audio.seek(
-          Duration(milliseconds: (lines[index].startTime * 1000).round()));
-    } catch (_) {}
+    final lineStartMs = (lines[index].startTime * 1000).round();
+    // Don't rewind if we're already at/inside this line (e.g. study just
+    // (re)started mid-line after a song switch) — that would replay already-
+    // heard audio. Only seek when we're before the line start.
+    if (_audio.position.inMilliseconds < lineStartMs) {
+      try {
+        await _audio.seek(Duration(milliseconds: lineStartMs));
+      } catch (_) {}
+    }
     if (text != null && text.trim().isNotEmpty && _ttsReady) {
       _isSpeaking = true;
       _phase = StudyPhase.speaking;
@@ -466,11 +599,10 @@ class StudyModeService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _audio.play();
+      _kickPlayback();
     } catch (e) {
       debugPrint('✗ StudyMode continuous play error: $e');
     }
-    _ensurePlaybackResumed();
 
     // Speak at the start of the current line immediately (if timing start/both).
     if (_overlayTiming != OverlayTiming.end) {
@@ -478,12 +610,21 @@ class StudyModeService extends ChangeNotifier {
     }
 
     int lastLine = curLine;
-    _posSub = _audio.player.positionStream.listen((pos) {
+    _overlayTimer = Timer.periodic(const Duration(milliseconds: 150), (_) {
       if (!_isActive || _isUserPaused || _disposed) {
         _cancelSegmentAwait(false);
         return;
       }
-      final posSec = pos.inMilliseconds / 1000.0;
+      if (_audio.player.processingState == ProcessingState.completed) {
+        debugPrint('✓ StudyMode continuous: song completed (poll)');
+        if (onStudyCompleted != null) {
+          onStudyCompleted!();
+        } else {
+          stop();
+        }
+        return;
+      }
+      final posSec = _audio.position.inMilliseconds / 1000.0;
       final newLine = _findLineIndexForPosition(posSec);
       if (newLine == lastLine || newLine < 0) return;
       debugPrint(
@@ -505,7 +646,11 @@ class StudyModeService extends ChangeNotifier {
       if (!_isActive || _isUserPaused || _disposed) return;
       if (state.processingState == ProcessingState.completed) {
         debugPrint('✓ StudyMode continuous: song completed');
-        stop();
+        if (onStudyCompleted != null) {
+          onStudyCompleted!();
+        } else {
+          stop();
+        }
       }
     });
   }
@@ -522,12 +667,21 @@ class StudyModeService extends ChangeNotifier {
     _phase = StudyPhase.speaking;
     notifyListeners();
     _setDuckVolume();
-    _speak(text).then((_) {
+    _speak(text).then((_) async {
       _isSpeaking = false;
-      _restoreVolume();
+      await _restoreVolume();
       if (_isActive && !_isUserPaused && !_disposed) {
         _phase = StudyPhase.playingSegment;
         notifyListeners();
+        // While TTS spoke, Android's audio focus likely paused the song.
+        // Resume it so the song keeps playing under/after the translation.
+        final before = _audio.position;
+        await Future.delayed(const Duration(milliseconds: 150));
+        if (_disposed || !_isActive || _isUserPaused) return;
+        if (!_audio.player.playing || _audio.position == before) {
+          debugPrint('▶ StudyMode overlay: song stalled during TTS, resuming');
+          _kickPlayback();
+        }
       }
     });
   }
@@ -544,29 +698,55 @@ class StudyModeService extends ChangeNotifier {
         (index + 1 < lines.length) ? lines[index + 1].startTime : null;
 
     try {
-      await _audio.seek(Duration(milliseconds: startMs));
-      await _audio.play();
-      debugPrint(
-          '▶ StudyMode segment[$index]: play (start=${startMs}ms end=${endSec}s)');
+      // Only seek back to the segment start if we're BEFORE it. If we're
+      // already inside the segment (e.g. study just (re)started mid-line
+      // right after a song switch, where the song has been playing for ~1-2s
+      // while study was spinning up), seeking back would replay already-heard
+      // audio ("первая фраза повторяется"). Continue from the current position
+      // instead. On normal line-to-line transitions the position is already at
+      // startMs, so this guard changes nothing there.
+      if (_audio.position.inMilliseconds < startMs) {
+        await _audio.seek(Duration(milliseconds: startMs));
+      }
     } catch (e) {
-      debugPrint('✗ StudyMode seek/play error: $e');
+      debugPrint('✗ StudyMode seek error: $e');
     }
-    _ensurePlaybackResumed();
+    debugPrint(
+        '▶ StudyMode segment[$index]: play (start=${startMs}ms end=${endSec}s)');
 
     final completer = Completer<bool>();
     _segmentCompleter = completer;
+    _currentSegmentEnd = endSec;
+    _debugSegmentTicks = 0;
+    notifyListeners();
+
+    // Set up boundary detection FIRST, then kick playback in the background
+    // (non-blocking). This decouples detection from resume: previously a
+    // hanging play() (just_audio zombie after TTS audio-session takeover)
+    // blocked timer creation, so the boundary was never detected and only the
+    // first phrase played. Now the timer polls position independently and
+    // catches the boundary the moment playback actually advances.
+    _kickPlayback();
 
     if (endSec != null) {
-      _posSub = _audio.player.positionStream.listen((pos) {
+      _segmentTimer =
+          Timer.periodic(const Duration(milliseconds: 150), (_) {
+        _debugSegmentTicks++;
         if (!_isActive || _isUserPaused || _disposed) {
           _cancelSegmentAwait(false);
           return;
         }
-        if (pos.inMilliseconds / 1000.0 >= endSec) {
+        if (_audio.player.processingState == ProcessingState.completed) {
+          debugPrint(
+              '⏹ StudyMode segment[$index]: song completed (poll fallback)');
+          _cancelSegmentAwait(true);
+          return;
+        }
+        if (_audio.position.inMilliseconds / 1000.0 >= endSec) {
           debugPrint('⏹ StudyMode segment[$index]: reached end ${endSec}s');
-          try {
-            _audio.pause();
-          } catch (_) {}
+          // Don't fire-and-forget pause here (it races with the next
+          // iteration's seek). The next handler call seeks to this boundary
+          // and pauses explicitly, which is race-free.
           _cancelSegmentAwait(true);
         }
       });
@@ -596,28 +776,77 @@ class StudyModeService extends ChangeNotifier {
     return completer.future;
   }
 
-  /// Ensures the player actually resumed after [AudioService.play]; retries on
-  /// Android where the audio session can deactivate during the TTS pause.
-  void _ensurePlaybackResumed({int remaining = 3}) {
-    if (remaining <= 0 || !_isActive || _isUserPaused || _disposed) return;
-    Timer(const Duration(milliseconds: 500), () {
-      if (!_isActive || _isUserPaused || _disposed) return;
-      if (!_audio.player.playing) {
-        debugPrint(
-            '⚠ StudyMode: playback not resumed, retrying play() ($remaining left)');
-        _audio
-            .play()
-            .catchError((e) => debugPrint('✗ StudyMode retry play error: $e'));
-        _ensurePlaybackResumed(remaining: remaining - 1);
+  /// Non-blocking wrapper that kicks playback in the background after a TTS
+  /// pause. Must NOT be awaited by callers — boundary detection (the segment
+  /// timer) is set up before this runs and polls position independently, so
+  /// detection no longer depends on how long recovery takes.
+  void _kickPlayback() {
+    _kickPlaybackAsync();
+  }
+
+  /// Async implementation of [_kickPlayback]. On Android the audio session is
+  /// deactivated while FlutterTts speaks, so a plain play() right after TTS
+  /// often does nothing or even hangs without resolving. We:
+  ///   - reactivate the audio session,
+  ///   - call play() (with a timeout so a hanging Future can't block us),
+  ///   - verify the position is ACTUALLY advancing (not the `playing` flag,
+  ///     which lies true in the just_audio zombie state),
+  ///   - if still stuck after a couple of attempts, nudge the player with a
+  ///     seek to the current position — this forces just_audio to re-buffer and
+  ///     escapes the zombie state (playing=true, ready, but no motion).
+  Future<void> _kickPlaybackAsync() async {
+    _debugResuming = true;
+    notifyListeners();
+    const stepTimeout = Duration(seconds: 1);
+    final beforeStart = _audio.position;
+
+    for (int attempt = 1; attempt <= 6; attempt++) {
+      if (!_isActive || _isUserPaused || _disposed) break;
+      try {
+        final session = await AudioSession.instance;
+        await session.setActive(true).timeout(stepTimeout);
+      } catch (e) {
+        debugPrint('⚠ StudyMode: session setActive error (attempt $attempt): $e');
       }
-    });
+      try {
+        await _audio.play().timeout(stepTimeout);
+      } catch (e) {
+        debugPrint('✗ StudyMode: play() error/timeout (attempt $attempt): $e');
+      }
+      final Duration before = _audio.position;
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (_disposed || !_isActive || _isUserPaused) break;
+      final Duration after = _audio.position;
+      if (after != before) {
+        debugPrint(
+            '✓ StudyMode: playback kicked on attempt $attempt (${before.inMilliseconds}→${after.inMilliseconds}ms)');
+        break;
+      }
+      debugPrint(
+          '⚠ StudyMode: kick attempt $attempt — position stuck at ${after.inMilliseconds}ms');
+      // Zombie-state escape: seek to current position to force a re-buffer.
+      if (attempt >= 2) {
+        try {
+          await _audio.seek(after).timeout(stepTimeout);
+        } catch (e) {
+          debugPrint('⚠ StudyMode: zombie-nudge seek error (attempt $attempt): $e');
+        }
+      }
+    }
+    _debugResuming = false;
+    notifyListeners();
   }
 
   void _cancelSegmentAwait(bool result) {
     _posSub?.cancel();
     _posSub = null;
+    _segmentTimer?.cancel();
+    _segmentTimer = null;
+    _overlayTimer?.cancel();
+    _overlayTimer = null;
     _playerStateSub?.cancel();
     _playerStateSub = null;
+    _currentSegmentEnd = null;
     final c = _segmentCompleter;
     _segmentCompleter = null;
     if (c != null && !c.isCompleted) {
@@ -653,9 +882,16 @@ class StudyModeService extends ChangeNotifier {
     _startRunner();
   }
 
-  /// Fully stops study mode.
-  Future<void> stop() async {
-    if (!_isActive) return;
+  /// Fully stops study mode. When [userRequested] is true (the user explicitly
+  /// turned it off via the button), the persisted "enabled" flag is cleared so
+  /// it won't auto-restart on the next song. Internal stops (song change,
+  /// completion, errors) keep the flag so the mode is restored for the next
+  /// song.
+  Future<void> stop({bool userRequested = false}) async {
+    if (!_isActive) {
+      if (userRequested) await _persistEnabled(false);
+      return;
+    }
     _isActive = false;
     _isUserPaused = false;
     _isSpeaking = false;
@@ -671,12 +907,13 @@ class StudyModeService extends ChangeNotifier {
       await _audio.pause();
     } catch (_) {}
     await _restoreVolume();
+    if (userRequested) await _persistEnabled(false);
     notifyListeners();
   }
 
   Future<void> toggle() async {
     if (_isActive) {
-      await stop();
+      await stop(userRequested: true);
     } else {
       await start();
     }
@@ -686,6 +923,8 @@ class StudyModeService extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _posSub?.cancel();
+    _segmentTimer?.cancel();
+    _overlayTimer?.cancel();
     _playerStateSub?.cancel();
     _tts.stop();
     super.dispose();

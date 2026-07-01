@@ -11,6 +11,7 @@ class SettingsProvider with ChangeNotifier {
   bool _showTranscript = true;
   bool _showTranslationFirst = false;
   bool _showTranslationMessages = false;
+  bool _showServiceData = false;
   String _themeColor = 'default';
   String _defaultStartScreen = 'playlists';
 
@@ -42,6 +43,7 @@ class SettingsProvider with ChangeNotifier {
   bool get showTranscript => _showTranscript;
   bool get showTranslationFirst => _showTranslationFirst;
   bool get showTranslationMessages => _showTranslationMessages;
+  bool get showServiceData => _showServiceData;
   String get themeColor => _themeColor;
   String get defaultStartScreen => _defaultStartScreen;
   double get lyricsFontSize => _lyricsFontSize;
@@ -77,6 +79,7 @@ class SettingsProvider with ChangeNotifier {
       _showTranscript = prefs.getBool('showTranscript') ?? true;
       _showTranslationFirst = prefs.getBool('showTranslationFirst') ?? false;
       _showTranslationMessages = prefs.getBool('showTranslationMessages') ?? false;
+      _showServiceData = prefs.getBool('showServiceData') ?? false;
       _defaultStartScreen = prefs.getString('defaultStartScreen') ?? 'playlists';
 
       final String? savedSettingsVersion = prefs.getString('settingsVersion');
@@ -264,6 +267,17 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
 
     debugPrint('Show translation messages updated and notified listeners');
+  }
+
+  Future<void> setShowServiceData(bool value) async {
+    debugPrint('=== SettingsProvider: Setting show service data ===');
+    debugPrint('Old: $_showServiceData, New: $value');
+
+    _showServiceData = value;
+    await _save();
+    notifyListeners();
+
+    debugPrint('Show service data updated and notified listeners');
   }
 
   Future<void> setLyricsFontSize(double value) async {
@@ -492,6 +506,7 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setBool('showTranscript', _showTranscript);
       await prefs.setBool('showTranslationFirst', _showTranslationFirst);
       await prefs.setBool('showTranslationMessages', _showTranslationMessages);
+      await prefs.setBool('showServiceData', _showServiceData);
       await prefs.setString('defaultStartScreen', _defaultStartScreen);
       await prefs.setDouble('lyricsFontSize', _lyricsFontSize);
       await prefs.setDouble('translationFontSize', _translationFontSize);

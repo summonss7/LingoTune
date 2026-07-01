@@ -693,6 +693,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get serviceMessagesSubtitle => 'Dienstbenachrichtigungen zu Übersetzung und Transkription anzeigen';
 
+  String get serviceData => 'Servicedaten';
+
+  String get serviceDataSubtitle => 'Diagnose-Overlay im Lernmodus anzeigen';
+
   @override
   String get includeMp3Files => 'MP3-Dateien einschließen';
 
@@ -1860,6 +1864,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get studyModeStarted => 'Lernmodus gestartet';
+  String get studyModeStartedNoVoice => 'Lernmodus gestartet (nur Abschnitte — keine Stimme)';
+  String get ttsLangMissingTitle => 'Keine Stimme für diese Sprache';
+  String get ttsLangMissingBody => 'Auf deinem Gerät ist keine TTS-Stimme für die Übersetzungssprache installiert. Installiere eine TTS-Engine mit dieser Sprache (z. B. Google oder Yandex) unter Einstellungen → Text-in-Sprache, oder fahre im Modus nur Abschnitte (ohne Stimme) fort.';
+  String get ttsContinueNoVoice => 'Ohne Stimme fortfahren';
 
   @override
   String get studyModeStopped => 'Lernmodus gestoppt';

@@ -1451,6 +1451,18 @@ abstract class AppLocalizations {
   /// **'Show service notifications about translation and transcription'**
   String get serviceMessagesSubtitle;
 
+  /// No description provided for @serviceData.
+  ///
+  /// In en, this message translates to:
+  /// **'Service Data'**
+  String get serviceData;
+
+  /// No description provided for @serviceDataSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show diagnostic overlay in study mode'**
+  String get serviceDataSubtitle;
+
   /// No description provided for @includeMp3Files.
   ///
   /// In en, this message translates to:
@@ -3502,6 +3514,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Study mode started'**
   String get studyModeStarted;
+
+  /// No description provided for @studyModeStartedNoVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Study mode started (segments only — no voice)'**
+  String get studyModeStartedNoVoice;
+
+  /// No description provided for @ttsLangMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No voice for this language'**
+  String get ttsLangMissingTitle;
+
+  /// No description provided for @ttsLangMissingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your device has no installed TTS voice for the translation language.'**
+  String get ttsLangMissingBody;
+
+  /// No description provided for @ttsContinueNoVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue without voice'**
+  String get ttsContinueNoVoice;
 
   /// No description provided for @studyModeStopped.
   ///
