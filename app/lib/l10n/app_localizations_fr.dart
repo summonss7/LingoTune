@@ -693,9 +693,23 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get serviceMessagesSubtitle => 'Afficher les notifications de service sur la traduction et la transcription';
 
+  @override
   String get serviceData => 'Données de service';
 
+  @override
   String get serviceDataSubtitle => 'Afficher la superposition de diagnostic en mode étude';
+
+  @override
+  String get ttsEngine => 'Moteur TTS';
+
+  @override
+  String get ttsEngineSubtitle => 'Aucun moteur TTS détecté — l\'application peut ne pas voir les moteurs vocaux du système.';
+
+  @override
+  String get ttsEngineAuto => 'Auto (recommandé)';
+
+  @override
+  String get ttsEngineReloadHint => 'Moteur modifié — pris en compte à la prochaine session d\'étude';
 
   @override
   String get includeMp3Files => 'Inclure les fichiers MP3';
@@ -1864,9 +1878,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get studyModeStarted => 'Mode étude démarré';
+
+  @override
   String get studyModeStartedNoVoice => 'Mode étude démarré (segments seulement — sans voix)';
+
+  @override
   String get ttsLangMissingTitle => 'Aucune voix pour cette langue';
-  String get ttsLangMissingBody => "Votre appareil n'a pas de voix TTS installée pour la langue de traduction. Installez un moteur TTS avec cette langue (ex. Google ou Yandex) dans Paramètres → Synthèse vocale, ou continuez en mode segments seulement (sans voix).";
+
+  @override
+  String get ttsLangMissingBody => 'Votre appareil n\'a pas de voix TTS installée pour la langue de traduction. Installez un moteur TTS avec cette langue (ex. Google ou Yandex) dans Paramètres → Synthèse vocale, ou continuez en mode segments seulement (sans voix).';
+
+  @override
   String get ttsContinueNoVoice => 'Continuer sans voix';
 
   @override

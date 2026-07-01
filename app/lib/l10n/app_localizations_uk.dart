@@ -693,9 +693,23 @@ class AppLocalizationsUk extends AppLocalizations {
   @override
   String get serviceMessagesSubtitle => 'Показувати службові повідомлення про переклад і транскрипцію';
 
+  @override
   String get serviceData => 'Службові дані';
 
+  @override
   String get serviceDataSubtitle => 'Показувати діагностичну плашку в режимі вивчення';
+
+  @override
+  String get ttsEngine => 'Рушій TTS';
+
+  @override
+  String get ttsEngineSubtitle => 'Рушії TTS не виявлено — можливо, додаток не бачить системні рушії мовлення.';
+
+  @override
+  String get ttsEngineAuto => 'Авто (рекомендовано)';
+
+  @override
+  String get ttsEngineReloadHint => 'Рушій змінено — застосується при наступному запуску режиму вивчення';
 
   @override
   String get includeMp3Files => 'Включити MP3 файли';
@@ -1864,9 +1878,17 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get studyModeStarted => 'Режим вивчення увімкнено';
+
+  @override
   String get studyModeStartedNoVoice => 'Режим вивчення увімкнено (лише фрагменти — без озвучки)';
+
+  @override
   String get ttsLangMissingTitle => 'Голосу для цієї мови немає';
+
+  @override
   String get ttsLangMissingBody => 'На пристрої не встановлено голос для мови перекладу. Встановіть TTS-рушій із цією мовою (наприклад Google або Yandex) у Налаштуваннях → Синтез мовлення, або продовжіть у режимі лише фрагменти (без озвучки).';
+
+  @override
   String get ttsContinueNoVoice => 'Продовжити без озвучки';
 
   @override

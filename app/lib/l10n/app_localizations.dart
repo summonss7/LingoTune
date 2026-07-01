@@ -1463,6 +1463,30 @@ abstract class AppLocalizations {
   /// **'Show diagnostic overlay in study mode'**
   String get serviceDataSubtitle;
 
+  /// No description provided for @ttsEngine.
+  ///
+  /// In en, this message translates to:
+  /// **'TTS Engine'**
+  String get ttsEngine;
+
+  /// No description provided for @ttsEngineSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No TTS engines detected — the app may not see system speech engines.'**
+  String get ttsEngineSubtitle;
+
+  /// No description provided for @ttsEngineAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto (recommended)'**
+  String get ttsEngineAuto;
+
+  /// No description provided for @ttsEngineReloadHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Engine changed — takes effect on next study session'**
+  String get ttsEngineReloadHint;
+
   /// No description provided for @includeMp3Files.
   ///
   /// In en, this message translates to:
@@ -3530,7 +3554,7 @@ abstract class AppLocalizations {
   /// No description provided for @ttsLangMissingBody.
   ///
   /// In en, this message translates to:
-  /// **'Your device has no installed TTS voice for the translation language.'**
+  /// **'Your device has no installed TTS voice for the translation language. Install a TTS engine with this language (e.g. Google or Yandex) under Settings → Text-to-speech, or continue in segments-only mode (no voiceover).'**
   String get ttsLangMissingBody;
 
   /// No description provided for @ttsContinueNoVoice.

@@ -97,6 +97,13 @@ class StudyModeService extends ChangeNotifier {
   // without voice").
   bool _speakDisabled = false;
 
+  // All TTS engines reported by the system (via getEngines). Populated in
+  // _initTts(). On Android 11+ requires the TTS_SERVICE <queries> declaration
+  // in AndroidManifest, otherwise this stays empty (the engine is "invisible").
+  List<String> _availableEngines = const [];
+  // The engine actually in use (after applying user choice / auto-prefer).
+  String? _selectedEngine;
+
   bool get isActive => _isActive;
   bool get isUserPaused => _isUserPaused;
   bool get isSpeaking => _isSpeaking;
@@ -122,6 +129,12 @@ class StudyModeService extends ChangeNotifier {
 
   /// The active system TTS engine name (for diagnostics), or null if unknown.
   String? get activeEngine => _activeEngine;
+
+  /// All TTS engines discovered on the system (package names).
+  List<String> get availableEngines => List.unmodifiable(_availableEngines);
+
+  /// The engine currently selected/in use (after auto-prefer or user choice).
+  String? get selectedEngine => _selectedEngine;
 
   /// Enables/disables "segments only" mode (no TTS). Used by the UI when the
   /// user chooses to continue without a voice, and by the fail-fast watchdog
@@ -211,23 +224,101 @@ class StudyModeService extends ChangeNotifier {
 
   Future<void> _initTts() async {
     try {
-      // Remember the active TTS engine for diagnostics.
+      // Enumerate all available TTS engines on the system. On Android 11+
+      // (API 30+) this requires the TTS_SERVICE <queries> declaration in
+      // AndroidManifest — without it getEngines returns empty because the
+      // engines are "invisible" to package visibility, even though a default
+      // engine may still partially work.
       try {
-        final engine = await _tts.getDefaultEngine;
-        _activeEngine = engine?.toString();
-        debugPrint('🎧 StudyModeService: TTS engine = $_activeEngine');
+        final result = await _tts.getEngines;
+        _availableEngines = (result as List<dynamic>? ?? const [])
+            .map((e) => e.toString())
+            .toList();
+        debugPrint(
+            '🎧 StudyModeService: available engines = $_availableEngines');
       } catch (e) {
-        debugPrint('⚠ StudyModeService: getDefaultEngine error: $e');
+        debugPrint('⚠ StudyModeService: getEngines error: $e');
       }
+
+      // Resolve and apply the engine to use (user-configured or auto-prefer).
+      await _applyConfiguredEngine();
+
       await _tts.setSpeechRate(_speechRate);
       await _tts.setPitch(1.0);
       await _tts.setVolume(1.0);
       await _setTtsLanguage(_ttsLanguage);
       _ttsReady = true;
-      debugPrint('✓ StudyModeService: TTS initialized (rate=$_speechRate)');
+      debugPrint(
+          '✓ StudyModeService: TTS initialized (rate=$_speechRate, engine=$_selectedEngine)');
     } catch (e) {
       debugPrint('✗ StudyModeService: TTS init error: $e');
     }
+  }
+
+  /// Resolves which TTS engine to use and applies it via setEngine.
+  /// Priority:
+  ///   1. user-configured engine (from SharedPreferences 'ttsEngine') if set
+  ///      and present in [_availableEngines];
+  ///   2. Google TTS (com.google.android.tts) if present — the most reliable
+  ///      engine across ROMs (Chinese ROMs ship a broken Heytap engine as the
+  ///      default, which lies in isLanguageAvailable and/or silently fails to
+  ///      synthesize);
+  ///   3. the system default engine (no setEngine call).
+  Future<void> _applyConfiguredEngine() async {
+    String? configured;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      configured = prefs.getString('ttsEngine');
+    } catch (_) {}
+
+    String? desired;
+    if (configured != null &&
+        configured.isNotEmpty &&
+        _availableEngines.contains(configured)) {
+      desired = configured;
+    } else if (_availableEngines.contains('com.google.android.tts')) {
+      desired = 'com.google.android.tts';
+    }
+
+    String? def;
+    try {
+      def = (await _tts.getDefaultEngine)?.toString();
+    } catch (_) {}
+
+    if (desired != null && desired != def) {
+      try {
+        final res = await _tts.setEngine(desired);
+        if (res == 1) {
+          _selectedEngine = desired;
+          debugPrint('🎧 StudyModeService: switched TTS engine -> $desired');
+        } else {
+          _selectedEngine = def;
+          debugPrint(
+              '⚠ StudyModeService: setEngine($desired) rejected (result=$res)');
+        }
+      } catch (e) {
+        _selectedEngine = def;
+        debugPrint('⚠ StudyModeService: setEngine($desired) error: $e');
+      }
+    } else {
+      _selectedEngine = def;
+    }
+    _activeEngine = _selectedEngine ?? def;
+  }
+
+  /// Re-applies the configured engine at runtime (e.g. after the user changes
+  /// the engine in Settings while a study session is active). setEngine
+  /// re-binds the engine, so speech params and language are re-applied.
+  Future<void> applyConfiguredEngine() async {
+    if (!_ttsReady) return;
+    await _applyConfiguredEngine();
+    try {
+      await _tts.setSpeechRate(_speechRate);
+      await _tts.setPitch(1.0);
+      await _tts.setVolume(1.0);
+    } catch (_) {}
+    await _setTtsLanguage(_ttsLanguage);
+    notifyListeners();
   }
 
   /// Speaks [text] and resolves when speech finishes, errors out, or is stopped.
@@ -295,9 +386,22 @@ class StudyModeService extends ChangeNotifier {
         await _tts.setLanguage(locale);
         debugPrint('✓ StudyModeService: TTS language set to $locale');
       } else {
-        debugPrint(
-            '⚠ StudyModeService: TTS language $locale NOT available on this '
-            'device (no installed voice). Speech will be skipped.');
+        // Fallback: some Chinese ROM engines LIE in isLanguageAvailable
+        // (report false even when a matching voice is actually installed).
+        // Enumerate voices and set one whose locale matches — setVoice is
+        // more granular and often works where setLanguage/isLanguageAvailable
+        // don't.
+        final voiceFound = await _trySetVoiceByLocale(locale);
+        if (voiceFound) {
+          available = true;
+          debugPrint(
+              '✓ StudyModeService: language $locale unavailable per API, but a '
+              'matching voice was set via setVoice');
+        } else {
+          debugPrint(
+              '⚠ StudyModeService: TTS language $locale NOT available on this '
+              'device (no installed voice). Speech will be skipped.');
+        }
       }
     } catch (e) {
       available = false;
@@ -306,6 +410,36 @@ class StudyModeService extends ChangeNotifier {
     final changed = _langAvailable != available;
     _langAvailable = available;
     if (changed) notifyListeners();
+  }
+
+  /// Tries to find and apply a voice matching [locale] via getVoices/setVoice.
+  /// Returns true if a matching voice was applied. Workaround for engines that
+  /// misreport isLanguageAvailable (common on Chinese ROMs).
+  Future<bool> _trySetVoiceByLocale(String locale) async {
+    try {
+      final voices = await _tts.getVoices;
+      if (voices == null) return false;
+      final norm = locale.toLowerCase().replaceAll('_', '-');
+      final langPrefix = norm.split('-').first;
+      for (final v in voices) {
+        if (v is! Map) continue;
+        final rawLocale = (v['locale'] ?? '').toString();
+        final vLocale = rawLocale.toLowerCase().replaceAll('_', '-');
+        if (vLocale == norm ||
+            vLocale.startsWith('$langPrefix-') ||
+            vLocale == langPrefix) {
+          final name = v['name'];
+          if (name != null) {
+            final res = await _tts
+                .setVoice({'name': name, 'locale': rawLocale});
+            return res == 1;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠ StudyModeService: getVoices/setVoice fallback error: $e');
+    }
+    return false;
   }
 
   String _mapLanguageToLocale(String code) {
@@ -389,6 +523,10 @@ class StudyModeService extends ChangeNotifier {
       debugPrint('⚠ StudyModeService: no lyrics, cannot start');
       return false;
     }
+
+    // Re-apply the configured engine in case the user changed it in Settings
+    // since this service was constructed (engine choice is read from prefs).
+    await applyConfiguredEngine();
 
     final current = _translations.currentTranslation;
     if (current != null) {

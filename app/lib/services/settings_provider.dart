@@ -33,6 +33,7 @@ class SettingsProvider with ChangeNotifier {
   bool _showVerticalSlider = false;
   double _defaultTimestampOffset = 1800.0;
   double _lyricsPositionOffset = 0.15;
+  String _ttsEngine = '';
 
   double get fontSize => _fontSize;
   String get defaultTranslationLanguage => _defaultTranslationLanguage;
@@ -64,6 +65,7 @@ class SettingsProvider with ChangeNotifier {
   bool get showVerticalSlider => _showVerticalSlider;
   double get defaultTimestampOffset => _defaultTimestampOffset;
   double get lyricsPositionOffset => _lyricsPositionOffset;
+  String get ttsEngine => _ttsEngine;
 
   Future<void> loadSettings() async {
     debugPrint('=== SettingsProvider: Loading settings ===');
@@ -135,6 +137,7 @@ class SettingsProvider with ChangeNotifier {
       _showVerticalSlider = prefs.getBool('showVerticalSlider') ?? false;
       _defaultTimestampOffset = prefs.getDouble('defaultTimestampOffset') ?? 1800.0;
       _lyricsPositionOffset = prefs.getDouble('lyricsPositionOffset') ?? 0.15;
+      _ttsEngine = prefs.getString('ttsEngine') ?? '';
 
       debugPrint('Font size: $_fontSize');
       debugPrint('Translation language: $_defaultTranslationLanguage');
@@ -494,6 +497,17 @@ class SettingsProvider with ChangeNotifier {
     debugPrint('Lyrics position offset updated and notified listeners');
   }
 
+  Future<void> setTtsEngine(String value) async {
+    debugPrint('=== SettingsProvider: Setting TTS engine ===');
+    debugPrint('Old: $_ttsEngine, New: $value');
+
+    _ttsEngine = value;
+    await _save();
+    notifyListeners();
+
+    debugPrint('TTS engine updated and notified listeners');
+  }
+
   Future<void> _save() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -527,6 +541,7 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setBool('showVerticalSlider', _showVerticalSlider);
       await prefs.setDouble('defaultTimestampOffset', _defaultTimestampOffset);
       await prefs.setDouble('lyricsPositionOffset', _lyricsPositionOffset);
+      await prefs.setString('ttsEngine', _ttsEngine);
       await prefs.setString('settingsVersion', '4.2.1');
       debugPrint('Settings saved to SharedPreferences');
     } catch (e) {

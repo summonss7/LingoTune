@@ -693,9 +693,23 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get serviceMessagesSubtitle => 'إظهار إشعارات الخدمة حول الترجمة والنسخ';
 
+  @override
   String get serviceData => 'بيانات الخدمة';
 
+  @override
   String get serviceDataSubtitle => 'إظهار تراكب التشخيص في وضع الدراسة';
+
+  @override
+  String get ttsEngine => 'محرك TTS';
+
+  @override
+  String get ttsEngineSubtitle => 'لم يتم العثور على محركات TTS — قد لا يرى التطبيق محركات النطق الخاصة بالنظام.';
+
+  @override
+  String get ttsEngineAuto => 'تلقائي (موصى به)';
+
+  @override
+  String get ttsEngineReloadHint => 'تم تغيير المحرك — يسري عند بدء وضع الدراسة التالي';
 
   @override
   String get includeMp3Files => 'تضمين ملفات MP3';
@@ -1864,9 +1878,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get studyModeStarted => 'بدأ وضع الدراسة';
+
+  @override
   String get studyModeStartedNoVoice => 'بدأ وضع الدراسة (الأجزاء فقط — بدون صوت)';
+
+  @override
   String get ttsLangMissingTitle => 'لا يوجد صوت لهذه اللغة';
+
+  @override
   String get ttsLangMissingBody => 'جهازك لا يحتوي على صوت TTS مثبت للغة الترجمة. ثبّت محرك TTS يدعم هذه اللغة (مثل Google أو Yandex) من الإعدادات → تحويل النص إلى كلام، أو تابع في وضع الأجزاء فقط (بدون تعليق صوتي).';
+
+  @override
   String get ttsContinueNoVoice => 'متابعة بدون صوت';
 
   @override

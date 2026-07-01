@@ -16,6 +16,7 @@ import '../widgets/settings/scroll_offset_control.dart';
 import '../widgets/settings/default_auto_scroll_focus_offset_control.dart';
 import '../widgets/settings/timestamp_offset_control.dart';
 import '../widgets/settings/lyrics_position_offset_control.dart';
+import '../widgets/settings/tts_engine_settings_tile.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -384,6 +385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (value) => settingsProvider.setShowTranslationMessages(value),
             ),
           ),
+          const TtsEngineSettingsTile(),
           ListTile(
             leading: const Icon(Icons.bug_report_outlined),
             title: Text(l10n.serviceData),

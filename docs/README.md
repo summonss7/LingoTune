@@ -108,6 +108,33 @@ cp build/app/outputs/flutter-apk/app-release.apk builds/LingoTune-v{версия
 - [Разработка](DEVELOPMENT.md) - конвенции кода и разработка
 - [Решение проблем](TROUBLESHOOTING.md) - FAQ и решение проблем
 
+## 🎯 Новое в версии 5.2.0
+
+### 🐛 Фикс: TTS-движок не находился на Android 11+ (китайские ROM, realme GT8 Pro)
+- **Симптом:** на устройствах с китайской ROM (realme GT8 Pro China, ColorOS) приложение «не видит» системный TTS — озвучка перевода в режиме изучения молчит. При этом Duolingo на том же телефоне говорит
+- **Причина 1 (манифест):** в `AndroidManifest.xml` отсутствовал `<queries>` для `android.intent.action.TTS_SERVICE`. На Android 11+ (API 30+, у realme GT8 Pro — API 35) действует package visibility: без этого объявления приложение физически не может перечислить/опросить системные TTS-движки
+- **Причина 2 (движок по умолчанию):** код использовал только движок по умолчанию — на ColorOS China это «Heytap Speech Engine», который часто врёт в isLanguageAvailable и/или молча не синтезирует. getEngines/setEngine/getVoices/setVoice не использовались вовсе
+- **Решение:**
+  - `<queries>` TTS_SERVICE — движки снова видны приложению
+  - Перебор движков (getEngines + setEngine): приоритет Google TTS (`com.google.android.tts`) над кривым дефолтным; режим «Авто»
+  - Fallback на getVoices/setVoice: когда isLanguageAvailable врёт (голос установлен, но движок сообщает «недоступно») — ищем голос по локали и выставляем напрямую
+  - Настройка «Движок TTS» в Настройках: выпадающий список («Авто (рекомендуется)» + все движки системы с человекочитаемыми именами)
+- Диагностический оверлей расширен: engine=/engines=/langAvail=/speakDisabled=
+- Подтверждено на realme GT8 Pro: озвучка работает локально через Google TTS (без интернета)
+
+### 🔧 Технические изменения
+- `AndroidManifest.xml`: `<queries>` → TTS_SERVICE
+- `study_mode_service.dart`: поля `_availableEngines`/`_selectedEngine`; `_applyConfiguredEngine` (чтение `ttsEngine` из prefs, приоритет Google TTS, `setEngine`); `_trySetVoiceByLocale` (fallback `getVoices`/`setVoice`); `applyConfiguredEngine` (применение при старте study)
+- `settings_provider.dart`: поле `ttsEngine` (String, дефолт `''` = Авто) + getter/setter/persistence
+- `utils/tts_engine_helper.dart` (новый): `enumerateTtsEngines()` + карта человекочитаемых меток движков
+- `widgets/settings/tts_engine_settings_tile.dart` (новый): тайл выбора движка (DropdownButton)
+- `settings_screen.dart`: тайл «Движок TTS» рядом с «Служебные данные»
+- `player_screen.dart`: оверлей расширен (`engine`/`engines`/`langAvail`/`speakDisabled`)
+- Локализация: 4 новых ключа (`ttsEngine`, `ttsEngineSubtitle`, `ttsEngineAuto`, `ttsEngineReloadHint`) во всех 11 языках
+- `pubspec.yaml` и `app_info.dart` — 5.2.0 (versionCode 208)
+
+---
+
 ## 🎯 Новое в версии 5.1.0
 
 ### 🐛 Фикс: на устройствах без русского TTS-голоса озвучка молчала и приложение жутко тормозило

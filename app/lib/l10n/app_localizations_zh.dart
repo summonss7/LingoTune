@@ -693,9 +693,23 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get serviceMessagesSubtitle => '显示有关翻译和音标的服务通知';
 
+  @override
   String get serviceData => '服务数据';
 
+  @override
   String get serviceDataSubtitle => '在学习模式下显示诊断覆盖层';
+
+  @override
+  String get ttsEngine => 'TTS 引擎';
+
+  @override
+  String get ttsEngineSubtitle => '未检测到 TTS 引擎 — 应用可能无法看到系统语音引擎。';
+
+  @override
+  String get ttsEngineAuto => '自动（推荐）';
+
+  @override
+  String get ttsEngineReloadHint => '引擎已更改 — 下次学习模式启动时生效';
 
   @override
   String get includeMp3Files => '包含 MP3 文件';
@@ -1864,9 +1878,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get studyModeStarted => '学习模式已开始';
+
+  @override
   String get studyModeStartedNoVoice => '学习模式已开始（仅片段，无语音）';
+
+  @override
   String get ttsLangMissingTitle => '此语言无语音';
+
+  @override
   String get ttsLangMissingBody => '您的设备未安装翻译语言的 TTS 语音。请在 设置 → 文字转语音 中安装支持此语言的 TTS 引擎（如 Google 或 Yandex），或继续使用仅片段模式（无语音）。';
+
+  @override
   String get ttsContinueNoVoice => '继续，不使用语音';
 
   @override

@@ -2382,7 +2382,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                         'load=$_isSongLoading\n'
                         'SEG target=${s.debugSegmentEnd?.toStringAsFixed(2) ?? "null"}s '
                         'ticks=${s.debugSegmentTicks}\n'
-                        'TTS engine=${s.activeEngine ?? "?"} '
+                        'TTS engine=${s.selectedEngine ?? s.activeEngine ?? "?"} '
+                        'engines=${s.availableEngines.length} '
                         'langAvail=${s.isLanguageAvailable} '
                         'speakDisabled=${s.speakDisabled}\n'
                         'EVT: $_lastStudyEvent';
