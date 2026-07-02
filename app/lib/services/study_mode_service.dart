@@ -60,6 +60,13 @@ class StudyModeService extends ChangeNotifier {
   double _savedVolume = 1.0;
   bool _isDucked = false;
 
+  // Per-song override: когда [_perSongOverride] == true, значения выше
+  // (order/speechRate/overlayTiming/duckVolume) относятся к конкретной песне
+  // [_perSongSongId], а сеттеры пишут в `song_{id}_*` ключи. Иначе работают
+  // глобальные настройки (`studyMode*`). enabledPersist остаётся глобальным.
+  bool _perSongOverride = false;
+  String? _perSongSongId;
+
   // Persisted "study mode enabled" flag. Lets the user toggle study mode once
   // and have it automatically restart on every subsequent song and after app
   // restart, instead of re-enabling it per song.
@@ -75,6 +82,21 @@ class StudyModeService extends ChangeNotifier {
   /// next), which respects the loop mode and restarts study mode (persist) for
   /// the next song. If null, falls back to [stop] (pause).
   VoidCallback? onStudyCompleted;
+
+  // Future активного kick-цикла (_kickPlaybackAsync). Хранится, чтобы stop() и
+  // pauseSession() могли его дождаться: иначе цикл-«зомби» от старой песни
+  // просыпается после stop(), видит _isActive=true (поднятый новым start() при
+  // смене песни) и продолжает делать play()/seek() над новым плеером —
+  // накладывающийся звук и рассинхрон (симптом «звук идёт параллельно»).
+  Future<void>? _kickPlaybackFuture;
+
+  // Токен «поколения» активной study-сессии. Инкрементируется в stop() — это
+  // инвалидирует все висящие fire-and-forget колбэки _speakOver().then: они
+  // захватывают токен при старте и выходят, если токен сменился. Иначе .then
+  // от старой песни доживает до нового start() (смена песни) и вызывает
+  // _kickPlayback(), создавая зомби-kick поверх свежего цикла новой песни
+  // (симптом «несколько секунд каши» в начале воспроизведения).
+  int _sessionToken = 0;
 
   // Polling timers for segment/line boundary detection. We poll
   // _audio.position (kept fresh by AudioService's own reliable positionStream
@@ -120,6 +142,9 @@ class StudyModeService extends ChangeNotifier {
   double get speechRate => _speechRate;
   OverlayTiming get overlayTiming => _overlayTiming;
   double get duckVolume => _duckVolume;
+
+  /// Активно ли per-song переопределение для текущей песни.
+  bool get perSongOverride => _perSongOverride;
 
   // === DEBUG getters (temporary diagnostic) ===
   double? get debugSegmentEnd => _currentSegmentEnd;
@@ -168,18 +193,116 @@ class StudyModeService extends ChangeNotifier {
   Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final orderIndex = prefs.getInt('studyModeOrder') ?? 0;
-      _order = StudyModeOrder
-          .values[orderIndex.clamp(0, StudyModeOrder.values.length - 1)];
-      _speechRate = prefs.getDouble('studyModeSpeechRate') ?? 0.5;
-      final timingIndex = prefs.getInt('studyModeOverlayTiming') ?? 0;
-      _overlayTiming = OverlayTiming
-          .values[timingIndex.clamp(0, OverlayTiming.values.length - 1)];
-      _duckVolume = prefs.getDouble('studyModeDuckVolume') ?? 0.3;
+      await _loadValuesFromPrefs(prefs, perSong: false);
       _enabledPersist = prefs.getBool('studyModeEnabled') ?? false;
       notifyListeners();
     } catch (e) {
       debugPrint('✗ StudyModeService loadSettings error: $e');
+    }
+  }
+
+  /// Грузит 4 study-значения (order/speechRate/overlayTiming/duckVolume) либо
+  /// из глобальных ключей, либо из per-song. При perSong=true и отсутствии
+  /// per-song ключа поле НЕ сбрасывается — сохраняется текущее значение (что
+  /// позволяет наследовать глобальные значения при первом включении override).
+  Future<void> _loadValuesFromPrefs(SharedPreferences prefs,
+      {required bool perSong, String? songId}) async {
+    if (perSong && songId != null) {
+      final orderIdx = prefs.getInt('song_${songId}_order');
+      if (orderIdx != null) {
+        _order = StudyModeOrder
+            .values[orderIdx.clamp(0, StudyModeOrder.values.length - 1)];
+      }
+      final sr = prefs.getDouble('song_${songId}_speechRate');
+      if (sr != null) _speechRate = sr;
+      final ti = prefs.getInt('song_${songId}_overlayTiming');
+      if (ti != null) {
+        _overlayTiming = OverlayTiming
+            .values[ti.clamp(0, OverlayTiming.values.length - 1)];
+      }
+      final dv = prefs.getDouble('song_${songId}_duckVolume');
+      if (dv != null) _duckVolume = dv.clamp(0.0, 1.0);
+    } else {
+      final orderIdx = prefs.getInt('studyModeOrder') ?? 0;
+      _order = StudyModeOrder
+          .values[orderIdx.clamp(0, StudyModeOrder.values.length - 1)];
+      _speechRate = prefs.getDouble('studyModeSpeechRate') ?? 0.5;
+      final ti = prefs.getInt('studyModeOverlayTiming') ?? 0;
+      _overlayTiming =
+          OverlayTiming.values[ti.clamp(0, OverlayTiming.values.length - 1)];
+      _duckVolume = prefs.getDouble('studyModeDuckVolume') ?? 0.3;
+    }
+  }
+
+  bool get _usePerSong => _perSongOverride && _perSongSongId != null;
+
+  /// Применяет per-song настройки для указанной песни. Читает флаг
+  /// `song_{id}_override` и грузит 4 значения (order/speechRate/overlayTiming/
+  /// duckVolume) из per-song или глобальных ключей. Должен вызываться при
+  /// смене/открытии песни (до старта study mode), чтобы новый цикл работал с
+  /// корректными значениями. enabledPersist остаётся глобальным.
+  Future<void> applyPerSongSettings(String songId) async {
+    try {
+      _perSongSongId = songId;
+      final prefs = await SharedPreferences.getInstance();
+      _perSongOverride = prefs.getBool('song_${songId}_override') ?? false;
+      await _loadValuesFromPrefs(prefs,
+          perSong: _perSongOverride, songId: songId);
+      if (_ttsReady) {
+        try {
+          await _tts.setSpeechRate(_speechRate);
+        } catch (_) {}
+      }
+      debugPrint(
+          '🎧 StudyModeService: applyPerSongSettings($songId) override=$_perSongOverride order=$_order rate=$_speechRate');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('✗ StudyModeService applyPerSongSettings error: $e');
+    }
+  }
+
+  /// Включает/выключает per-song переопределение для текущей песни. При
+  /// первом включении наследует текущие (глобальные) значения как стартовые
+  /// per-song — чтобы пользователь не начинал с чистого листа. При выключении
+  /// откатывается к глобальным.
+  Future<void> setPerSongOverride(bool value) async {
+    if (_perSongOverride == value) return;
+    _perSongOverride = value;
+    final id = _perSongSongId;
+    if (id == null) {
+      notifyListeners();
+      return;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('song_${id}_override', value);
+      if (value) {
+        // Наследуем текущие значения как стартовые per-song (только если
+        // пользователь ещё не задавал свои).
+        if (prefs.getInt('song_${id}_order') == null) {
+          await prefs.setInt('song_${id}_order', _order.index);
+        }
+        if (prefs.getDouble('song_${id}_speechRate') == null) {
+          await prefs.setDouble('song_${id}_speechRate', _speechRate);
+        }
+        if (prefs.getInt('song_${id}_overlayTiming') == null) {
+          await prefs.setInt('song_${id}_overlayTiming', _overlayTiming.index);
+        }
+        if (prefs.getDouble('song_${id}_duckVolume') == null) {
+          await prefs.setDouble('song_${id}_duckVolume', _duckVolume);
+        }
+      }
+      // Перезагрузить значения (per-song если включили, global если выключили).
+      await _loadValuesFromPrefs(prefs, perSong: value, songId: id);
+      if (_ttsReady) {
+        try {
+          await _tts.setSpeechRate(_speechRate);
+        } catch (_) {}
+      }
+      debugPrint('🎧 StudyModeService: setPerSongOverride($value)');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('✗ StudyModeService setPerSongOverride error: $e');
     }
   }
 
@@ -189,7 +312,11 @@ class StudyModeService extends ChangeNotifier {
     debugPrint('✓ StudyModeService: order set to $order');
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('studyModeOrder', order.index);
+      if (_usePerSong) {
+        await prefs.setInt('song_${_perSongSongId!}_order', order.index);
+      } else {
+        await prefs.setInt('studyModeOrder', order.index);
+      }
     } catch (_) {}
     notifyListeners();
   }
@@ -203,7 +330,11 @@ class StudyModeService extends ChangeNotifier {
     }
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setDouble('studyModeSpeechRate', rate);
+      if (_usePerSong) {
+        await prefs.setDouble('song_${_perSongSongId!}_speechRate', rate);
+      } else {
+        await prefs.setDouble('studyModeSpeechRate', rate);
+      }
     } catch (_) {}
     notifyListeners();
   }
@@ -214,7 +345,11 @@ class StudyModeService extends ChangeNotifier {
     debugPrint('✓ StudyModeService: overlay timing set to $timing');
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('studyModeOverlayTiming', timing.index);
+      if (_usePerSong) {
+        await prefs.setInt('song_${_perSongSongId!}_overlayTiming', timing.index);
+      } else {
+        await prefs.setInt('studyModeOverlayTiming', timing.index);
+      }
     } catch (_) {}
     notifyListeners();
   }
@@ -223,7 +358,11 @@ class StudyModeService extends ChangeNotifier {
     _duckVolume = volume.clamp(0.0, 1.0);
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setDouble('studyModeDuckVolume', _duckVolume);
+      if (_usePerSong) {
+        await prefs.setDouble('song_${_perSongSongId!}_duckVolume', _duckVolume);
+      } else {
+        await prefs.setDouble('studyModeDuckVolume', _duckVolume);
+      }
     } catch (_) {}
     notifyListeners();
   }
@@ -737,9 +876,16 @@ class StudyModeService extends ChangeNotifier {
     _phase = StudyPhase.speaking;
     notifyListeners();
     _setDuckVolume();
+    // Захватываем токен сессии, чтобы .then-колбэк мог определить, что
+    // study-сессия уже остановлена (и, возможно, перезапущена для новой песни)
+    // — в этом случае колбэк должен молча выйти, не вызывая _kickPlayback и
+    // не создавая зомби-kick поверх нового цикла.
+    final token = _sessionToken;
     _speak(text).then((_) async {
+      if (token != _sessionToken) return; // сессия сменилась — выходим
       _isSpeaking = false;
       await _restoreVolume();
+      if (token != _sessionToken) return; // повторная проверка после await
       if (_isActive && !_isUserPaused && !_disposed) {
         _phase = StudyPhase.playingSegment;
         notifyListeners();
@@ -747,6 +893,7 @@ class StudyModeService extends ChangeNotifier {
         // Resume it so the song keeps playing under/after the translation.
         final before = _audio.position;
         await Future.delayed(const Duration(milliseconds: 150));
+        if (token != _sessionToken) return; // и здесь — после delay
         if (_disposed || !_isActive || _isUserPaused) return;
         if (!_audio.player.playing || _audio.position == before) {
           debugPrint('▶ StudyMode overlay: song stalled during TTS, resuming');
@@ -851,7 +998,7 @@ class StudyModeService extends ChangeNotifier {
   /// timer) is set up before this runs and polls position independently, so
   /// detection no longer depends on how long recovery takes.
   void _kickPlayback() {
-    _kickPlaybackAsync();
+    _kickPlaybackFuture = _kickPlaybackAsync();
   }
 
   /// Async implementation of [_kickPlayback]. On Android the audio session is
@@ -932,6 +1079,15 @@ class StudyModeService extends ChangeNotifier {
     // Координатор сам завершит completer текущего speak-запроса и вызовет stop.
     await _ttsCoordinator.stop();
     _cancelSegmentAwait(false);
+    // Drain kick-цикла аналогично stop(): _isUserPaused=true заставит цикл
+    // выйти на ближайшей проверке, но дождёмся его чтобы не осталось зомби.
+    final kick = _kickPlaybackFuture;
+    if (kick != null) {
+      try {
+        await kick.timeout(const Duration(seconds: 2));
+      } catch (_) {}
+      _kickPlaybackFuture = null;
+    }
     try {
       await _audio.pause();
     } catch (_) {}
@@ -965,10 +1121,25 @@ class StudyModeService extends ChangeNotifier {
     _isSpeaking = false;
     _phase = StudyPhase.idle;
     _currentIndex = -1;
+    // Инвалидируем все висящие _speakOver().then колбэки этой сессии —
+    // иначе они доживут до нового start() (смена песни) и создадут зомби-kick.
+    _sessionToken++;
     debugPrint('⏹ StudyModeService: stopped');
     _cancelSegmentAwait(false);
     // Координатор остановит текущий speak и завершит его completer.
     await _ttsCoordinator.stop();
+    // Ждём завершения активного kick-цикла: флаги уже сброшены, поэтому цикл
+    // выйдет на ближайшей проверке (!_isActive), но его текущий await мог быть
+    // в середине play()/Future.delayed — дождёмся, чтобы гарантированно не
+    // осталось зомби, которое проснётся после нового start() (смена песни) и
+    // начнёт мешать воспроизведению. Таймаут — защита от зависшего Future.
+    final kick = _kickPlaybackFuture;
+    if (kick != null) {
+      try {
+        await kick.timeout(const Duration(seconds: 2));
+      } catch (_) {}
+      _kickPlaybackFuture = null;
+    }
     try {
       await _audio.pause();
     } catch (_) {}

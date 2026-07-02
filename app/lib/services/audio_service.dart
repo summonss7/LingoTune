@@ -17,6 +17,15 @@ class AudioService extends ChangeNotifier {
   LoopMode _loopMode = LoopMode.off;
   bool _isShuffleEnabled = false;
   double _playbackSpeed = 1.0;
+  // Глобальная скорость (значение «по умолчанию» для всех песен). Хранится
+  // отдельно от [_playbackSpeed], чтобы per-song переопределение не затирало
+  // глобальную настройку: при смене песни без override мы возвращаем именно её.
+  double _globalPlaybackSpeed = 1.0;
+  // Per-song переопределение скорости. Когда [_perSongOverride] == true,
+  // [setPlaybackRate] пишет в `song_{id}_playbackSpeed`, не трогая глобальный
+  // ключ; [_playbackSpeed] при этом отражает per-song значение.
+  bool _perSongOverride = false;
+  String? _perSongSongId;
   List<int>? _shuffledIndices;
   Function()? onSongComplete;
   BackgroundAudioHandler? _backgroundHandler;
@@ -39,6 +48,10 @@ class AudioService extends ChangeNotifier {
   LoopMode get loopMode => _loopMode;
   bool get isShuffleEnabled => _isShuffleEnabled;
   double get playbackSpeed => _playbackSpeed;
+  /// Глобальная скорость (дефолт для песен без per-song override).
+  double get globalPlaybackSpeed => _globalPlaybackSpeed;
+  /// Активно ли per-song переопределение для текущей песни.
+  bool get perSongOverride => _perSongOverride;
   List<Song>? get currentPlaylist => _currentPlaylist;
   Song? get currentSong => _currentSong;
   List<int>? get shuffledPlaylist => _shuffledIndices;
@@ -54,8 +67,10 @@ class AudioService extends ChangeNotifier {
       final loopIndex = prefs.getInt('loopMode') ?? 0;
       _loopMode = LoopMode.values[loopIndex.clamp(0, LoopMode.values.length - 1)];
       _isShuffleEnabled = prefs.getBool('isShuffleEnabled') ?? false;
-      _playbackSpeed = prefs.getDouble('playbackSpeed') ?? 1.0;
-      debugPrint('✓ AudioService: Loaded playback settings - loop: $_loopMode, shuffle: $_isShuffleEnabled, speed: $_playbackSpeed');
+      _globalPlaybackSpeed = prefs.getDouble('playbackSpeed') ?? 1.0;
+      // На старте (песня ещё не установлена) активная скорость = глобальная.
+      _playbackSpeed = _globalPlaybackSpeed;
+      debugPrint('✓ AudioService: Loaded playback settings - loop: $_loopMode, shuffle: $_isShuffleEnabled, speed: $_globalPlaybackSpeed');
     } catch (e) {
       debugPrint('✗ Error loading playback settings: $e');
     }
@@ -66,9 +81,74 @@ class AudioService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('loopMode', _loopMode.index);
       await prefs.setBool('isShuffleEnabled', _isShuffleEnabled);
-      await prefs.setDouble('playbackSpeed', _playbackSpeed);
+      // Сохраняем именно ГЛОБАЛЬНУЮ скорость, чтобы per-song override не
+      // затирал дефолтное значение для остальных песен.
+      await prefs.setDouble('playbackSpeed', _globalPlaybackSpeed);
     } catch (e) {
       debugPrint('✗ Error saving playback settings: $e');
+    }
+  }
+
+  /// Применяет per-song настройки скорости для указанной песни. Читает флаг
+  /// `song_{id}_override` и, если он включён, выставляет [_playbackSpeed] из
+  /// `song_{id}_playbackSpeed`; иначе откатывается к [_globalPlaybackSpeed].
+  /// Должен вызываться ДО [loadAudio] при смене/открытии песни — тогда
+  /// `_player.setSpeed` в [loadAudio] подставит корректное значение.
+  Future<void> applyPerSongSettings(String songId) async {
+    try {
+      _perSongSongId = songId;
+      final prefs = await SharedPreferences.getInstance();
+      _perSongOverride = prefs.getBool('song_${songId}_override') ?? false;
+      if (_perSongOverride) {
+        _playbackSpeed =
+            prefs.getDouble('song_${songId}_playbackSpeed') ??
+                _globalPlaybackSpeed;
+      } else {
+        _playbackSpeed = _globalPlaybackSpeed;
+      }
+      _player.setSpeed(_playbackSpeed);
+      _backgroundHandler?.setPlaybackSpeed(_playbackSpeed);
+      debugPrint(
+          '✓ AudioService: applyPerSongSettings($songId) override=$_perSongOverride speed=$_playbackSpeed (global=$_globalPlaybackSpeed)');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('✗ AudioService applyPerSongSettings error: $e');
+    }
+  }
+
+  /// Включает/выключает per-song переопределение для текущей песни. При
+  /// включении текущая скорость наследуется как стартовая для песни (чтобы
+  /// пользователь не начинал с нуля). Не меняет глобальную скорость.
+  Future<void> setPerSongOverride(bool value) async {
+    if (_perSongOverride == value) return;
+    _perSongOverride = value;
+    final id = _perSongSongId;
+    if (id == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('song_${id}_override', value);
+      if (value) {
+        // Наследуем текущую скорость как стартовую per-song (если ещё не
+        // задана — иначе сохраняем ранее выбранное per-song значение).
+        final existing = prefs.getDouble('song_${id}_playbackSpeed');
+        if (existing == null) {
+          await prefs.setDouble('song_${id}_playbackSpeed', _playbackSpeed);
+        } else {
+          _playbackSpeed = existing;
+          _player.setSpeed(_playbackSpeed);
+          _backgroundHandler?.setPlaybackSpeed(_playbackSpeed);
+        }
+      } else {
+        // Откат к глобальной.
+        _playbackSpeed = _globalPlaybackSpeed;
+        _player.setSpeed(_playbackSpeed);
+        _backgroundHandler?.setPlaybackSpeed(_playbackSpeed);
+      }
+      debugPrint(
+          '✓ AudioService: setPerSongOverride($value) speed=$_playbackSpeed');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('✗ AudioService setPerSongOverride error: $e');
     }
   }
 
@@ -259,8 +339,24 @@ class AudioService extends ChangeNotifier {
     _playbackSpeed = rate;
     _player.setSpeed(rate);
     _backgroundHandler?.setPlaybackSpeed(rate);
-    _savePlaybackSettings();
+    if (_perSongOverride && _perSongSongId != null) {
+      // Per-song: пишем только в ключ конкретной песни, глобальник не трогаем.
+      _savePerSongPlaybackSpeed(_perSongSongId!, rate);
+    } else {
+      // Глобальная: обновляем и дефолт, и persist.
+      _globalPlaybackSpeed = rate;
+      _savePlaybackSettings();
+    }
     notifyListeners();
+  }
+
+  Future<void> _savePerSongPlaybackSpeed(String songId, double rate) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('song_${songId}_playbackSpeed', rate);
+    } catch (e) {
+      debugPrint('✗ Error saving per-song playback speed: $e');
+    }
   }
 
   void toggleLoop() {

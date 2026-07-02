@@ -698,6 +698,8 @@
        "studyModeStopped": "Режим изучения выключен",
        "studyModeNoLyrics": "Нет текста с временными метками для этой песни",
        "studyModeSettings": "Настройки режима изучения",
+       "studyPerSongOverride": "Свои настройки для этой песни",
+       "studyPerSongOverrideSubtitle": "Если выключено — используются общие настройки приложения",
        "studyModeOrder": "Порядок",
        "studyModeOrderTranslationFirst": "Сначала перевод",
        "studyModeOrderOriginalFirst": "Сначала оригинал",

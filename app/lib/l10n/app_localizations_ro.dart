@@ -1901,6 +1901,12 @@ class AppLocalizationsRo extends AppLocalizations {
   String get studyModeSettings => 'Setări mod studiu';
 
   @override
+  String get studyPerSongOverride => 'Setări personalizate pentru această melodie';
+
+  @override
+  String get studyPerSongOverrideSubtitle => 'Când este oprit, se folosesc setările generale ale aplicației';
+
+  @override
   String get studyModeOrder => 'Ordine';
 
   @override
@@ -1938,6 +1944,7 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => 'Setări mod studiu';
+
   @override
   String get carDetectionTitle => 'Detecție mașini';
 

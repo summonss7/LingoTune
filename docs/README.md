@@ -1,6 +1,6 @@
 # LingoTune - Изучение языков через музыку
 
-**Версия:** 5.3.2
+**Версия:** 5.3.5
 **Разработчики:** Z.AI GLM & Цимбалов Артем
 **Платформа:** Android (Flutter)
 **Языки интерфейса:** Русский, Английский, Румынский, Французский, Немецкий, Испанский, Итальянский, Португальский, Китайский, Арабский, Украинский
@@ -122,6 +122,104 @@ cp build/app/outputs/flutter-apk/app-release.apk builds/LingoTune-v{версия
 - Видеть live-спектр и ближайший класс в реальном времени
 - Загружать синтетические демо-эталоны (7 звуков в `assets/calibration/`)
 - Точно настраивать детектор под свои условия бега/устройства/наушников
+
+## 🎯 Новое в версии 5.3.5
+
+### 🎚️ Новая фича: индивидуальные настройки прослушивания для каждой песни (per-song)
+- **Задача:** скорость аудио, скорость речи TTS, порядок (перевод/оригинал/поверх), overlay timing и duck volume были **глобальными** на всё приложение — одни и те же для всех песен. Для разных песен часто нужны разные параметры (медленную балладу хочется слушать на 1.0x, быстрый рэп — на 0.8x; сложный текст — перевод-сначала, лёгкий — overlay)
+- **Решение:** для каждой песни появился переключатель **«Свои настройки для этой песни»** в диалоге настроек режима изучения (⚙ в AppBar плеера). При включении все 5 параметров привязываются к конкретной песне; при выключении — действуют общие настройки приложения
+- **Параметры, настраиваемые per-song:**
+  - ⏩ **Скорость воспроизведения** (0.50x–2.00x, слайдер в диалоге) — теперь в том же диалоге, что и study-настройки
+  - 🗣️ **Скорость речи TTS** (ChoiceChip'ы)
+  - 🔀 **Порядок** (перевод-сначала / оригинал-сначала / overlay)
+  - ⏱️ **Overlay timing** (начало / конец / оба) — только в режиме overlay
+  - 🔉 **Duck volume** (громкость приглушённой песни в overlay) — только в режиме overlay
+- **Логика переопределения (3-state):** для каждой песни по умолчанию действуют глобальные настройки. Пользователь чекбоксом включает per-song override → при первом включении **текущие глобальные значения наследуются** как стартовые per-song (не надо начинать с нуля) → дальше меняет под песню. При выключении — немедленный откат к глобальным
+- **Хранение:** `SharedPreferences` с ключами `song_{id}_override` (master-флаг) + `song_{id}_playbackSpeed/speechRate/order/overlayTiming/duckVolume`. **БД не затронута** — никаких миграций, версия БД осталась 11. Глобальные настройки (`studyMode*`, `playbackSpeed`) не перетираются per-song значениями
+- **Применение при смене песни:** `PlayerScreen._playSong` и `_initSongData` вызывают `StudyModeService.applyPerSongSettings(songId)` + `AudioService.applyPerSongSettings(songId)` ДО загрузки аудио — к моменту `loadAudio`/`handler.playSong` скорость и study-параметры уже корректны для новой песни. Это работает и при ручном next/prev, и при авто-переходе (background notification → callback → `_playSong`)
+
+### 🐛 Фикс: study mode (озвучка перевода) и car detection не убирались из режима редактирования меток
+- **Симптом:** в режиме простановки таймстампов (⋮ → «Редактировать метки») кнопки 🎤 (study mode) и 🚗 (car detection) оставались в AppBar и активными. Озвучка перевода продолжала работать поверх установки меток, мешая; пользователь не мог от неё избавиться (она там логически не нужна)
+- **Причина:** `_buildAppBarContent` показывал `_buildCarDetectionButton` и `_buildStudyModeButton` безусловно (без проверки `_isEditMode`); переключатель edit mode только менял флаг и добавлял кнопку 💾 save, не трогая study/car
+- **Решение:**
+  - При входе в edit mode активный study mode **автоматически останавливается** (`_studyModeService.stop(userRequested: true)` — сбрасывает и persist-флаг, чтобы авто-restart не перезапустил озвучку). Car detection НЕ глушится (он не мешает простановке меток)
+  - Кнопки 🎤 и 🚗 **скрыты** из AppBar пока активен edit mode (взаимоисключение с кнопкой 💾 save)
+  - Адаптивный счётчик `cnt` пересчитан: в edit mode теперь 5 кнопок (tune, save, swap, transcription, popup) вместо 7 — размер `bs` корректный, никаких визуальных скачков
+  - При выходе из edit mode: 🎤 и 🚗 возвращаются; study mode **НЕ перезапускается** автоматически (пользователь сам включит если нужно)
+
+### 🐛 Фикс: race condition «зомби-цикла» _kickPlayback при смене песни с per-song настройками
+- **Симптом:** при переходе на песню с включёнными per-song настройками звук «шёл параллельно и не так» (накладывающийся/рассинхронизированный). Открытие и закрытие диалога study-настроек «чинило» воспроизведение
+- **Корень:** `_kickPlaybackAsync()` — fire-and-forget цикл до 6 попыток с `await`-ами по 400мс–1с (реактивация audio-сессии после TTS). Он проверял только общие флаги `_isActive`/`_isUserPaused` без «токена поколения». При смене песни: `_playSong` → `stop()` сбрасывал `_isActive=false`, но `_kickPlaybackAsync` старой песни **ещё крутился** внутри своего `await`. Затем `applyPerSongSettings` + загрузка аудио + `_restartStudyIfNeeded` → `start()` снова поднимал `_isActive=true`. Зомби-цикл просыпался, видел `_isActive=true` и **продолжал работать** поверх нового цикла: вызывал `play()`/`seek()` уже над новым плеером, по старым таймингам → накладывающийся звук. `stop()` не дожидался завершения kick-цикла
+- **Почему диалог чинил:** `_openStudyModeSettings` перед показом вызывает `pauseSession()`, который ставил `_isUserPaused=true` → зомби вылетали на проверке; после закрытия диалога `resumeSession()` поднимал один чистый цикл
+- **Решение (минимальное, без переписывания архитектуры):**
+  - Новое поле `Future<void>? _kickPlaybackFuture` хранит активный kick-цикл
+  - `_kickPlayback()` сохраняет Future в поле при запуске
+  - `stop()` и `pauseSession()` **сначала сбрасывают флаги** (`_isActive=false` / `_isUserPaused=true`), затем **await-ят `_kickPlaybackFuture` с таймаутом 2с** — зомби гарантированно завершается до возврата из stop/pause, а значит до нового `start()` при смене песни
+  - **Дополнение (session-token для `_speakOver().then`):** второй fire-and-forget — `_speak(text).then(...)` в `_speakOver`. Когда stop() резольбит speak Future через `_ttsCoordinator.stop()`, `.then`-колбэк попадает в очередь и мог дожить до нового `start()` (проверка `_isActive` уже TRUE от новой песни) → вызывал `_kickPlayback()` и создавал **новый** зомби-kick уже после drain. Это давало остаточный симптом «несколько секунд каши в начале, потом ок». Решение: поле `int _sessionToken = 0`, инкрементируется в `stop()`; `_speakOver` захватывает токен при старте и проверяет `token == _sessionToken` в трёх точках `.then`-колбэка (вход, после `_restoreVolume`, после `Future.delayed`) — при несовпадении мгновенно выходит, не создавая зомби
+- **Результат:** при смене песни `stop()` не возвращается, пока старый kick-цикл реально не завершится, а висящие `.then`-колбэки инвалидируются токеном → к моменту `start()` новой песни ноль зомби → чистое воспроизведение с первой секунды, без диалога-«костыля» и без «каши»
+
+### 🔧 Технические изменения
+- `lib/services/audio_service.dart`:
+  - новые поля `_globalPlaybackSpeed` (дефолт, не затирается per-song), `_perSongOverride`, `_perSongSongId`
+  - геттеры `globalPlaybackSpeed`, `perSongOverride`
+  - `_loadPlaybackSettings`/`_savePlaybackSettings` работают с `_globalPlaybackSpeed` (не с активной `_playbackSpeed`) — глобальный дефолт не портится per-song переопределением
+  - новый `applyPerSongSettings(String songId)`: читает `song_{id}_override`, выставляет `_playbackSpeed` из per-song или глобального, live-применяет к `_player` и `_backgroundHandler`. Должен вызываться ДО `loadAudio`
+  - новый `setPerSongOverride(bool)`: пишет флаг, при включении наследует текущую скорость как стартовую per-song, при выключении откатывается к глобальной
+  - `setPlaybackRate(double)`: при активном override пишет в `song_{id}_playbackSpeed` (глобальный не трогает), иначе как раньше в `playbackSpeed`
+- `lib/services/study_mode_service.dart`:
+  - новые поля `_perSongOverride`, `_perSongSongId`; геттер `perSongOverride`
+  - `_loadSettings` рефакторен: вынесен `_loadValuesFromPrefs({perSong, songId})` — грузит 4 значения (order/speechRate/overlayTiming/duckVolume) из per-song или глобальных ключей
+  - новый `applyPerSongSettings(String songId)`: определяет override, грузит значения, live-применяет `_tts.setSpeechRate`. `enabledPersist` остаётся глобальным
+  - новый `setPerSongOverride(bool)`: пишет флаг, при первом включении наследует текущие (глобальные) значения в per-song ключи, перезагружает значения
+  - `setOrder`/`setSpeechRate`/`setOverlayTiming`/`setDuckVolume`: при активном override (`_usePerSong`) пишут в `song_{id}_*` ключи, иначе как раньше в `studyMode*`
+- `lib/screens/player_screen.dart`:
+  - `_initSongData`: в самом начале (до любой загрузки аудио) вызывает `applyPerSongSettings` для обоих сервисов + синхронизирует локальную `_playbackSpeed`
+  - `_playSong`: после установки `_currentSong` и до `loadAudio`/`handler.playSong` — те же вызовы `applyPerSongSettings` + `setState(_playbackSpeed)`
+  - `_showStudyModeSettingsDialog`: сверху новый `SwitchListTile` «Свои настройки для этой песни»; при переключении вызывает `setPerSongOverride` для обоих сервисов и обновляет локальные переменные диалога; внизу новый `Slider` скорости воспроизведения (0.50–2.00x); при закрытии диалога синхронизирует локальную `_playbackSpeed` с сервисом; индикатор названия песни когда override активен
+- `lib/l10n/app_*.arb` (11 языков) + сгенерированные `app_localizations*.dart`: 2 новых ключа `studyPerSongOverride` / `studyPerSongOverrideSubtitle` (через `flutter gen-l10n`)
+- `app_info.dart`: versionCode 212 → 215 (синхронизация с gradle/pubspec); features += «🎚️ Per-song study settings»
+
+### ⚠️ Известные ограничения
+- **Export/Import настроек** (`settings_export_service.dart`): per-song ключи `song_*` пока НЕ включены в экспорт — при переносе настроек на другое устройство per-song параметры не переедут (только глобальные). Фаза 2
+- **Fallback background-перехода** (`skipToQueueItem` в `BackgroundAudioHandler`, когда `PlayerScreen` уже dispose'нут): per-song скорость не применяется (используется текущая активная). Это редкий случай (приложение долго в фоне без UI), и текущее поведение там и так не гарантировало корректную скорость. Не регрессия
+- **Удаление песни:** осиротевшие ключи `song_{id}_*` остаются в SharedPreferences (~0.5 КБ на песню). Можно чистить в `DatabaseService.deleteSong` — не критично
+
+---
+
+## 🎯 Новое в версии 5.3.4
+
+### 🐛 Фикс: кнопка выбора языка всё-таки уезжала за правый край AppBar плеера
+- **Симптом (после 5.3.3):** на узких телефонах кнопка выбора языка перевода по-прежнему обрезалась/уезжала за правый край, а между стрелкой «назад» и кластером кнопок (🚗/🎤/…) оставалось большое пустое место
+- **Почему 5.3.3 не помог полностью:** тот фикс лишь прижал размер кнопок car/study к адаптивному `bs` (48→bs), но **не трогал структуру Row**. Зазор создавало `mainAxisAlignment: MainAxisAlignment.end` (контент прижат вправо, пустота слева), а язык уезжал за край, потому что дропдаун выбора языка был **последним (самым правым) ребёнком** Row — при любом переполнении/узком экране именно он срезается правым краем
+- **Решение (перепроектирование Row в `_buildAppBarContent`):**
+  - Дропдаун выбора языка **перенесён в начало Row** (первый ребёнок, сразу после стрелки «назад») — теперь он якорится слева и физически не может уехать за правый край
+  - `mainAxisAlignment: MainAxisAlignment.end` → **`MainAxisAlignment.start`** — кластер кнопок прижат к стрелке «назад», зазор устранён
+  - Верхний clamp `bs` поднят **44 → 52** — на широких экранах кнопки заполняют ширину, меньше пустого места
+  - Сам блок языка вынесен в локальную переменную `langPicker` (читаемость, без дублирования)
+- **Результат на экране:** `[←] [🇬🇧 English ▾] [🚗][🎤][⚙][⇅][A][⋮]` — язык всегда видим слева, между «назад» и 🚗 нет зазора, тумблеры ⇅/A остаются на месте
+
+### 🔧 Технические изменения
+- `lib/screens/player_screen.dart`: в `_buildAppBarContent` — локальная `langPicker` (бывший инлайн-Container выбора языка); порядок детей Row изменён (`if (hd) langPicker` + `if (hd) SizedBox(8)` перенесены в начало); `MainAxisAlignment.end` → `MainAxisAlignment.start`; `bs` clamp `.clamp(18.0, 44.0)` → `.clamp(18.0, 52.0)`; удалён хвостовой `const SizedBox(width: 4)`
+- `pubspec.yaml`/`app_info.dart`/`build.gradle` — 5.3.4 (versionCode 214)
+
+---
+
+## 🎯 Новое в версии 5.3.3
+
+### 🐛 Фикс: AppBar плеера и тайл TTS-движка не влезали на узких экранах
+- **Симптом 1:** в интерфейсе чтения текста песни между стрелкой «назад» и кластером кнопок (детекция машин / режим изучения / …) оставалось большое пустое место, а **кнопка выбора языка перевода не помещалась** и обрезалась на узких телефонах
+- **Корень 1:** в `_buildAppBarContent` рассчитывается адаптивный размер кнопок `bs` (чтобы все кнопки + дропдаун языка укладывались в ширину экрана), но `_buildStudyModeButton` и `_buildCarDetectionButton` создавали `IconButton` **без `constraints`** → Material по умолчанию отводил им минимум **48×48** (`kMinInteractiveDimension`) вместо расчётных ~30px. Остальные кнопки имели `BoxConstraints.tightFor(bs)` и слушались. Итог: 2 кнопки «съедали» ~35 лишних px → дропдаун выбора языка уходил в overflow
+- **Решение 1:** в обе кнопки добавлены `boxSize`-параметр, `constraints: BoxConstraints.tightFor(width: boxSize, height: boxSize)` и `padding: EdgeInsets.zero` — теперь они занимают ровно `bs` как и все остальные, и выбор языка помещается на узких экранах
+- **Симптом 2:** в Настройках выбор TTS-движка (Motor TTS / Google TTS / …) на узких экранах расписывался **по одной букве в строку**, занимая весь экран
+- **Корень 2:** `TtsEngineSettingsTile` использовал `trailing: DropdownButton(isExpanded: false)`. Самый широкий item («Авто (рекомендуется)» + длинные лейблы движков) раздувал дропдаун, а `ListTile` на узком экране сжимал `trailing` до совсем малой ширины — `Text` без `maxLines`/`overflow` переносился посимвольно
+- **Решение 2:** `DropdownButton` обёрнут в `ConstrainedBox(maxWidth: 130)`, установлен `isExpanded: true`, а всем `Text` item'ов — `maxLines: 1, overflow: TextOverflow.ellipsis`. Ширина дропдауна фиксирована и не зависит от того, как `ListTile` делит место между title/subtitle/trailing
+
+### 🔧 Технические изменения
+- `lib/screens/player_screen.dart`: `_buildStudyModeButton` и `_buildCarDetectionButton` — новый параметр `boxSize`, `IconButton` теперь с `padding: EdgeInsets.zero` + `constraints: BoxConstraints.tightFor(width: boxSize, height: boxSize)`; вызовы в `_buildAppBarContent` передают `boxSize: bs`
+- `lib/widgets/settings/tts_engine_settings_tile.dart`: `trailing` обёрнут в `ConstrainedBox(maxWidth: 130)`; `DropdownButton` → `isExpanded: true`; `Text` item'ов → `maxLines: 1, overflow: TextOverflow.ellipsis`
+- `pubspec.yaml`/`app_info.dart`/`build.gradle` — 5.3.3 (versionCode 213)
+
+---
 
 ## 🎯 Новое в версии 5.3.2
 

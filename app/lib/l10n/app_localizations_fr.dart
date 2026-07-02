@@ -1901,6 +1901,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get studyModeSettings => 'Paramètres du mode étude';
 
   @override
+  String get studyPerSongOverride => 'Réglages personnalisés pour cette chanson';
+
+  @override
+  String get studyPerSongOverrideSubtitle => 'Si désactivé, les réglages globaux de l\'application sont utilisés';
+
+  @override
   String get studyModeOrder => 'Ordre';
 
   @override
@@ -1938,6 +1944,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => 'Paramètres du mode étude';
+
   @override
   String get carDetectionTitle => 'Détection de voitures';
 

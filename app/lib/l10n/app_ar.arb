@@ -603,6 +603,8 @@
       "studyModeStopped": "تم إيقاف وضع الدراسة",
       "studyModeNoLyrics": "لا توجد كلمات متزامنة لهذه الأغنية",
       "studyModeSettings": "إعدادات وضع الدراسة",
+      "studyPerSongOverride": "إعدادات مخصصة لهذه الأغنية",
+      "studyPerSongOverrideSubtitle": "عند الإيقاف، تُستخدم الإعدادات العامة للتطبيق",
       "studyModeOrder": "الترتيب",
       "studyModeOrderTranslationFirst": "الترجمة أولاً",
       "studyModeOrderOriginalFirst": "الأصل أولاً",

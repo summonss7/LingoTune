@@ -4,8 +4,8 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.3.2';
-  static const String versionCode = '212';
+  static const String version = '5.3.5';
+  static const String versionCode = '215';
 
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
@@ -39,6 +39,7 @@ class AppInfo {
     '💾 Export and import settings',
     '📦 Backup your song library',
     '🚗 Car detection via microphone (safety for runners)',
+    '🎚️ Per-song study settings (speed, order, speech rate)',
   ];
 
   static const List<String> supportedLanguages = [

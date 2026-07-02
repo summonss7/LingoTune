@@ -603,6 +603,8 @@
       "studyModeStopped": "学习模式已停止",
       "studyModeNoLyrics": "这首歌没有同步歌词",
       "studyModeSettings": "学习模式设置",
+      "studyPerSongOverride": "此歌曲的自定义设置",
+      "studyPerSongOverrideSubtitle": "关闭时使用应用全局默认设置",
       "studyModeOrder": "顺序",
       "studyModeOrderTranslationFirst": "先翻译",
       "studyModeOrderOriginalFirst": "先原文",

@@ -603,6 +603,8 @@
       "studyModeStopped": "Modul studiu a fost oprit",
       "studyModeNoLyrics": "Nu există versuri sincronizate pentru această melodie",
       "studyModeSettings": "Setări mod studiu",
+      "studyPerSongOverride": "Setări personalizate pentru această melodie",
+      "studyPerSongOverrideSubtitle": "Când este oprit, se folosesc setările generale ale aplicației",
       "studyModeOrder": "Ordine",
       "studyModeOrderTranslationFirst": "Mai întâi traducerea",
       "studyModeOrderOriginalFirst": "Mai întâi originalul",

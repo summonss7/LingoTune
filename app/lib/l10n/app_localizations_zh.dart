@@ -1901,6 +1901,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studyModeSettings => '学习模式设置';
 
   @override
+  String get studyPerSongOverride => '此歌曲的自定义设置';
+
+  @override
+  String get studyPerSongOverrideSubtitle => '关闭时使用应用全局默认设置';
+
+  @override
   String get studyModeOrder => '顺序';
 
   @override
@@ -1938,6 +1944,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => '学习模式设置';
+
   @override
   String get carDetectionTitle => '汽车检测';
 

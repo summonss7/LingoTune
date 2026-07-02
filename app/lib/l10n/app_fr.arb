@@ -603,6 +603,8 @@
       "studyModeStopped": "Mode étude arrêté",
       "studyModeNoLyrics": "Pas de paroles synchronisées pour cette chanson",
       "studyModeSettings": "Paramètres du mode étude",
+      "studyPerSongOverride": "Réglages personnalisés pour cette chanson",
+      "studyPerSongOverrideSubtitle": "Si désactivé, les réglages globaux de l'application sont utilisés",
       "studyModeOrder": "Ordre",
       "studyModeOrderTranslationFirst": "Traduction d'abord",
       "studyModeOrderOriginalFirst": "Original d'abord",

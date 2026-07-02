@@ -1901,6 +1901,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get studyModeSettings => 'إعدادات وضع الدراسة';
 
   @override
+  String get studyPerSongOverride => 'إعدادات مخصصة لهذه الأغنية';
+
+  @override
+  String get studyPerSongOverrideSubtitle => 'عند الإيقاف، تُستخدم الإعدادات العامة للتطبيق';
+
+  @override
   String get studyModeOrder => 'الترتيب';
 
   @override
@@ -1938,6 +1944,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => 'إعدادات وضع الدراسة';
+
   @override
   String get carDetectionTitle => 'كشف السيارات';
 

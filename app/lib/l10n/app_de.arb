@@ -603,6 +603,8 @@
       "studyModeStopped": "Lernmodus gestoppt",
       "studyModeNoLyrics": "Keine synchronisierten Texte für dieses Lied",
       "studyModeSettings": "Lernmodus-Einstellungen",
+      "studyPerSongOverride": "Eigene Einstellungen für diesen Song",
+      "studyPerSongOverrideSubtitle": "Wenn aus, werden die App-weiten Standardwerte verwendet",
       "studyModeOrder": "Reihenfolge",
       "studyModeOrderTranslationFirst": "Zuerst Übersetzung",
       "studyModeOrderOriginalFirst": "Zuerst Original",

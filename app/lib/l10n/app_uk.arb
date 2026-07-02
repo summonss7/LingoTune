@@ -603,6 +603,8 @@
        "studyModeStopped": "Режим вивчення вимкнено",
        "studyModeNoLyrics": "Немає тексту з мітками для цієї пісні",
        "studyModeSettings": "Налаштування режиму вивчення",
+       "studyPerSongOverride": "Свої налаштування для цієї пісні",
+       "studyPerSongOverrideSubtitle": "Якщо вимкнено — використовуються загальні налаштування додатка",
        "studyModeOrder": "Порядок",
        "studyModeOrderTranslationFirst": "Спочатку переклад",
        "studyModeOrderOriginalFirst": "Спочатку оригінал",

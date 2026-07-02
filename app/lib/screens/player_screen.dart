@@ -580,6 +580,9 @@ class _PlayerScreenState extends State<PlayerScreen>
     double currentRate = _studyModeService.speechRate;
     OverlayTiming currentTiming = _studyModeService.overlayTiming;
     double currentDuck = _studyModeService.duckVolume;
+    double currentSpeed = widget.audioService.playbackSpeed;
+    bool perSong = _studyModeService.perSongOverride;
+    final songTitle = _currentSong.title;
 
     Widget timingChip(String label, OverlayTiming value, OverlayTiming current,
         ValueChanged<OverlayTiming> onPick) {
@@ -602,6 +605,26 @@ class _PlayerScreenState extends State<PlayerScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    SwitchListTile(
+                      title: Text(l10n.studyPerSongOverride),
+                      subtitle: Text(l10n.studyPerSongOverrideSubtitle),
+                      value: perSong,
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      onChanged: (v) async {
+                        await _studyModeService.setPerSongOverride(v);
+                        await widget.audioService.setPerSongOverride(v);
+                        setState(() {
+                          perSong = v;
+                          currentOrder = _studyModeService.order;
+                          currentRate = _studyModeService.speechRate;
+                          currentTiming = _studyModeService.overlayTiming;
+                          currentDuck = _studyModeService.duckVolume;
+                          currentSpeed = widget.audioService.playbackSpeed;
+                        });
+                      },
+                    ),
+                    const Divider(),
                     Text(l10n.studyModeOrder,
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                     RadioListTile<StudyModeOrder>(
@@ -699,12 +722,47 @@ class _PlayerScreenState extends State<PlayerScreen>
                         );
                       }).toList(),
                     ),
+                    const Divider(),
+                    Text(
+                        '${l10n.playbackSpeed}: ${currentSpeed.toStringAsFixed(2)}x',
+                        style:
+                            const TextStyle(fontWeight: FontWeight.bold)),
+                    Slider(
+                      value: currentSpeed,
+                      min: 0.5,
+                      max: 2.0,
+                      divisions: 30,
+                      label: '${currentSpeed.toStringAsFixed(2)}x',
+                      onChanged: (v) {
+                        setState(() => currentSpeed = v);
+                        widget.audioService.setPlaybackRate(v);
+                      },
+                    ),
+                    if (perSong)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '🎵 "$songTitle"',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(ctx).colorScheme.primary),
+                        ),
+                      ),
                   ],
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    // Слайдер скорости в диалоге мог изменить значение через
+                    // audioService — синхронизируем локальную переменную, чтобы
+                    // индикатор скорости на главном экране был актуален.
+                    if (mounted) {
+                      setState(() =>
+                          _playbackSpeed = widget.audioService.playbackSpeed);
+                    }
+                  },
                   child: Text(l10n.close),
                 ),
               ],
@@ -873,6 +931,14 @@ class _PlayerScreenState extends State<PlayerScreen>
         }
       });
 
+      // Применяем per-song настройки для новой песни ДО загрузки аудио, чтобы
+      // скорость воспроизведения и study-параметры соответствовали именно ей.
+      await _studyModeService.applyPerSongSettings(song.id);
+      await widget.audioService.applyPerSongSettings(song.id);
+      if (mounted) {
+        setState(() => _playbackSpeed = widget.audioService.playbackSpeed);
+      }
+
       await _loadAllTranslations(song.id, song.title);
       await _selectLanguageBasedOnSettings();
       await _updateAllLyricsWithTranslations();
@@ -997,6 +1063,12 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Future<void> _initSongData() async {
+    // Применяем per-song настройки ДО любой загрузки аудио — чтобы скорость
+    // воспроизведения и study-параметры соответствовали именно этой песне.
+    await _studyModeService.applyPerSongSettings(widget.song.id);
+    await widget.audioService.applyPerSongSettings(widget.song.id);
+    _playbackSpeed = widget.audioService.playbackSpeed;
+
     if (widget.shouldResume) {
       debugPrint('=== Resuming player — checking player state ===');
 
@@ -1463,10 +1535,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     final sw = MediaQuery.of(context).size.width;
     final hd = widget.translationService.translations.isNotEmpty;
     final dw = hd ? sw * 0.22 : 0.0;
-    final avail = sw - 56.0 - dw - (hd ? 12.0 : 4.0);
-    int cnt = 6; // car-detect, study, study-settings, swap, transcription, popup
-    if (_isEditMode) cnt++; // save
-    final bs = (avail / cnt).clamp(18.0, 44.0);
+    final avail = sw - 40.0 - dw - (hd ? 12.0 : 4.0);
+    // НЕ edit mode: car-detect, study, study-settings, swap, transcription, popup = 6
+    // edit mode: study-settings, save, swap, transcription, popup = 5
+    // (car-detect и study скрыты в edit mode, зато появляется save)
+    final int cnt = _isEditMode ? 5 : 6;
+    final bs = (avail / cnt).clamp(18.0, 52.0);
     final iconSz = (bs * 0.72).clamp(12.0, 24.0);
     final hdrBtnSize = iconSz.clamp(20.0, 26.0);
 
@@ -1484,11 +1558,123 @@ class _PlayerScreenState extends State<PlayerScreen>
       );
     }
 
+    final Widget langPicker = Container(
+      constraints: BoxConstraints(maxWidth: dw),
+      padding: EdgeInsets.symmetric(horizontal: isLandscape ? 4.0 : 8.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (widget.translationService.translations.length > 1)
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isLandscape ? 4 : 6,
+                vertical: isLandscape ? 2 : 3,
+              ),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${widget.translationService.translations.length}',
+                style: TextStyle(
+                  fontSize: isLandscape ? 10 : 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          SizedBox(
+              width: widget.translationService.translations.length > 1
+                  ? 6
+                  : 0),
+          DropdownButton<String>(
+            value:
+                widget.translationService.currentLanguageIndex.toString(),
+            icon: const Icon(Icons.arrow_drop_down, size: 20),
+            underline: const SizedBox(),
+            style: TextStyle(
+              fontSize: isLandscape ? 12 : 14,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            onChanged: (String? value) async {
+              if (value != null) {
+                final index = int.parse(value);
+                widget.translationService.selectLanguage(index);
+                final translation =
+                    widget.translationService.translations[index];
+                final db = DatabaseService();
+                await db.setSelectedLanguage(
+                    _currentSong.id, translation.language);
+                await _updateAllLyricsWithTranslations();
+                if (mounted) {
+                  final l10n = AppLocalizations.of(context)!;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(l10n
+                          .languageSelected(translation.languageName)),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+                setState(() {});
+              }
+            },
+            items: widget.translationService.translations
+                .asMap()
+                .entries
+                .map((entry) {
+              final translation = entry.value;
+              final isSelected = entry.key ==
+                  widget.translationService.currentLanguageIndex;
+              final shortName = _getShortLanguageName(
+                  translation.languageName, translation.language);
+              final emoji = _getLanguageEmoji(
+                  translation.language, translation.type);
+              return DropdownMenuItem<String>(
+                value: entry.key.toString(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(emoji,
+                        style:
+                            TextStyle(fontSize: isLandscape ? 14 : 16)),
+                    const SizedBox(width: 6),
+                    Text(
+                      shortName,
+                      style: TextStyle(
+                        fontSize: isLandscape ? 12 : 14,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
+                      ),
+                    ),
+                    if (isSelected)
+                      Icon(Icons.check,
+                          size: isLandscape ? 14 : 16,
+                          color: Theme.of(context).colorScheme.primary),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+
     return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        _buildCarDetectionButton(iconSize: hdrBtnSize),
-        _buildStudyModeButton(iconSize: hdrBtnSize),
+        if (!_isEditMode)
+          _buildCarDetectionButton(iconSize: hdrBtnSize, boxSize: bs),
+        if (!_isEditMode)
+          _buildStudyModeButton(iconSize: hdrBtnSize, boxSize: bs),
         IconButton(
           icon: const Icon(Icons.tune),
           iconSize: hdrBtnSize,
@@ -1541,7 +1727,15 @@ class _PlayerScreenState extends State<PlayerScreen>
             } else if (value == 'share') {
               await _exportCurrentSong();
             } else if (value == 'editMode') {
-              setState(() => _isEditMode = !_isEditMode);
+              final entering = !_isEditMode;
+              setState(() => _isEditMode = entering);
+              // Озвучка перевода не нужна при простановке меток — глушим study
+              // mode с userRequested, чтобы persist-флаг тоже сбросился (иначе
+              // авто-restart в _restartStudyIfNeeded перезапустит её). Car
+              // detection не трогаем — он не мешает установке меток.
+              if (entering && _studyModeService.isActive) {
+                await _studyModeService.stop(userRequested: true);
+              }
             } else if (value == 'edit') {
               final saved = await Navigator.of(context).push<bool>(
                 MaterialPageRoute(
@@ -1661,118 +1855,8 @@ class _PlayerScreenState extends State<PlayerScreen>
             ];
           },
         ),
-        if (hd) SizedBox(width: 8),
-        if (hd)
-          Container(
-            constraints: BoxConstraints(maxWidth: dw),
-            padding: EdgeInsets.symmetric(horizontal: isLandscape ? 4.0 : 8.0),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.translationService.translations.length > 1)
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isLandscape ? 4 : 6,
-                      vertical: isLandscape ? 2 : 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${widget.translationService.translations.length}',
-                      style: TextStyle(
-                        fontSize: isLandscape ? 10 : 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                SizedBox(
-                    width: widget.translationService.translations.length > 1
-                        ? 6
-                        : 0),
-                DropdownButton<String>(
-                  value:
-                      widget.translationService.currentLanguageIndex.toString(),
-                  icon: const Icon(Icons.arrow_drop_down, size: 20),
-                  underline: const SizedBox(),
-                  style: TextStyle(
-                    fontSize: isLandscape ? 12 : 14,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  onChanged: (String? value) async {
-                    if (value != null) {
-                      final index = int.parse(value);
-                      widget.translationService.selectLanguage(index);
-                      final translation =
-                          widget.translationService.translations[index];
-                      final db = DatabaseService();
-                      await db.setSelectedLanguage(
-                          _currentSong.id, translation.language);
-                      await _updateAllLyricsWithTranslations();
-                      if (mounted) {
-                        final l10n = AppLocalizations.of(context)!;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(l10n
-                                .languageSelected(translation.languageName)),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      }
-                      setState(() {});
-                    }
-                  },
-                  items: widget.translationService.translations
-                      .asMap()
-                      .entries
-                      .map((entry) {
-                    final translation = entry.value;
-                    final isSelected = entry.key ==
-                        widget.translationService.currentLanguageIndex;
-                    final shortName = _getShortLanguageName(
-                        translation.languageName, translation.language);
-                    final emoji = _getLanguageEmoji(
-                        translation.language, translation.type);
-                    return DropdownMenuItem<String>(
-                      value: entry.key.toString(),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(emoji,
-                              style:
-                                  TextStyle(fontSize: isLandscape ? 14 : 16)),
-                          const SizedBox(width: 6),
-                          Text(
-                            shortName,
-                            style: TextStyle(
-                              fontSize: isLandscape ? 12 : 14,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : null,
-                            ),
-                          ),
-                          if (isSelected)
-                            Icon(Icons.check,
-                                size: isLandscape ? 14 : 16,
-                                color: Theme.of(context).colorScheme.primary),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-        const SizedBox(width: 4),
+        const Spacer(),
+        if (hd) langPicker,
       ],
     );
   }
@@ -1897,7 +1981,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  Widget _buildStudyModeButton({double iconSize = 32.0}) {
+  Widget _buildStudyModeButton(
+      {double iconSize = 32.0, double boxSize = 44.0}) {
     final l10n = AppLocalizations.of(context)!;
     return AnimatedBuilder(
       animation: _studyModeService,
@@ -1927,7 +2012,9 @@ class _PlayerScreenState extends State<PlayerScreen>
             tooltip:
                 '${l10n.studyModeTooltip}\n${l10n.studyModeLongPressHint}',
             iconSize: iconSize,
-            padding: const EdgeInsets.all(4.0),
+            padding: EdgeInsets.zero,
+            constraints:
+                BoxConstraints.tightFor(width: boxSize, height: boxSize),
           ),
         );
       },
@@ -1942,7 +2029,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  Widget _buildCarDetectionButton({double iconSize = 32.0}) {
+  Widget _buildCarDetectionButton(
+      {double iconSize = 32.0, double boxSize = 44.0}) {
     final l10n = AppLocalizations.of(context)!;
     return AnimatedBuilder(
       animation: _carDetectionService,
@@ -1981,7 +2069,9 @@ class _PlayerScreenState extends State<PlayerScreen>
             onPressed: _toggleCarDetection,
             tooltip: l10n.carDetectionTooltip,
             iconSize: iconSize,
-            padding: const EdgeInsets.all(4.0),
+            padding: EdgeInsets.zero,
+            constraints:
+                BoxConstraints.tightFor(width: boxSize, height: boxSize),
           ),
         );
       },
@@ -2491,6 +2581,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             ? Colors.orange
             : Theme.of(context).colorScheme.inversePrimary,
         titleSpacing: 0,
+        leadingWidth: 40,
         centerTitle: false,
         title: _buildAppBarContent(context),
       ),

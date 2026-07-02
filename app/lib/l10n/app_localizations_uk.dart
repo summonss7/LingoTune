@@ -1901,6 +1901,12 @@ class AppLocalizationsUk extends AppLocalizations {
   String get studyModeSettings => 'Налаштування режиму вивчення';
 
   @override
+  String get studyPerSongOverride => 'Свої налаштування для цієї пісні';
+
+  @override
+  String get studyPerSongOverrideSubtitle => 'Якщо вимкнено — використовуються загальні налаштування додатка';
+
+  @override
   String get studyModeOrder => 'Порядок';
 
   @override
@@ -1938,6 +1944,7 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => 'Налаштування режиму вивчення';
+
   @override
   String get carDetectionTitle => 'Детекція машин';
 

@@ -1901,6 +1901,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get studyModeSettings => 'Настройки режима изучения';
 
   @override
+  String get studyPerSongOverride => 'Свои настройки для этой песни';
+
+  @override
+  String get studyPerSongOverrideSubtitle => 'Если выключено — используются общие настройки приложения';
+
+  @override
   String get studyModeOrder => 'Порядок';
 
   @override
@@ -1938,6 +1944,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => 'Настройки режима изучения';
+
   @override
   String get carDetectionTitle => 'Детекция машин';
 

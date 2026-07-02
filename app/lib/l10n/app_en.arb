@@ -699,6 +699,8 @@
       "studyModeStopped": "Study mode stopped",
       "studyModeNoLyrics": "No timed lyrics for this song",
       "studyModeSettings": "Study Mode Settings",
+      "studyPerSongOverride": "Custom settings for this song",
+      "studyPerSongOverrideSubtitle": "When off, the app-wide defaults are used",
       "studyModeOrder": "Order",
       "studyModeOrderTranslationFirst": "Translation first",
       "studyModeOrderOriginalFirst": "Original first",
