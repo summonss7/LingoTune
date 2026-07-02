@@ -615,5 +615,20 @@
       "studyModeOverlayAtEnd": "A fine riga",
       "studyModeOverlayAtBoth": "Inizio e fine",
       "studyModeDuckVolume": "Volume originale",
-      "studyModeOpenSettings": "Impostazioni modalità studio"
+      "studyModeOpenSettings": "Impostazioni modalità studio",
+      "carDetectionTitle": "Rilevamento auto",
+      "carDetectionEnabled": "Attivo",
+      "carDetectionDisabled": "Disattivo",
+      "carDetectionSensitivity": "Sensibilità",
+      "carDetectionSensitivityHint": "Più alto = più allerte (possibili falsi positivi). Più basso = solo segnali forti.",
+      "carAlertSound": "Allerta sonora",
+      "carAlertSoundSubtitle": "Bip sopra la musica",
+      "carAlertVibration": "Vibrazione",
+      "carAlertVibrationSubtitle": "Feedback aptico al rilevamento",
+      "carAlertVoice": "Allerta vocale",
+      "carAlertVoiceSubtitle": "Avviso parlato via TTS",
+      "carDetectionPrivacyNote": "L'audio è analizzato solo sul dispositivo — nulla viene registrato o inviato.",
+      "carDetectionTooltip": "Rilevamento auto tramite microfono",
+      "carDetectionStarted": "Rilevamento auto avviato — in ascolto",
+      "carDetectionMicDenied": "Permesso microfono negato — rilevamento impossibile"
 }

@@ -1938,4 +1938,48 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => '学习模式设置';
+  @override
+  String get carDetectionTitle => '汽车检测';
+
+  @override
+  String get carDetectionEnabled => '已启用';
+
+  @override
+  String get carDetectionDisabled => '已停用';
+
+  @override
+  String get carDetectionSensitivity => '灵敏度';
+
+  @override
+  String get carDetectionSensitivityHint => '越高 = 越多警报（可能误报）。越低 = 仅强信号。';
+
+  @override
+  String get carAlertSound => '声音警报';
+
+  @override
+  String get carAlertSoundSubtitle => '在音乐上发出哔声';
+
+  @override
+  String get carAlertVibration => '振动警报';
+
+  @override
+  String get carAlertVibrationSubtitle => '检测到时震动反馈';
+
+  @override
+  String get carAlertVoice => '语音警报';
+
+  @override
+  String get carAlertVoiceSubtitle => '通过 TTS 朗读警告';
+
+  @override
+  String get carDetectionPrivacyNote => '音频仅在设备上分析 — 不记录、不发送任何内容。';
+
+  @override
+  String get carDetectionTooltip => '通过麦克风检测汽车';
+
+  @override
+  String get carDetectionStarted => '汽车检测已启动 — 正在监听车辆';
+
+  @override
+  String get carDetectionMicDenied => '麦克风权限被拒绝 — 无法检测';
 }

@@ -1938,4 +1938,48 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => 'Налаштування режиму вивчення';
+  @override
+  String get carDetectionTitle => 'Детекція машин';
+
+  @override
+  String get carDetectionEnabled => 'Увімкнено';
+
+  @override
+  String get carDetectionDisabled => 'Вимкнено';
+
+  @override
+  String get carDetectionSensitivity => 'Чутливість';
+
+  @override
+  String get carDetectionSensitivityHint => 'Вище = більше спрацьовувань (можливі хибні). Нижче = лише сильні сигнали.';
+
+  @override
+  String get carAlertSound => 'Звукове попередження';
+
+  @override
+  String get carAlertSoundSubtitle => 'Сигнал поверх музики';
+
+  @override
+  String get carAlertVibration => 'Вібрація';
+
+  @override
+  String get carAlertVibrationSubtitle => 'Тактильний відгук при детекції';
+
+  @override
+  String get carAlertVoice => 'Голосове попередження';
+
+  @override
+  String get carAlertVoiceSubtitle => 'Мовлене попередження через TTS';
+
+  @override
+  String get carDetectionPrivacyNote => 'Звук аналізується лише на пристрої — нічого не записується та не надсилається.';
+
+  @override
+  String get carDetectionTooltip => 'Детекція машин через мікрофон';
+
+  @override
+  String get carDetectionStarted => 'Детекцію машин запущено — слухаю транспорт';
+
+  @override
+  String get carDetectionMicDenied => 'Доступ до мікрофона заборонено — детекція неможлива';
 }

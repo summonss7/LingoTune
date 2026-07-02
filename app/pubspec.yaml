@@ -2,7 +2,7 @@ name: lingotune
 description: Language learning through music application
 
 publish_to: 'none'
-version: 5.2.0
+version: 5.3.2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -19,6 +19,7 @@ dependencies:
   just_audio: ^0.9.36
   audio_service: ^0.18.12
   audio_session: ^0.1.18
+  record: ^7.1.1
   path_provider: ^2.1.2
   sqflite: ^2.3.0
   path: ^1.8.3
@@ -28,7 +29,7 @@ dependencies:
   file_picker: ^8.0.0
   uuid: ^4.3.3
   archive: ^3.4.0
-  share_plus: ^9.0.0
+  share_plus: ^10.1.4
   image_picker: ^1.0.4
   image: ^4.0.0
   permission_handler: ^11.3.1
@@ -49,6 +50,7 @@ flutter:
 
   assets:
     - assets/
+    - assets/sounds/
 
   fonts:
     - family: Roboto

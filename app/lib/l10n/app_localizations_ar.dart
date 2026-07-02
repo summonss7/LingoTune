@@ -1938,4 +1938,48 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => 'إعدادات وضع الدراسة';
+  @override
+  String get carDetectionTitle => 'كشف السيارات';
+
+  @override
+  String get carDetectionEnabled => 'مفعّل';
+
+  @override
+  String get carDetectionDisabled => 'غير مفعّل';
+
+  @override
+  String get carDetectionSensitivity => 'الحساسية';
+
+  @override
+  String get carDetectionSensitivityHint => 'أعلى = تنبيهات أكثر (قد تسبب إنذارات كاذبة). أقل = إشارات قوية فقط.';
+
+  @override
+  String get carAlertSound => 'تنبيه صوتي';
+
+  @override
+  String get carAlertSoundSubtitle => 'صفير فوق الموسيقى';
+
+  @override
+  String get carAlertVibration => 'تنبيه بالاهتزاز';
+
+  @override
+  String get carAlertVibrationSubtitle => 'اهتزاز عند الكشف';
+
+  @override
+  String get carAlertVoice => 'تنبيه صوتي بالكلام';
+
+  @override
+  String get carAlertVoiceSubtitle => 'تحذير منطوق عبر TTS';
+
+  @override
+  String get carDetectionPrivacyNote => 'يتم تحليل الصوت على الجهاز فقط — لا يتم تسجيل أو إرسال أي شيء.';
+
+  @override
+  String get carDetectionTooltip => 'كشف السيارات عبر الميكروفون';
+
+  @override
+  String get carDetectionStarted => 'بدأ كشف السيارات — أستمع للمركبات';
+
+  @override
+  String get carDetectionMicDenied => 'تم رفض إذن الميكروفون — لا يمكن الكشف';
 }

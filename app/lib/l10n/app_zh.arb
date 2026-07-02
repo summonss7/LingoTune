@@ -615,5 +615,20 @@
       "studyModeOverlayAtEnd": "行尾",
       "studyModeOverlayAtBoth": "行首和行尾",
       "studyModeDuckVolume": "原声音量",
-      "studyModeOpenSettings": "学习模式设置"
+      "studyModeOpenSettings": "学习模式设置",
+      "carDetectionTitle": "汽车检测",
+      "carDetectionEnabled": "已启用",
+      "carDetectionDisabled": "已停用",
+      "carDetectionSensitivity": "灵敏度",
+      "carDetectionSensitivityHint": "越高 = 越多警报（可能误报）。越低 = 仅强信号。",
+      "carAlertSound": "声音警报",
+      "carAlertSoundSubtitle": "在音乐上发出哔声",
+      "carAlertVibration": "振动警报",
+      "carAlertVibrationSubtitle": "检测到时震动反馈",
+      "carAlertVoice": "语音警报",
+      "carAlertVoiceSubtitle": "通过 TTS 朗读警告",
+      "carDetectionPrivacyNote": "音频仅在设备上分析 — 不记录、不发送任何内容。",
+      "carDetectionTooltip": "通过麦克风检测汽车",
+      "carDetectionStarted": "汽车检测已启动 — 正在监听车辆",
+      "carDetectionMicDenied": "麦克风权限被拒绝 — 无法检测"
 }

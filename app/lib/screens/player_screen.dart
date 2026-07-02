@@ -18,6 +18,8 @@ import '../services/lyrics_service.dart';
 import '../services/translation_service.dart';
 import '../services/study_mode_service.dart';
 import '../services/settings_provider.dart';
+import '../services/car_detection_service.dart';
+import '../services/car_alert_service.dart';
 import '../services/export_import_service.dart';
 import '../services/database_service.dart';
 import '../services/folder_config_service.dart';
@@ -102,6 +104,63 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   SettingsProvider? _settingsProvider;
+
+  late final CarDetectionService _carDetectionService;
+  late final CarAlertService _carAlertService;
+
+  // Время последнего обработанного срабатывания (чтобы не запускать alert
+  // повторно для одного и того же lastDetection).
+  DateTime? _lastProcessedCarDetectionAt;
+
+  void _onCarDetection() {
+    // CarDetectionService.notifyListeners вызывается как на срабатывании,
+    // так и при старте/остановке. Реагируем только на новые детекции.
+    final detection = _carDetectionService.lastDetection;
+    if (detection == null) return;
+    final lastAt = _lastProcessedCarDetectionAt;
+    if (lastAt != null && detection.timestamp.isAtSameMomentAs(lastAt)) {
+      return;
+    }
+    _lastProcessedCarDetectionAt = detection.timestamp;
+
+    debugPrint('🚗 PlayerScreen: car detected → alert');
+    // Запускаем alert (звук/вибро/голос) и обновляем overlay.
+    _carAlertService.alert(detection);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _toggleCarDetection() async {
+    final sp = Provider.of<SettingsProvider>(context, listen: false);
+    if (_carDetectionService.isActive) {
+      await _carDetectionService.stop();
+      await sp.setCarDetectionEnabled(false);
+      return;
+    }
+    final ok = await _carDetectionService.start(
+      sensitivity: sp.carDetectionSensitivity,
+    );
+    if (ok) {
+      await sp.setCarDetectionEnabled(true);
+      await _carAlertService.ensureInitialized();
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.carDetectionStarted),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.carDetectionMicDenied),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
 
   List<Song> get playlistSongs => widget.playlistSongs ?? [];
 
@@ -395,6 +454,27 @@ class _PlayerScreenState extends State<PlayerScreen>
     await _ensureTtsReady(fromUser: false);
     await _studyModeService.start();
     if (mounted) setState(() {});
+  }
+
+  /// Auto-starts car detection if the user previously enabled it. Mirrors
+  /// [_maybeAutoStartStudy]. Runs once on player init (via post-frame).
+  Future<void> _maybeAutoStartCarDetection() async {
+    if (!mounted) return;
+    bool persisted = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      persisted = prefs.getBool('carDetectionEnabled') ?? false;
+    } catch (_) {}
+    if (!persisted) return;
+    if (_carDetectionService.isActive) return;
+    debugPrint('▶ Car detection persisted ON — auto-starting on player init');
+    final sp = Provider.of<SettingsProvider>(context, listen: false);
+    await _carAlertService.ensureInitialized();
+    final ok = await _carDetectionService.start(
+      sensitivity: sp.carDetectionSensitivity,
+    );
+    if (mounted) setState(() {});
+    debugPrint('▶ Car detection auto-start result: $ok');
   }
 
   /// Restarts study mode after a song switch or seek if it was persisted as
@@ -880,6 +960,17 @@ class _PlayerScreenState extends State<PlayerScreen>
     // pausing (onSongComplete is guarded while study mode is active, so without
     // this the loop/repeat wouldn't fire and playback would just stop).
     _studyModeService.onStudyCompleted = _onStudySongCompleted;
+
+    // === Car detection: спектральный анализатор микрофона + alert-сервис ===
+    _carAlertService = CarAlertService(
+      Provider.of<SettingsProvider>(context, listen: false),
+    );
+    _carDetectionService = CarDetectionService();
+    // A5: даём детектору знать, когда study mode озвучивает перевод — тогда
+    // alert увеличивает throttle до 5 сек и не перебивает речь каждые 2 сек.
+    _carDetectionService.isStudySpeaking = () => _studyModeService.isSpeaking;
+    _carDetectionService.addListener(_onCarDetection);
+
     _loadSettings();
     _startPositionUpdates();
 
@@ -898,6 +989,11 @@ class _PlayerScreenState extends State<PlayerScreen>
     };
 
     _initBackgroundAudio();
+
+    // Auto-start car detection if persisted (once, after first frame).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeAutoStartCarDetection();
+    });
   }
 
   Future<void> _initSongData() async {
@@ -1269,6 +1365,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     _scrollController.dispose();
     _studyModeService.dispose();
 
+    _carDetectionService.removeListener(_onCarDetection);
+    _carDetectionService.dispose();
+    _carAlertService.dispose();
+
     final handler = widget.audioService.backgroundHandler;
     if (handler != null) {
       handler.onSkipToNextRequested = null;
@@ -1364,7 +1464,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final hd = widget.translationService.translations.isNotEmpty;
     final dw = hd ? sw * 0.22 : 0.0;
     final avail = sw - 56.0 - dw - (hd ? 12.0 : 4.0);
-    int cnt = 5; // study, study-settings, swap, transcription, popup
+    int cnt = 6; // car-detect, study, study-settings, swap, transcription, popup
     if (_isEditMode) cnt++; // save
     final bs = (avail / cnt).clamp(18.0, 44.0);
     final iconSz = (bs * 0.72).clamp(12.0, 24.0);
@@ -1387,6 +1487,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        _buildCarDetectionButton(iconSize: hdrBtnSize),
         _buildStudyModeButton(iconSize: hdrBtnSize),
         IconButton(
           icon: const Icon(Icons.tune),
@@ -1838,6 +1939,52 @@ class _PlayerScreenState extends State<PlayerScreen>
       context,
       _currentSong,
       widget.translationService,
+    );
+  }
+
+  Widget _buildCarDetectionButton({double iconSize = 32.0}) {
+    final l10n = AppLocalizations.of(context)!;
+    return AnimatedBuilder(
+      animation: _carDetectionService,
+      builder: (context, _) {
+        final isActive = _carDetectionService.isActive;
+        final hasAlert = _carDetectionService.lastDetection != null &&
+            _carDetectionService.lastDetection!.timestamp
+                .isAfter(DateTime.now().subtract(const Duration(seconds: 4)));
+        return Container(
+          decoration: BoxDecoration(
+            color: hasAlert
+                ? Colors.red.withValues(alpha: 0.35)
+                : isActive
+                    ? Theme.of(context).colorScheme.errorContainer
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: hasAlert
+                ? Border.all(color: Colors.red, width: 2)
+                : isActive
+                    ? Border.all(
+                        color: Theme.of(context).colorScheme.error,
+                        width: 2,
+                      )
+                    : null,
+          ),
+          child: IconButton(
+            icon: Icon(
+              Icons.directions_car,
+              color: hasAlert
+                  ? Colors.red
+                  : isActive
+                      ? Theme.of(context).colorScheme.error
+                      : null,
+              weight: isActive ? 900 : 400,
+            ),
+            onPressed: _toggleCarDetection,
+            tooltip: l10n.carDetectionTooltip,
+            iconSize: iconSize,
+            padding: const EdgeInsets.all(4.0),
+          ),
+        );
+      },
     );
   }
 
@@ -2390,6 +2537,38 @@ class _PlayerScreenState extends State<PlayerScreen>
                   }(),
                 ),
               ),
+            ),
+          // === Car Detection overlay: shown when detection is active.
+          // Compact diagnostic line so the runner can see the analyser state. ===
+          if (_carDetectionService.isActive)
+            AnimatedBuilder(
+              animation: _carDetectionService,
+              builder: (context, _) {
+                final d = _carDetectionService.lastDetection;
+                final recentAlert = d != null &&
+                    d.timestamp.isAfter(
+                        DateTime.now().subtract(const Duration(seconds: 3)));
+                return Container(
+                  width: double.infinity,
+                  color: recentAlert ? Colors.red.shade900 : Colors.black87,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: DefaultTextStyle(
+                    style: const TextStyle(
+                      color: Colors.orangeAccent,
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                    ),
+                    child: Text(
+                      recentAlert
+                          ? '🚗 CAR ${d!.levelLabel} '
+                              'score=${d.score.toStringAsFixed(2)} '
+                              '@${d.timestamp.toIso8601String().substring(11, 19)}'
+                          : _carDetectionService.statusLine,
+                    ),
+                  ),
+                );
+              },
             ),
           Expanded(
             child: Row(

@@ -3658,6 +3658,81 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Study mode settings'**
   String get studyModeOpenSettings;
+/// No description provided for @carDetectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Car Detection'**
+  String get carDetectionTitle;
+/// No description provided for @carDetectionEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get carDetectionEnabled;
+/// No description provided for @carDetectionDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get carDetectionDisabled;
+/// No description provided for @carDetectionSensitivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Sensitivity'**
+  String get carDetectionSensitivity;
+/// No description provided for @carDetectionSensitivityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Higher = more alerts (may cause false positives). Lower = only strong signals.'**
+  String get carDetectionSensitivityHint;
+/// No description provided for @carAlertSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound alert'**
+  String get carAlertSound;
+/// No description provided for @carAlertSoundSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Beep over the music'**
+  String get carAlertSoundSubtitle;
+/// No description provided for @carAlertVibration.
+  ///
+  /// In en, this message translates to:
+  /// **'Vibration alert'**
+  String get carAlertVibration;
+/// No description provided for @carAlertVibrationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Haptic feedback on detection'**
+  String get carAlertVibrationSubtitle;
+/// No description provided for @carAlertVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice alert'**
+  String get carAlertVoice;
+/// No description provided for @carAlertVoiceSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Spoken warning via TTS'**
+  String get carAlertVoiceSubtitle;
+/// No description provided for @carDetectionPrivacyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio is analyzed on-device only — nothing is recorded or sent anywhere.'**
+  String get carDetectionPrivacyNote;
+/// No description provided for @carDetectionTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Car detection via microphone'**
+  String get carDetectionTooltip;
+/// No description provided for @carDetectionStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Car detection started — listening for vehicles'**
+  String get carDetectionStarted;
+/// No description provided for @carDetectionMicDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone permission denied — cannot detect cars'**
+  String get carDetectionMicDenied;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

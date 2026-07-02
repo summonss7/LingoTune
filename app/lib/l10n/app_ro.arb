@@ -615,5 +615,20 @@
       "studyModeOverlayAtEnd": "La sfârșitul rândului",
       "studyModeOverlayAtBoth": "Început și sfârșit",
       "studyModeDuckVolume": "Volumul originalului",
-      "studyModeOpenSettings": "Setări mod studiu"
+      "studyModeOpenSettings": "Setări mod studiu",
+      "carDetectionTitle": "Detecție mașini",
+      "carDetectionEnabled": "Activat",
+      "carDetectionDisabled": "Dezactivat",
+      "carDetectionSensitivity": "Sensibilitate",
+      "carDetectionSensitivityHint": "Mai sus = mai multe alerte (posibile alarme false). Mai jos = doar semnale puternice.",
+      "carAlertSound": "Alertă sonoră",
+      "carAlertSoundSubtitle": "Bip peste muzică",
+      "carAlertVibration": "Vibrație",
+      "carAlertVibrationSubtitle": "Feedback haptic la detecție",
+      "carAlertVoice": "Alertă vocală",
+      "carAlertVoiceSubtitle": "Avertisment vorbit prin TTS",
+      "carDetectionPrivacyNote": "Sunetul este analizat doar pe dispozitiv — nimic nu este înregistrat sau trimis.",
+      "carDetectionTooltip": "Detecție mașini prin microfon",
+      "carDetectionStarted": "Detecție mașini pornită — ascult vehicule",
+      "carDetectionMicDenied": "Permisiunea microfonului a fost refuzată — detecție imposibilă"
 }

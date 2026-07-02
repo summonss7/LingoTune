@@ -615,5 +615,20 @@
       "studyModeOverlayAtEnd": "Am Zeilenende",
       "studyModeOverlayAtBoth": "Anfang und Ende",
       "studyModeDuckVolume": "Lautstärke Original",
-      "studyModeOpenSettings": "Lernmodus-Einstellungen"
+      "studyModeOpenSettings": "Lernmodus-Einstellungen",
+      "carDetectionTitle": "Autoerkennung",
+      "carDetectionEnabled": "Aktiviert",
+      "carDetectionDisabled": "Deaktiviert",
+      "carDetectionSensitivity": "Empfindlichkeit",
+      "carDetectionSensitivityHint": "Höher = mehr Alarme (Fehlalarme möglich). Niedriger = nur starke Signale.",
+      "carAlertSound": "Ton-Warnung",
+      "carAlertSoundSubtitle": "Signalton über der Musik",
+      "carAlertVibration": "Vibration",
+      "carAlertVibrationSubtitle": "Haptisches Feedback bei Erkennung",
+      "carAlertVoice": "Sprach-Warnung",
+      "carAlertVoiceSubtitle": "Gesprochene Warnung über TTS",
+      "carDetectionPrivacyNote": "Audio wird nur auf dem Gerät analysiert — nichts wird aufgezeichnet oder gesendet.",
+      "carDetectionTooltip": "Autoerkennung über das Mikrofon",
+      "carDetectionStarted": "Autoerkennung gestartet — lausche auf Fahrzeuge",
+      "carDetectionMicDenied": "Mikrofon-Berechtigung verweigert — Erkennung nicht möglich"
 }

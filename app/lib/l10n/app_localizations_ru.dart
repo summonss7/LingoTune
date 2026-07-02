@@ -1938,4 +1938,48 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => 'Настройки режима изучения';
+  @override
+  String get carDetectionTitle => 'Детекция машин';
+
+  @override
+  String get carDetectionEnabled => 'Включено';
+
+  @override
+  String get carDetectionDisabled => 'Выключено';
+
+  @override
+  String get carDetectionSensitivity => 'Чувствительность';
+
+  @override
+  String get carDetectionSensitivityHint => 'Выше = больше срабатываний (возможны ложные). Ниже = только сильные сигналы.';
+
+  @override
+  String get carAlertSound => 'Звуковое предупреждение';
+
+  @override
+  String get carAlertSoundSubtitle => 'Сигнал поверх музыки';
+
+  @override
+  String get carAlertVibration => 'Вибрация';
+
+  @override
+  String get carAlertVibrationSubtitle => 'Тактильная отдача при детекции';
+
+  @override
+  String get carAlertVoice => 'Голосовое предупреждение';
+
+  @override
+  String get carAlertVoiceSubtitle => 'Звуковое оповещение через TTS';
+
+  @override
+  String get carDetectionPrivacyNote => 'Звук анализируется только на устройстве — ничего не записывается и не отправляется.';
+
+  @override
+  String get carDetectionTooltip => 'Детекция машин через микрофон';
+
+  @override
+  String get carDetectionStarted => 'Детекция машин запущена — слушаю транспорт';
+
+  @override
+  String get carDetectionMicDenied => 'Доступ к микрофону запрещён — детекция невозможна';
 }

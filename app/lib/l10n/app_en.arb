@@ -711,5 +711,20 @@
       "studyModeOverlayAtEnd": "At line end",
       "studyModeOverlayAtBoth": "Start and end",
       "studyModeDuckVolume": "Original volume",
-      "studyModeOpenSettings": "Study mode settings"
+      "studyModeOpenSettings": "Study mode settings",
+      "carDetectionTitle": "Car Detection",
+      "carDetectionEnabled": "Enabled",
+      "carDetectionDisabled": "Disabled",
+      "carDetectionSensitivity": "Sensitivity",
+      "carDetectionSensitivityHint": "Higher = more alerts (may cause false positives). Lower = only strong signals.",
+      "carAlertSound": "Sound alert",
+      "carAlertSoundSubtitle": "Beep over the music",
+      "carAlertVibration": "Vibration alert",
+      "carAlertVibrationSubtitle": "Haptic feedback on detection",
+      "carAlertVoice": "Voice alert",
+      "carAlertVoiceSubtitle": "Spoken warning via TTS",
+      "carDetectionPrivacyNote": "Audio is analyzed on-device only — nothing is recorded or sent anywhere.",
+      "carDetectionTooltip": "Car detection via microphone",
+      "carDetectionStarted": "Car detection started — listening for vehicles",
+      "carDetectionMicDenied": "Microphone permission denied — cannot detect cars"
 }

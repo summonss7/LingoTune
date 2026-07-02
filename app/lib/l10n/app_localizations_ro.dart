@@ -1938,4 +1938,48 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => 'Setări mod studiu';
+  @override
+  String get carDetectionTitle => 'Detecție mașini';
+
+  @override
+  String get carDetectionEnabled => 'Activat';
+
+  @override
+  String get carDetectionDisabled => 'Dezactivat';
+
+  @override
+  String get carDetectionSensitivity => 'Sensibilitate';
+
+  @override
+  String get carDetectionSensitivityHint => 'Mai sus = mai multe alerte (posibile alarme false). Mai jos = doar semnale puternice.';
+
+  @override
+  String get carAlertSound => 'Alertă sonoră';
+
+  @override
+  String get carAlertSoundSubtitle => 'Bip peste muzică';
+
+  @override
+  String get carAlertVibration => 'Vibrație';
+
+  @override
+  String get carAlertVibrationSubtitle => 'Feedback haptic la detecție';
+
+  @override
+  String get carAlertVoice => 'Alertă vocală';
+
+  @override
+  String get carAlertVoiceSubtitle => 'Avertisment vorbit prin TTS';
+
+  @override
+  String get carDetectionPrivacyNote => 'Sunetul este analizat doar pe dispozitiv — nimic nu este înregistrat sau trimis.';
+
+  @override
+  String get carDetectionTooltip => 'Detecție mașini prin microfon';
+
+  @override
+  String get carDetectionStarted => 'Detecție mașini pornită — ascult vehicule';
+
+  @override
+  String get carDetectionMicDenied => 'Permisiunea microfonului a fost refuzată — detecție imposibilă';
 }

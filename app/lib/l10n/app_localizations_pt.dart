@@ -1938,4 +1938,48 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get studyModeOpenSettings => 'Configurações do modo estudo';
+  @override
+  String get carDetectionTitle => 'Detecção de carros';
+
+  @override
+  String get carDetectionEnabled => 'Ativado';
+
+  @override
+  String get carDetectionDisabled => 'Desativado';
+
+  @override
+  String get carDetectionSensitivity => 'Sensibilidade';
+
+  @override
+  String get carDetectionSensitivityHint => 'Maior = mais alertas (possíveis falsos positivos). Menor = apenas sinais fortes.';
+
+  @override
+  String get carAlertSound => 'Alerta sonoro';
+
+  @override
+  String get carAlertSoundSubtitle => 'Bipe sobre a música';
+
+  @override
+  String get carAlertVibration => 'Vibração';
+
+  @override
+  String get carAlertVibrationSubtitle => 'Feedback háptico na detecção';
+
+  @override
+  String get carAlertVoice => 'Alerta por voz';
+
+  @override
+  String get carAlertVoiceSubtitle => 'Aviso falado via TTS';
+
+  @override
+  String get carDetectionPrivacyNote => 'O áudio é analisado apenas no dispositivo — nada é gravado ou enviado.';
+
+  @override
+  String get carDetectionTooltip => 'Detecção de carros via microfone';
+
+  @override
+  String get carDetectionStarted => 'Detecção de carros iniciada — ouvindo';
+
+  @override
+  String get carDetectionMicDenied => 'Permissão de microfone negada — detecção impossível';
 }

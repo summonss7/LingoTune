@@ -615,5 +615,20 @@
        "studyModeOverlayAtEnd": "В кінці рядка",
        "studyModeOverlayAtBoth": "На початку і в кінці",
        "studyModeDuckVolume": "Гучність оригіналу",
-       "studyModeOpenSettings": "Налаштування режиму вивчення"
+       "studyModeOpenSettings": "Налаштування режиму вивчення",
+      "carDetectionTitle": "Детекція машин",
+      "carDetectionEnabled": "Увімкнено",
+      "carDetectionDisabled": "Вимкнено",
+      "carDetectionSensitivity": "Чутливість",
+      "carDetectionSensitivityHint": "Вище = більше спрацьовувань (можливі хибні). Нижче = лише сильні сигнали.",
+      "carAlertSound": "Звукове попередження",
+      "carAlertSoundSubtitle": "Сигнал поверх музики",
+      "carAlertVibration": "Вібрація",
+      "carAlertVibrationSubtitle": "Тактильний відгук при детекції",
+      "carAlertVoice": "Голосове попередження",
+      "carAlertVoiceSubtitle": "Мовлене попередження через TTS",
+      "carDetectionPrivacyNote": "Звук аналізується лише на пристрої — нічого не записується та не надсилається.",
+      "carDetectionTooltip": "Детекція машин через мікрофон",
+      "carDetectionStarted": "Детекцію машин запущено — слухаю транспорт",
+      "carDetectionMicDenied": "Доступ до мікрофона заборонено — детекція неможлива"
 }

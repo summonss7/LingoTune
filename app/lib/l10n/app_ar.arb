@@ -615,5 +615,20 @@
       "studyModeOverlayAtEnd": "في نهاية السطر",
       "studyModeOverlayAtBoth": "البداية والنهاية",
       "studyModeDuckVolume": "مستوى صوت الأصل",
-      "studyModeOpenSettings": "إعدادات وضع الدراسة"
+      "studyModeOpenSettings": "إعدادات وضع الدراسة",
+      "carDetectionTitle": "كشف السيارات",
+      "carDetectionEnabled": "مفعّل",
+      "carDetectionDisabled": "غير مفعّل",
+      "carDetectionSensitivity": "الحساسية",
+      "carDetectionSensitivityHint": "أعلى = تنبيهات أكثر (قد تسبب إنذارات كاذبة). أقل = إشارات قوية فقط.",
+      "carAlertSound": "تنبيه صوتي",
+      "carAlertSoundSubtitle": "صفير فوق الموسيقى",
+      "carAlertVibration": "تنبيه بالاهتزاز",
+      "carAlertVibrationSubtitle": "اهتزاز عند الكشف",
+      "carAlertVoice": "تنبيه صوتي بالكلام",
+      "carAlertVoiceSubtitle": "تحذير منطوق عبر TTS",
+      "carDetectionPrivacyNote": "يتم تحليل الصوت على الجهاز فقط — لا يتم تسجيل أو إرسال أي شيء.",
+      "carDetectionTooltip": "كشف السيارات عبر الميكروفون",
+      "carDetectionStarted": "بدأ كشف السيارات — أستمع للمركبات",
+      "carDetectionMicDenied": "تم رفض إذن الميكروفون — لا يمكن الكشف"
 }

@@ -710,5 +710,20 @@
        "studyModeOverlayAtEnd": "В конце строки",
        "studyModeOverlayAtBoth": "В начале и в конце",
        "studyModeDuckVolume": "Громкость оригинала",
-       "studyModeOpenSettings": "Настройки режима изучения"
+       "studyModeOpenSettings": "Настройки режима изучения",
+      "carDetectionTitle": "Детекция машин",
+      "carDetectionEnabled": "Включено",
+      "carDetectionDisabled": "Выключено",
+      "carDetectionSensitivity": "Чувствительность",
+      "carDetectionSensitivityHint": "Выше = больше срабатываний (возможны ложные). Ниже = только сильные сигналы.",
+      "carAlertSound": "Звуковое предупреждение",
+      "carAlertSoundSubtitle": "Сигнал поверх музыки",
+      "carAlertVibration": "Вибрация",
+      "carAlertVibrationSubtitle": "Тактильная отдача при детекции",
+      "carAlertVoice": "Голосовое предупреждение",
+      "carAlertVoiceSubtitle": "Звуковое оповещение через TTS",
+      "carDetectionPrivacyNote": "Звук анализируется только на устройстве — ничего не записывается и не отправляется.",
+      "carDetectionTooltip": "Детекция машин через микрофон",
+      "carDetectionStarted": "Детекция машин запущена — слушаю транспорт",
+      "carDetectionMicDenied": "Доступ к микрофону запрещён — детекция невозможна"
 }

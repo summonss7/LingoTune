@@ -1,6 +1,6 @@
 # LingoTune - Изучение языков через музыку
 
-**Версия:** 5.1.0
+**Версия:** 5.3.2
 **Разработчики:** Z.AI GLM & Цимбалов Артем
 **Платформа:** Android (Flutter)
 **Языки интерфейса:** Русский, Английский, Румынский, Французский, Немецкий, Испанский, Итальянский, Португальский, Китайский, Арабский, Украинский
@@ -30,6 +30,7 @@ LingoTune - инновационное приложение для изучен�
 - 🔄 **Фоновое воспроизведение** - воспроизведение в фоне с уведомлением
 - ⏩ **Управление скоростью** - изменение скорости воспроизведения (0.5x - 2.0x)
 - 🎧 **Режим изучения** - озвучка перевода (TTS) + фрагмент песни для каждой строки
+- 🚗 **Детекция машин** - анализ звука с микрофона (FFT, on-device) и предупреждение бегуна о приближающемся транспорте (звук/вибрация/голос)
 
 ## 📦 Структура проекта
 
@@ -107,6 +108,126 @@ cp build/app/outputs/flutter-apk/app-release.apk builds/LingoTune-v{версия
 - [Рабочий процесс](WORKFLOW.md) - рабочий процесс приложения
 - [Разработка](DEVELOPMENT.md) - конвенции кода и разработка
 - [Решение проблем](TROUBLESHOOTING.md) - FAQ и решение проблем
+- [План: Калибровка детекции машин](PLAN_CAR_DETECTION_CALIBRATION.md) - план v5.4.0 (эталоны + Mahalanobis)
+
+## 🎯 План следующей версии (5.4.0)
+
+**Статус:** ⏳ Запланировано (не начато)
+
+Полный план в [`PLAN_CAR_DETECTION_CALIBRATION.md`](PLAN_CAR_DETECTION_CALIBRATION.md).
+
+Кратко: вместо пороговой логики детекции — **классификация по эталонам с Mahalanobis distance**.
+Пользователь сможет:
+- Записывать свои эталоны звуков (машина близко/далеко/грузовик, ветер, шаги, голоса, улица)
+- Видеть live-спектр и ближайший класс в реальном времени
+- Загружать синтетические демо-эталоны (7 звуков в `assets/calibration/`)
+- Точно настраивать детектор под свои условия бега/устройства/наушников
+
+## 🎯 Новое в версии 5.3.2
+
+### 🐛 Фикс: детекция машин ломала озвучку перевода + ложные срабатывания на шорохи
+- **Симптом 1:** после включения кнопки 🚗 TTS-озвучка перевода в study mode полностью замолкала до конца сессии
+- **Симптом 2:** детектор срабатывал от любого шороха/шага/ветра; слайдер «чувствительность» в Настройках не влиял на поведение
+- **Корень 1 (TTS-конфликт):** `flutter_tts` использует единый `MethodChannel('flutter_tts')` на всё приложение — два экземпляра `FlutterTts` (`StudyModeService._tts` и `CarAlertService._tts`) перетирали друг другу `setCompletionHandler`. Когда детекция вызывала `CarAlert._tts.speak("Внимание, машина")`, completion-handler study mode терялся → watchdog (12с) срабатывал → `setSpeakDisabled(true)` → TTS перевод отключался до конца песни
+- **Корень 2 (CPU-конфликт):** FFT-анализ в main isolate каждые 16 мс (60 Гц) мешал study-таймерам (`segmentTimer` 150мс, `positionTimer` 50мс) и TTS handlers вовремя срабатывать
+- **Корень 3 (sensitivity):** параметр `sensitivity` принимался в `start()`, но не использовался в decision-логике — пороги были `static const`
+- **Решение (Phase A):**
+  - **A1 — Единый `TtsCoordinator` (новый файл `tts_coordinator.dart`):** один `FlutterTts` на всё приложение, единая пара `setCompletionHandler/setErrorHandler`. Запросы `speak()` упорядочены по приоритету (`study > alert`): если study mode озвучивает перевод, голосовой alert **автоматически пропускается** координатором, не прерывая речь. `StudyModeService` и `CarAlertService` инжектят координатор вместо своих `FlutterTts()`
+  - **A2 — Снижение частоты FFT:** `_hopSize 256 → 512` (анализ каждые 32 мс вместо 16 мс, **−50% CPU в main isolate**), окно подтверждения 6→4 кадра. Таймеры study mode снова успевают нормально срабатывать
+  - **A3 — Реальная чувствительность:** пороги переведены из `static const` в instance fields, метод `_applySensitivity(sensitivity)` линейно интерполирует пороги (sens=0 → строгие 0.60 score / 2.8× lowDom / 0.020 rms; sens=1 → мягкие 0.30 / 1.4× / 0.008; sens=0.5 → средние 0.45 / 2.1× / 0.014). Дефолт поднят с 0.5 до **0.4** (чуть строже, чтобы убрать ложные на шорохи)
+  - **A4 — Фильтр ветра/шагов:** в `_analyzeFrame` добавлены 2 пред-фильтра перед основным decision:
+    - **Ветер/шорох:** если `flatness > 0.35` и `low/mid < 2.0` → равномерный шум с лёгким НЧ-уклоном → score=0
+    - **Шаг/удар:** если `rms > 0.08` (очень громко) и `centroid > 600 Hz` → широкополосный всплеск (телефон трясётся в кармане) → score=0
+    - Настоящая машина = узкий НЧ-пик: lowDom сильный + peaked (flat<порог) + низкий центроид + длительность
+  - **A5 — Адаптивный throttle:** при активном TTS study mode интервал между alert'ами растёт с 2 сек до **5 сек** (через callback `isStudySpeaking`, который PlayerScreen подключает к `StudyModeService.isSpeaking`). Beep и вибрация остаются (не перебивают TTS так грубо, как голосовой alert)
+
+### 🔧 Технические изменения
+- `lib/services/tts_coordinator.dart` (новый, ~210 строк): синглтон `TtsCoordinator.instance`, один `FlutterTts`, enum `TtsPriority { study, alert }`, `_TtsRequest` с completer, методы `speak(text, {priority, locale, rate, pitch, volume})` и `stop()`, `_applyConfiguredEngine()` (Google TTS приоритет, делегировано из StudyModeService), единые handlers `_handleCompletion/_handleError`
+- `lib/services/study_mode_service.dart`: `_tts` теперь геттер к `TtsCoordinator.instance.tts` для конфигурации; речь — через `_ttsCoordinator.speak(text, priority: study)`; `_speak` переписан — watchdog через `.timeout()` на future координатора; убраны `_speakCompleter`/`_resolveSpeak`; `_applyConfiguredEngine` делегирует в координатор; `_initTts` теперь просто прогревает координатор
+- `lib/services/car_alert_service.dart`: `_tts` теперь `TtsCoordinator.instance`; `_speak` вызывает `_tts.speak(text, priority: alert, ...)` — координатор сам пропустит запрос если study mode говорит; убран собственный `FlutterTts()`/`setSpeechRate`/`setLanguage`; dispose больше не вызывает `_tts.stop()` (координатор общий, нельзя останавливать чужую речь)
+- `lib/services/car_detection_service.dart`:
+  - `_hopSize 256 → 512`; `_confirmWindow 6 → 4`
+  - пороги `_minRms`/`_lowDominanceRatio`/`_scoreThresholdLow/Medium/High`/`_maxFlatnessForCar`/`_maxCentroidHz` переведены в instance fields (не const)
+  - новый метод `_applySensitivity(double)` с линейной интерполяцией порогов; вызывается в `start()`
+  - 2 новых фильтра в `_analyzeFrame`: wind-noise (`flatness>0.35 + low/mid<2.0`) и step-impact (`rms>0.08 + centroid>600`)
+  - `_maybeFireAlert` использует адаптивный throttle: 5 сек если `isStudySpeaking()==true`, иначе 2 сек
+  - новое public поле `bool Function()? isStudySpeaking`
+- `lib/services/settings_provider.dart`: дефолт `carDetectionSensitivity` 0.5 → **0.4**
+- `lib/screens/player_screen.dart`: `_carDetectionService.isStudySpeaking = () => _studyModeService.isSpeaking` (даёт детектору знать, когда не молоть alert'ами поверх перевода)
+- `pubspec.yaml`/`app_info.dart`/`build.gradle` — 5.3.2 (versionCode 212)
+
+### ⚠️ Что НЕ вошло в Phase A (запланировано в Phase B)
+- **B1 — FFT в отдельный Isolate** (long-lived через `Isolate.spawn` + SendPort) — пока FFT остаётся в main, но частота снижена в 2 раза, что достаточно для нормальной работы study mode
+- **B2 — Beep через SoundPool** вместо второго `just_audio` AudioPlayer — пока beep играет через отдельный AudioPlayer, может слегка «конкурировать» с основным плеером в моменты kickPlayback
+- **B3 — Co-ownership AudioSession** — пока полагаемся на `audioInterruption: none` в `RecordConfig`
+
+---
+
+## 🎯 Новое в версии 5.3.1
+
+### 🐛 Фикс: кнопка детекции машин останавливала музыку и TTS study mode
+- **Симптом:** при включении детекции (кнопка 🚗) музыка ставилась на паузу, а TTS-озвучка перевода прерывалась
+- **Причина:** в `RecordConfig` пакета `record` дефолтные настройки вмешивались в аудио-сессию Android:
+  - `audioInterruption: AudioInterruptionMode.pause` (дефолт) → `record_android` вызывает `AudioManager.requestAudioFocus(AUDIOFOCUS_GAIN)` с атрибутами `USAGE_MEDIA + CONTENT_TYPE_SPEECH` → **полный захват фокуса**, остальные источники приглушаются/останавливаются
+  - `BackgroundAudioHandler._initAudioSession()` подписан на `interruptionEventStream` → при потере фокуса вызывает `pause()` → музыка встаёт, TTS теряет возможность говорить
+  - `androidConfig.manageBluetooth: true` (дефолт) → пытается переключиться на Bluetooth SCO, ломает A2DP routing наушников
+- **Решение:** в `CarDetectionService.start()` RecordConfig явно настроен «ненавязчиво»:
+  - `audioInterruption: AudioInterruptionMode.none` → НЕ запрашивать audio focus
+  - `androidConfig: AndroidRecordConfig(manageBluetooth: false, audioSource: mic, audioManagerMode: modeNormal)` → не трогать bt routing и audio mode
+- Микрофон пишет параллельно с музыкой и TTS без каких-либо конфликтов фокуса
+
+### 🔧 Технические изменения
+- `lib/services/car_detection_service.dart`: `RecordConfig` расширен параметрами `audioInterruption`/`androidConfig` с подробным комментарием-обоснованием; дефолт `start({sensitivity = 0.4})` (синхронизировано с дефолтом настроек)
+- `pubspec.yaml`/`app_info.dart`/`build.gradle` — 5.3.1 (versionCode 211)
+
+---
+
+## 🎯 Новое в версии 5.3.0
+
+### 🚗 Новая фича: Детекция машин через микрофон (безопасность бегуна)
+- **Задача:** при беге с музыкой в наушниках бегун не слышит приближающийся транспорт и вынужден постоянно оборачиваться
+- **Решение:** фоновый спектральный анализ звука с микрофона + предупреждение бегуна (звук/вибрация/голос)
+- **Технический подход:** чистый Dart FFT (Cooley-Tukey, radix-2) на потоке PCM 16kHz моно; ML-модель НЕ используется (YAMNet .tflite недоступна для прямой загрузки, а tflite_flutter нестабилен на новых NDK). Вместо этого:
+  - Скользящее окно 512 семплов (32 ms) с перекрытием 50% → анализ каждые 16 ms
+  - Hann window → FFT → magnitude spectrum
+  - Извлечение признаков: энергии полос (low 20-300 Гц, mid 300-2000, high 2k-8k), спектральный центроид, spectral flatness, RMS
+  - Decision-логика: доминирование НЧ (`lowDom`) + низкий центроид + пиковый (не шумовой) спектр → score 0..1
+  - Подтверждение: нужно N≥3 срабатываний в окне 6 кадров (~96 ms), иначе одиночные всплески отсеиваются
+  - Throttle: не чаще раза в 2 сек
+  - 3 уровня уверенности: low / medium / high
+- **Предупреждения (настраиваются в Настройках):**
+  - 🔊 **Звук** — короткий beep (880 Гц × 3) из `assets/sounds/car_alert.wav` поверх музыки
+  - 📳 **Вибрация** — `HapticFeedback.heavyImpact` (1-3 раза по уровню)
+  - 🗣️ **Голос** — TTS-фраза на языке интерфейса («Внимание, едет машина» / «Attention, car approaching» и т.д. — 11 языков)
+- **Приватность:** звук анализируется **только on-device**, ничего не записывается и не отправляется
+- **UI:**
+  - Кнопка 🚗 в AppBar плеера (как «Изучение») с подсветкой активности и красным миганием при срабатывании
+  - Persist-флаг: один раз включил — держится между запусками и песнями
+  - Overlay-индикатор над текстом песни: статус listening + последний score/класс
+  - ExpansionTile в Настройках: главный переключатель + слайдер чувствительности (0-100%, 10 шагов) + 3 переключателя типов предупреждений + privacy-нота
+- **Локализация:** 15 новых ключей (`carDetection*`, `carAlert*`) во всех 11 языках (`.arb` + `app_localizations_*.dart`)
+
+### 🔧 Технические изменения
+- `AndroidManifest.xml`: 4 новых permission — `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS`, `FOREGROUND_SERVICE_MICROPHONE`, `VIBRATE`
+- `pubspec.yaml`: `record: ^7.1.1` (захват микрофона через `AudioRecorder.startStream(RecordConfig)`); `share_plus` 9 → 10.1.4 (требуется для совместимости `record 7.x` ↔ `web 1.x`); ассеты `assets/sounds/`
+- `lib/utils/fft.dart` (новый, ~210 строк): `Fft.transform` (radix-2 Cooley-Tukey in-place), `Fft.hannWindow`, классы `SpectrumFeatures` и `SpectrumAnalyzer` (полосные энергии, centroid, flatness, RMS)
+- `lib/services/car_detection_service.dart` (новый): `CarDetectionService extends ChangeNotifier` — потоковый захват PCM 16-bit LE, sliding-window FFT с hop=256, decision-логика (lowDom/centroid/flatness → score), окно подтверждения, throttle, геттеры диагностики
+- `lib/services/car_alert_service.dart` (новый): `CarAlertService` — beep через отдельный `just_audio.AudioPlayer`, вибрация через `HapticFeedback`, TTS через `FlutterTts`; фразы/локали на 11 языках
+- `assets/sounds/car_alert.wav` (новый, 55 КБ, 0.63 с): 3 beep 880 Гц с attack/decay envelope; генерируется `scripts/gen_car_alert.py`
+- `lib/services/settings_provider.dart`: 5 новых полей (`carDetectionEnabled`, `carDetectionSensitivity`, `carAlertSound`, `carAlertVibration`, `carAlertVoice`) + геттеры/сеттеры/persistence по существующему паттерну
+- `lib/widgets/settings/car_detection_settings_tile.dart` (новый): `ExpansionTile` с переключателем, слайдером чувствительности и 3 `SwitchListTile` для типов предупреждений
+- `screens/settings_screen.dart`: импорт + вставка `CarDetectionSettingsTile` рядом с TTS-движком
+- `screens/player_screen.dart`: импорты; поля `_carDetectionService`/`_carAlertService`; инициализация в `initState` + авто-старт по persist (`_maybeAutoStartCarDetection` через post-frame); dispose; `_onCarDetection` listener → `_carAlertService.alert`; `_toggleCarDetection`; `_buildCarDetectionButton` (AnimatedBuilder с активным/алертным состояниями); кнопка в `_buildAppBarContent` (cnt 5→6); overlay-индикатор над текстом песни
+- `lib/l10n/app_*.arb` + `lib/l10n/app_localizations*.dart`: 15 × 11 = 165 новых строк (генерация `scripts/add_car_l10n.py` + `scripts/add_car_l10n_dart.py`)
+- `pubspec.yaml` и `app_info.dart` — 5.3.0 (versionCode 209); features += «🚗 Car detection via microphone (safety for runners)»
+
+### ⚠️ Известные ограничения (Фаза 1 MVP)
+- **Фоновый режим при выключенном экране** пока не реализован — детекция работает пока экран включён и LingoTune на переднем плане. Полноценный foreground service с типом `microphone` — Фаза 3
+- **Ducking музыки** при beep не делается (beep играет поверх) — Фаза 2
+- **Wind-noise фильтр** базовый (через spectral flatness) — тюнинг под бег потребуется после полевых тестов
+- Тюнинг порогов (`_lowDominanceRatio`, `_maxCentroidHz`, `_confirmMinHits`) выполнен «по теории» — реальные значения подбираются после тестов на бегу
+
+---
 
 ## 🎯 Новое в версии 5.2.0
 

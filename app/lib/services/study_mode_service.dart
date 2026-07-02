@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'audio_service.dart';
 import 'lyrics_service.dart';
 import 'translation_service.dart';
+import 'tts_coordinator.dart';
 
 enum StudyPhase { idle, speaking, playingSegment }
 
@@ -35,7 +36,13 @@ class StudyModeService extends ChangeNotifier {
   final AudioService _audio;
   final LyricsService _lyrics;
   final TranslationService _translations;
-  final FlutterTts _tts = FlutterTts();
+  // Все вызовы речи в приложении идут через единый TtsCoordinator — это
+  // гарантирует, что study mode и CarAlert не перебивают друг друга через
+  // общий MethodChannel('flutter_tts'). Конфигурация (setLanguage, setEngine,
+  // getVoices, setSpeechRate при отсутствии речи) выполняется через
+  // _tts = TtsCoordinator.instance.tts.
+  final TtsCoordinator _ttsCoordinator = TtsCoordinator.instance;
+  FlutterTts get _tts => _ttsCoordinator.tts;
 
   bool _isActive = false;
   bool _isUserPaused = false;
@@ -61,7 +68,6 @@ class StudyModeService extends ChangeNotifier {
   StreamSubscription<Duration>? _posSub;
   StreamSubscription? _playerStateSub;
   Completer<bool>? _segmentCompleter;
-  Completer<void>? _speakCompleter;
 
   /// Invoked when study mode reaches the END of the song naturally (all lines
   /// processed / song completed). If set, the player is NOT paused here — the
@@ -224,24 +230,14 @@ class StudyModeService extends ChangeNotifier {
 
   Future<void> _initTts() async {
     try {
-      // Enumerate all available TTS engines on the system. On Android 11+
-      // (API 30+) this requires the TTS_SERVICE <queries> declaration in
-      // AndroidManifest — without it getEngines returns empty because the
-      // engines are "invisible" to package visibility, even though a default
-      // engine may still partially work.
-      try {
-        final result = await _tts.getEngines;
-        _availableEngines = (result as List<dynamic>? ?? const [])
-            .map((e) => e.toString())
-            .toList();
-        debugPrint(
-            '🎧 StudyModeService: available engines = $_availableEngines');
-      } catch (e) {
-        debugPrint('⚠ StudyModeService: getEngines error: $e');
-      }
-
-      // Resolve and apply the engine to use (user-configured or auto-prefer).
-      await _applyConfiguredEngine();
+      // TtsCoordinator — единый держатель FlutterTts на приложение. Он
+      // инициализирует engine, ставит completion/error handlers (которые
+      // маршрутизируют к текущему запросу с приоритетом). Здесь мы только
+      // убеждаемся что он готов, и применяем язык перевода.
+      await _ttsCoordinator.ensureInitialized();
+      _availableEngines = _ttsCoordinator.availableEngines;
+      _selectedEngine = _ttsCoordinator.selectedEngine;
+      _activeEngine = _ttsCoordinator.activeEngine;
 
       await _tts.setSpeechRate(_speechRate);
       await _tts.setPitch(1.0);
@@ -255,55 +251,12 @@ class StudyModeService extends ChangeNotifier {
     }
   }
 
-  /// Resolves which TTS engine to use and applies it via setEngine.
-  /// Priority:
-  ///   1. user-configured engine (from SharedPreferences 'ttsEngine') if set
-  ///      and present in [_availableEngines];
-  ///   2. Google TTS (com.google.android.tts) if present — the most reliable
-  ///      engine across ROMs (Chinese ROMs ship a broken Heytap engine as the
-  ///      default, which lies in isLanguageAvailable and/or silently fails to
-  ///      synthesize);
-  ///   3. the system default engine (no setEngine call).
+  /// Re-applies the configured engine at runtime. Делегируется в координатор
+  /// (там же логика выбора Google TTS / пользовательского движка).
   Future<void> _applyConfiguredEngine() async {
-    String? configured;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      configured = prefs.getString('ttsEngine');
-    } catch (_) {}
-
-    String? desired;
-    if (configured != null &&
-        configured.isNotEmpty &&
-        _availableEngines.contains(configured)) {
-      desired = configured;
-    } else if (_availableEngines.contains('com.google.android.tts')) {
-      desired = 'com.google.android.tts';
-    }
-
-    String? def;
-    try {
-      def = (await _tts.getDefaultEngine)?.toString();
-    } catch (_) {}
-
-    if (desired != null && desired != def) {
-      try {
-        final res = await _tts.setEngine(desired);
-        if (res == 1) {
-          _selectedEngine = desired;
-          debugPrint('🎧 StudyModeService: switched TTS engine -> $desired');
-        } else {
-          _selectedEngine = def;
-          debugPrint(
-              '⚠ StudyModeService: setEngine($desired) rejected (result=$res)');
-        }
-      } catch (e) {
-        _selectedEngine = def;
-        debugPrint('⚠ StudyModeService: setEngine($desired) error: $e');
-      }
-    } else {
-      _selectedEngine = def;
-    }
-    _activeEngine = _selectedEngine ?? def;
+    await _ttsCoordinator.applyConfiguredEngine();
+    _selectedEngine = _ttsCoordinator.selectedEngine;
+    _activeEngine = _ttsCoordinator.activeEngine;
   }
 
   /// Re-applies the configured engine at runtime (e.g. after the user changes
@@ -322,57 +275,36 @@ class StudyModeService extends ChangeNotifier {
   }
 
   /// Speaks [text] and resolves when speech finishes, errors out, or is stopped.
-  Future<void> _speak(String text) {
+  Future<void> _speak(String text) async {
     // Segments-only mode: skip TTS entirely so the runner keeps advancing
     // (used when no voice is installed, or after TTS repeatedly hung).
-    if (_speakDisabled) {
-      return Future.value();
-    }
-    final completer = Completer<void>();
-    _speakCompleter = completer;
-    _tts.setCompletionHandler(() {
-      debugPrint('🔊 StudyMode TTS: complete');
-      if (!completer.isCompleted) completer.complete();
-    });
-    _tts.setErrorHandler((e) {
-      debugPrint('✗ StudyMode TTS error: $e');
-      if (!completer.isCompleted) completer.complete();
-    });
-    _tts.speak(text).then((_) {
-      // speak() returns immediately; actual completion handled by handlers above.
-    }).catchError((e) {
-      debugPrint('✗ StudyMode TTS speak() error: $e');
-      if (!completer.isCompleted) completer.complete();
-    });
-    // Fail-fast watchdog: if TTS never fires completion (typical when the
-    // engine accepts speak() but can't actually speak the language — common on
-    // Chinese ROMs without the right voice), resolve quickly and auto-disable
-    // TTS so the rest of the song runs in segments-only mode instead of
-    // hanging for up to a minute per line. Cap at ~12s (was up to 66s).
+    if (_speakDisabled) return;
+
+    // Запрос через координатор: единая очередь с приоритетом study. Alert
+    // детекции машин НЕ прервёт этот speak (координатор сам отложит/пропустит
+    // alert).
     final estSeconds = (text.length / 8).ceil().clamp(4, 9);
     final watchdogSeconds = (estSeconds + 3).clamp(5, 12);
-    final watchdog = Timer(Duration(seconds: watchdogSeconds), () {
-      if (!completer.isCompleted) {
-        debugPrint(
-            '⚠ StudyMode TTS watchdog timeout (${watchdogSeconds}s) — disabling TTS for this session');
-        try {
-          _tts.stop();
-        } catch (_) {}
-        if (!completer.isCompleted) completer.complete();
-        // Auto-disable so subsequent lines don't hang again.
-        setSpeakDisabled(true);
-      }
-    });
-    return completer.future.then((v) {
-      watchdog.cancel();
-      return v;
-    });
-  }
 
-  void _resolveSpeak() {
-    final c = _speakCompleter;
-    _speakCompleter = null;
-    if (c != null && !c.isCompleted) c.complete();
+    try {
+      await _ttsCoordinator
+          .speak(
+            text,
+            priority: TtsPriority.study,
+            locale: _ttsLanguage,
+            rate: _speechRate,
+          )
+          .timeout(Duration(seconds: watchdogSeconds), onTimeout: () {
+        debugPrint('⚠ StudyMode TTS watchdog (${watchdogSeconds}s) '
+            '— disabling TTS for this session');
+        // Останавливаем координатор — он завершит completer и вызовет _tts.stop().
+        _ttsCoordinator.stop();
+        // Авто-отключение TTS до конца сессии, чтобы не висеть на каждой строке.
+        setSpeakDisabled(true);
+      });
+    } catch (e) {
+      debugPrint('✗ StudyMode TTS speak error: $e');
+    }
   }
 
   Future<void> _setTtsLanguage(String languageCode) async {
@@ -997,10 +929,8 @@ class StudyModeService extends ChangeNotifier {
     if (!_isActive || _isUserPaused) return;
     _isUserPaused = true;
     debugPrint('⏸ StudyModeService: session paused at line $_currentIndex');
-    try {
-      await _tts.stop();
-    } catch (_) {}
-    _resolveSpeak();
+    // Координатор сам завершит completer текущего speak-запроса и вызовет stop.
+    await _ttsCoordinator.stop();
     _cancelSegmentAwait(false);
     try {
       await _audio.pause();
@@ -1037,10 +967,8 @@ class StudyModeService extends ChangeNotifier {
     _currentIndex = -1;
     debugPrint('⏹ StudyModeService: stopped');
     _cancelSegmentAwait(false);
-    try {
-      await _tts.stop();
-    } catch (_) {}
-    _resolveSpeak();
+    // Координатор остановит текущий speak и завершит его completer.
+    await _ttsCoordinator.stop();
     try {
       await _audio.pause();
     } catch (_) {}
@@ -1064,7 +992,7 @@ class StudyModeService extends ChangeNotifier {
     _segmentTimer?.cancel();
     _overlayTimer?.cancel();
     _playerStateSub?.cancel();
-    _tts.stop();
+    _ttsCoordinator.stop();
     super.dispose();
   }
 }

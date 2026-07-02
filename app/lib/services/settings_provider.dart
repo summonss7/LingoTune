@@ -35,6 +35,12 @@ class SettingsProvider with ChangeNotifier {
   double _lyricsPositionOffset = 0.15;
   String _ttsEngine = '';
 
+  bool _carDetectionEnabled = false;
+  double _carDetectionSensitivity = 0.4;
+  bool _carAlertSound = true;
+  bool _carAlertVibration = true;
+  bool _carAlertVoice = false;
+
   double get fontSize => _fontSize;
   String get defaultTranslationLanguage => _defaultTranslationLanguage;
   String get defaultSourceLanguage => _defaultSourceLanguage;
@@ -66,6 +72,11 @@ class SettingsProvider with ChangeNotifier {
   double get defaultTimestampOffset => _defaultTimestampOffset;
   double get lyricsPositionOffset => _lyricsPositionOffset;
   String get ttsEngine => _ttsEngine;
+  bool get carDetectionEnabled => _carDetectionEnabled;
+  double get carDetectionSensitivity => _carDetectionSensitivity;
+  bool get carAlertSound => _carAlertSound;
+  bool get carAlertVibration => _carAlertVibration;
+  bool get carAlertVoice => _carAlertVoice;
 
   Future<void> loadSettings() async {
     debugPrint('=== SettingsProvider: Loading settings ===');
@@ -138,6 +149,11 @@ class SettingsProvider with ChangeNotifier {
       _defaultTimestampOffset = prefs.getDouble('defaultTimestampOffset') ?? 1800.0;
       _lyricsPositionOffset = prefs.getDouble('lyricsPositionOffset') ?? 0.15;
       _ttsEngine = prefs.getString('ttsEngine') ?? '';
+      _carDetectionEnabled = prefs.getBool('carDetectionEnabled') ?? false;
+      _carDetectionSensitivity = prefs.getDouble('carDetectionSensitivity') ?? 0.4;
+      _carAlertSound = prefs.getBool('carAlertSound') ?? true;
+      _carAlertVibration = prefs.getBool('carAlertVibration') ?? true;
+      _carAlertVoice = prefs.getBool('carAlertVoice') ?? false;
 
       debugPrint('Font size: $_fontSize');
       debugPrint('Translation language: $_defaultTranslationLanguage');
@@ -508,6 +524,61 @@ class SettingsProvider with ChangeNotifier {
     debugPrint('TTS engine updated and notified listeners');
   }
 
+  Future<void> setCarDetectionEnabled(bool value) async {
+    debugPrint('=== SettingsProvider: Setting car detection enabled ===');
+    debugPrint('Old: $_carDetectionEnabled, New: $value');
+
+    _carDetectionEnabled = value;
+    await _save();
+    notifyListeners();
+
+    debugPrint('Car detection enabled updated and notified listeners');
+  }
+
+  Future<void> setCarDetectionSensitivity(double value) async {
+    debugPrint('=== SettingsProvider: Setting car detection sensitivity ===');
+    debugPrint('Old: $_carDetectionSensitivity, New: $value');
+
+    _carDetectionSensitivity = value.clamp(0.0, 1.0);
+    await _save();
+    notifyListeners();
+
+    debugPrint('Car detection sensitivity updated and notified listeners');
+  }
+
+  Future<void> setCarAlertSound(bool value) async {
+    debugPrint('=== SettingsProvider: Setting car alert sound ===');
+    debugPrint('Old: $_carAlertSound, New: $value');
+
+    _carAlertSound = value;
+    await _save();
+    notifyListeners();
+
+    debugPrint('Car alert sound updated and notified listeners');
+  }
+
+  Future<void> setCarAlertVibration(bool value) async {
+    debugPrint('=== SettingsProvider: Setting car alert vibration ===');
+    debugPrint('Old: $_carAlertVibration, New: $value');
+
+    _carAlertVibration = value;
+    await _save();
+    notifyListeners();
+
+    debugPrint('Car alert vibration updated and notified listeners');
+  }
+
+  Future<void> setCarAlertVoice(bool value) async {
+    debugPrint('=== SettingsProvider: Setting car alert voice ===');
+    debugPrint('Old: $_carAlertVoice, New: $value');
+
+    _carAlertVoice = value;
+    await _save();
+    notifyListeners();
+
+    debugPrint('Car alert voice updated and notified listeners');
+  }
+
   Future<void> _save() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -542,6 +613,11 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setDouble('defaultTimestampOffset', _defaultTimestampOffset);
       await prefs.setDouble('lyricsPositionOffset', _lyricsPositionOffset);
       await prefs.setString('ttsEngine', _ttsEngine);
+      await prefs.setBool('carDetectionEnabled', _carDetectionEnabled);
+      await prefs.setDouble('carDetectionSensitivity', _carDetectionSensitivity);
+      await prefs.setBool('carAlertSound', _carAlertSound);
+      await prefs.setBool('carAlertVibration', _carAlertVibration);
+      await prefs.setBool('carAlertVoice', _carAlertVoice);
       await prefs.setString('settingsVersion', '4.2.1');
       debugPrint('Settings saved to SharedPreferences');
     } catch (e) {

@@ -12,6 +12,15 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
+    <!-- Микрофон опционален: приложение работает и без него (фича детекции
+         машин просто будет недоступна). required=false позволяет ставить APK
+         на устройства без микрофона. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false"/>
 
     <queries>
         <intent>
