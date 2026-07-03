@@ -1989,4 +1989,190 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get carDetectionMicDenied => '麦克风权限被拒绝 — 无法检测';
+
+  @override
+  String get carCalibrationTitle => '探测器校准';
+
+  @override
+  String get carCalibrationSubtitle => '用您的声音训练探测器';
+
+  @override
+  String get carCalibrationMicDenied => '麦克风权限被拒绝 — 无法校准';
+
+  @override
+  String get carCalibrationLive => '实时频谱';
+
+  @override
+  String get carCalibrationModeClassify => '模式：分类';
+
+  @override
+  String get carCalibrationModeThreshold => '模式：阈值';
+
+  @override
+  String carCalibrationNearest(String cls, String dist) {
+    return '最近：$cls (d=$dist)';
+  }
+
+  @override
+  String get carCalibrationNoMatch => '无匹配';
+
+  @override
+  String carCalibrationThresholdScore(String score) {
+    return '分数：$score';
+  }
+
+  @override
+  String get carCalibrationRecordTitle => '录制样本';
+
+  @override
+  String get carCalibrationClass => '类别';
+
+  @override
+  String get carCalibrationName => '样本名称';
+
+  @override
+  String get carCalibrationRecord => '录制 5 秒';
+
+  @override
+  String carCalibrationRecording(int s) {
+    return '录制中... $s秒';
+  }
+
+  @override
+  String carCalibrationProfilesCount(int n) {
+    return '样本（$n）';
+  }
+
+  @override
+  String get carCalibrationEmpty => '暂无样本 — 录制第一个';
+
+  @override
+  String get carCalibrationDelete => '删除';
+
+  @override
+  String carCalibrationDeleteConfirm(String name) {
+    return '删除\"$name\"？';
+  }
+
+  @override
+  String get carCalibrationReset => '全部重置';
+
+  @override
+  String get carCalibrationResetConfirm => '删除所有校准配置文件？';
+
+  @override
+  String get carCalibrationCancel => '取消';
+
+  @override
+  String get carCalibrationConfirm => '删除';
+
+  @override
+  String get carCalibrationLoadDemo => '加载示例配置';
+
+  @override
+  String get carCalibrationDemoPrefix => '示例';
+
+  @override
+  String carCalibrationDemoLoaded(int n) {
+    return '已加载 $n 个示例';
+  }
+
+  @override
+  String get profileClassCarClose => '近距离汽车';
+
+  @override
+  String get profileClassCarFar => '远距离汽车';
+
+  @override
+  String get profileClassCarTruck => '卡车';
+
+  @override
+  String get profileClassCarMotorcycle => '摩托车';
+
+  @override
+  String get profileClassWind => '风';
+
+  @override
+  String get profileClassSteps => '脚步声';
+
+  @override
+  String get profileClassVoice => '人声';
+
+  @override
+  String get profileClassStreet => '街道';
+
+  @override
+  String get profileClassMusic => '音乐';
+
+  @override
+  String get profileClassOther => '其他';
+
+  @override
+  String get ttsSource => 'TTS来源';
+
+  @override
+  String get ttsSourceOffline => '离线';
+
+  @override
+  String get ttsSourceSystem => '系统';
+
+  @override
+  String get ttsSourceOfflineSubtitle => '内置神经TTS（推荐，在所有设备上稳定）';
+
+  @override
+  String get ttsSourceSystemSubtitle => 'Android系统TTS引擎';
+
+  @override
+  String get ttsSourceSwitchedHint => 'TTS来源已切换';
+
+  @override
+  String get voicePackages => '语音包';
+
+  @override
+  String get voicePackagesSubtitle => '语言的离线TTS模型';
+
+  @override
+  String get voicePackagesDescription => '下载离线神经TTS模型，使语音功能在没有互联网时仍可工作，并在任何设备上保持稳定。俄语模型已内置；其他模型可在此下载。';
+
+  @override
+  String get voicePackageReady => '就绪';
+
+  @override
+  String get voicePackageBundled => '已随应用内置';
+
+  @override
+  String get voicePackageDownload => '下载';
+
+  @override
+  String get voicePackageInstall => '安装';
+
+  @override
+  String get voicePackageRetry => '重试';
+
+  @override
+  String get voicePackageDownloading => '下载中...';
+
+  @override
+  String get voicePackageExtracting => '解压中...';
+
+  @override
+  String get voicePackageError => '错误';
+
+  @override
+  String get voicePackageDelete => '删除';
+
+  @override
+  String voicePackageInstalledSuccess(Object lang) {
+    return '已安装\"$lang\"的模型';
+  }
+
+  @override
+  String voicePackageInstalledFailed(Object lang) {
+    return '安装\"$lang\"的模型失败';
+  }
+
+  @override
+  String voicePackageDeleteConfirm(Object lang) {
+    return '删除\"$lang\"的模型？这将释放磁盘空间。';
+  }
 }

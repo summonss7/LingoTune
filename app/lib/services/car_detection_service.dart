@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/fft.dart';
+import 'calibration_profile.dart';
 
 /// Уровень уверенности детекции автомобиля.
 enum CarDetectionLevel { low, medium, high }
@@ -43,6 +46,20 @@ class CarDetection {
 /// Слушатели [ChangeNotifier] оповещаются при каждом подтверждённом
 /// срабатывании ([lastDetection] обновляется).
 class CarDetectionService extends ChangeNotifier {
+  // B (v5.4.0): реестр активных инстанций. Экран калибровки после изменения
+  // эталонов в SharedPreferences дёргает reloadProfilesInAllActive() —
+  // обновятся и сервис плеера, и live-сервис самого экрана калибровки.
+  static final Set<CarDetectionService> _activeInstances =
+      <CarDetectionService>{};
+
+  /// Перезагружает эталоны во всех активных сервисах (плеер + калибровочный
+  /// экран). Безопасно вызывать когда нет активных — no-op.
+  static Future<void> reloadProfilesInAllActive() async {
+    for (final s in _activeInstances) {
+      await s.loadCalibrationProfiles();
+    }
+  }
+
   static const int _sampleRate = 16000;
   static const int _fftSize = 512; // 32 ms @ 16 kHz
   // A2: hop 512 → анализ каждые 32 мс вместо 16 мс (было 256). Снижает
@@ -63,6 +80,10 @@ class CarDetectionService extends ChangeNotifier {
   double _maxFlatnessForCar = 0.4;
   // Максимальный спектральный центроид (Гц). Настраивается sensitivity.
   double _maxCentroidHz = 800.0;
+  // B (v5.4.0): максимальное Mahalanobis distance для классификации кадра
+  // как «похожего на профиль». Меньше → строже (нужно очень близко к эталону).
+  // Масштабируется от sensitivity: sens=0 → 2.0, sens=1 → 6.0.
+  double _maxDistance = 4.0;
   // Фильтр ветра/шагов (A4): если flatness высокая и НЧ доминирование слабое
   // — это шум, а не машина. Если очень громко (rms) и центроид умеренно-низкий
   // — это удар/шаг (например телефон трясётся в кармане при беге).
@@ -78,11 +99,17 @@ class CarDetectionService extends ChangeNotifier {
   // колбэк установлен и возвращает true.
   static const Duration _minAlertIntervalDuringStudy = Duration(seconds: 5);
 
-  // Скользящее окно для подтверждения: нужно несколько последовательных
-  // срабатываний подряд, чтобы избежать ложных на одиночных всплесках.
-  // A2: окно 4 кадра × 32 мс = 128 мс (было 6 × 16 мс = 96 мс).
-  static const int _confirmWindow = 4;
-  static const int _confirmMinHits = 3;
+  // Подтверждение: нужно _confirmMinHits срабатываний ПОДРЯД (любой miss
+  // сбрасывает счётчик), чтобы избежать ложных на одиночных всплесках.
+  // A1 (v5.4.0): 5 кадров × 32 мс = 160 мс непрерывного сигнала достаточно
+  // для отсева ветра/шагов, но ловит большинство машин (компромисс между
+  // «строго по плану» 8/256 мс и прежним 3/96 мс).
+  static const int _confirmMinHits = 5;
+  // A2 (v5.4.0): размер окна для moving average score (сглаживание всплесков).
+  static const int _scoreWindowSize = 8;
+  // A5 (v5.4.0): сколько кадров копить для adaptive noise floor (~3 сек
+  // при hop 32 мс). После набора — порог low band = средний фон × 3.
+  static const int _noiseFloorFrames = 90;
 
   final AudioRecorder _recorder = AudioRecorder();
   StreamSubscription<Uint8List>? _streamSub;
@@ -90,8 +117,29 @@ class CarDetectionService extends ChangeNotifier {
 
   late final SpectrumAnalyzer _analyzer;
   final Queue<int> _sampleBuffer = Queue<int>(); // int16 PCM
-  final Queue<bool> _confirmQueue = Queue<bool>();
+  // A1 (v5.4.0): счётчик ПОСЛЕДОВАТЕЛЬНЫХ hits — любой miss сбрасывает в 0.
+  // Заменяет Queue<bool> _confirmQueue, которая считала hits в окне.
+  int _consecutiveHits = 0;
+  // A2 (v5.4.0): moving average score — сглаживает всплески на N кадрах.
+  final Queue<double> _scoreWindow = Queue<double>();
+  // A4+A5 (v5.4.0): абсолютный порог lowBandEnergy. Alert только если low
+  // band громче фонового шума. Фон оценивается в первые ~3 сек после start.
+  double _minLowBandEnergy = 0.0;
+  bool _noiseFloorCalibrated = false;
+  final Queue<double> _noiseFloorSamples = Queue<double>();
   DateTime? _lastAlertAt;
+
+  // ---- B (v5.4.0): калибровочные профили + классификатор Mahalanobis ----
+  // Сохранённые пользователем эталоны. Если есть ≥1 car + ≥1 noise —
+  // детектор переключается с пороговой логики на классификацию по nearest
+  // profile (Mahalanobis distance).
+  List<CalibrationProfile> _profiles = const <CalibrationProfile>[];
+  // true если есть ≥1 car-профиль И ≥1 noise-профиль → используем
+  // _classifyFrame; иначе — _thresholdFrame (улучшенная пороговая логика).
+  bool _useClassification = false;
+  // Кеш последнего результата классификации (для UI калибровки и оверлея).
+  ProfileClass? _nearestClass;
+  double _nearestDistance = double.infinity;
 
   CarDetection? _lastDetection;
   CarDetection? get lastDetection => _lastDetection;
@@ -109,6 +157,24 @@ class CarDetectionService extends ChangeNotifier {
 
   String _statusLine = 'idle';
   String get statusLine => _statusLine;
+
+  // ---- B (v5.4.0): публичные геттеры для UI калибровки ----
+  /// Сохранённые эталоны (read-only).
+  List<CalibrationProfile> get profiles =>
+      List<CalibrationProfile>.unmodifiable(_profiles);
+
+  /// Используется ли Mahalanobis-классификация (≥1 car + ≥1 noise профиль).
+  bool get useClassification => _useClassification;
+
+  /// Ближайший класс для последнего кадра (null если профилей нет или кадр
+  /// далеко от всех). Только для диагностики/UI — не влияет на alert.
+  ProfileClass? get nearestClass => _nearestClass;
+
+  /// Mahalanobis distance до ближайшего профиля для последнего кадра.
+  double get nearestDistance => _nearestDistance;
+
+  /// Адаптивный порог «похожести» для классификации (для отображения в UI).
+  double get maxDistance => _maxDistance;
 
   /// A5: колбэк «сейчас ли звучит TTS study mode». Устанавливается извне
   /// (PlayerScreen-ом), чтобы детектор мог увеличить throttle при активном
@@ -139,6 +205,9 @@ class CarDetectionService extends ChangeNotifier {
     _maxFlatnessForCar = lerp(0.30, 0.50);
     // Центроид: при sens=0 максимум 600 Гц, при sens=1 максимум 1000 Гц.
     _maxCentroidHz = lerp(600.0, 1000.0);
+    // B (v5.4.0): Mahalanobis _maxDistance. sens=0 → 2.0 (строгий, нужно
+    // очень близко к эталону), sens=1 → 6.0 (мягкий, терпимее к отклонениям).
+    _maxDistance = lerp(2.0, 6.0);
     debugPrint('🎚 CarDetection: sensitivity=$s → '
         'scoreLow=${_scoreThresholdLow.toStringAsFixed(2)} '
         'lowDom=${_lowDominanceRatio.toStringAsFixed(1)} '
@@ -215,8 +284,18 @@ class CarDetectionService extends ChangeNotifier {
       _isListening = true;
       _currentScore = 0.0;
       _sampleBuffer.clear();
-      _confirmQueue.clear();
+      _consecutiveHits = 0;
+      _scoreWindow.clear();
+      _minLowBandEnergy = 0.0;
+      _noiseFloorCalibrated = false;
+      _noiseFloorSamples.clear();
+      _nearestClass = null;
+      _nearestDistance = double.infinity;
       _statusLine = 'listening';
+      _activeInstances.add(this);
+      // B (v5.4.0): подгружаем эталоны при старте — если ≥1 car + ≥1 noise,
+      // включится Mahalanobis-классификация; иначе — пороговая логика.
+      unawaited(loadCalibrationProfiles());
       debugPrint('✓ CarDetection: started (sensitivity=$sensitivity)');
       notifyListeners();
       return true;
@@ -236,6 +315,7 @@ class CarDetectionService extends ChangeNotifier {
     _isActive = false;
     _isListening = false;
     _statusLine = 'stopped';
+    _activeInstances.remove(this);
     try {
       await _streamSub?.cancel();
     } catch (_) {}
@@ -257,6 +337,62 @@ class CarDetectionService extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   // Обработка аудио
   // ---------------------------------------------------------------------------
+
+  // ---- B (v5.4.0): управление калибровочными профилями ----
+
+  /// Ключ SharedPreferences для JSON-массива сохранённых эталонов.
+  static const String profilesPrefsKey = 'carCalibrationProfiles';
+
+  /// Загружает эталоны из SharedPreferences и обновляет [_profiles] /
+  /// [_useClassification]. Вызывать после старта сервиса и после каждой
+  /// операции с эталонами (добавление/удаление) на экране калибровки.
+  Future<void> loadCalibrationProfiles() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? raw = prefs.getString(profilesPrefsKey);
+      if (raw == null || raw.isEmpty) {
+        setProfiles(const <CalibrationProfile>[]);
+        return;
+      }
+      final List<dynamic> decoded = jsonDecode(raw) as List<dynamic>;
+      final List<CalibrationProfile> loaded = <CalibrationProfile>[];
+      for (final dynamic item in decoded) {
+        final p = CalibrationProfile.fromJson(item as Map<String, dynamic>);
+        if (p != null) {
+          loaded.add(p);
+        }
+      }
+      setProfiles(loaded);
+    } catch (e) {
+      debugPrint('✗ CarDetection.loadCalibrationProfiles: $e');
+      setProfiles(const <CalibrationProfile>[]);
+    }
+  }
+
+  /// Заменяет текущий набор эталонов. Автоматически пересчитывает
+  /// [_useClassification] (нужно ≥1 car + ≥1 noise). Потокобезопасно: можно
+  /// вызывать во время активной сессии — ветвление _classifyFrame /
+  /// _thresholdFrame переключится на следующем кадре.
+  void setProfiles(List<CalibrationProfile> profiles) {
+    _profiles = List<CalibrationProfile>.of(profiles);
+    _recomputeClassificationFlag();
+    debugPrint('🎚 CarDetection: ${_profiles.length} profiles loaded, '
+        'useClassification=$_useClassification');
+  }
+
+  void _recomputeClassificationFlag() {
+    bool hasCar = false;
+    bool hasNoise = false;
+    for (final p in _profiles) {
+      if (p.cls.isCar) {
+        hasCar = true;
+      } else {
+        hasNoise = true;
+      }
+      if (hasCar && hasNoise) break;
+    }
+    _useClassification = hasCar && hasNoise;
+  }
 
   void _onAudioData(Uint8List bytes) {
     if (!_isListening) return;
@@ -293,6 +429,30 @@ class CarDetectionService extends ChangeNotifier {
     // Релаксация текущей уверенности (экспоненциальный спад).
     _currentScore *= 0.85;
 
+    // ---- A5: Adaptive noise floor (первые ~3 сек после start) ----
+    // Копим значения lowBandEnergy в тишине/фоне, потом ставим порог
+    // в 3× от среднего. Пока не откалибровано — алерты не выдаем
+    // (звук в этот момент всё равно фоновый).
+    if (!_noiseFloorCalibrated) {
+      _noiseFloorSamples.addLast(f.lowBandEnergy);
+      if (_noiseFloorSamples.length >= _noiseFloorFrames) {
+        double sum = 0.0;
+        for (final double v in _noiseFloorSamples) {
+          sum += v;
+        }
+        final double avg = sum / _noiseFloorSamples.length;
+        _minLowBandEnergy = avg * 3.0;
+        _noiseFloorCalibrated = true;
+        debugPrint('🔇 CarDetection: noise floor calibrated '
+            '($_noiseFloorFrames frames), _minLowBandEnergy='
+            '${_minLowBandEnergy.toStringAsFixed(0)}');
+      }
+      _pushConfirm(false);
+      _statusLine = 'noise floor ${_noiseFloorSamples.length}/'
+          '$_noiseFloorFrames';
+      return;
+    }
+
     if (f.rms < _minRms) {
       // Тишина — пропускаем, обновляем только диагностику.
       _pushConfirm(false);
@@ -300,7 +460,7 @@ class CarDetectionService extends ChangeNotifier {
       return;
     }
 
-    // ---- A4: фильтр шума ветра ----
+    // ---- фильтр шума ветра ----
     // Ветер/шорох дают равномерный (высокий flatness) спектр с небольшим
     // уклоном в НЧ. Машина же даёт явный пик в НЧ → низкий flatness И сильное
     // доминирование НЧ над средними. Если flatness высокая и НЧ-доминирование
@@ -315,7 +475,7 @@ class CarDetectionService extends ChangeNotifier {
       return;
     }
 
-    // ---- A4: фильтр шагов/ударов ----
+    // ---- фильтр шагов/ударов ----
     // Шаги/удары телефона (бег в кармане) дают очень громкий (rms высокий)
     // широкополосный всплеск с умеренно-низким центроидом. Настоящая машина
     // звучит «гулом» с центроидом < 600 Гц. Если очень громко и центроид выше
@@ -328,6 +488,31 @@ class CarDetectionService extends ChangeNotifier {
       return;
     }
 
+    // ---- A4 (v5.4.0): абсолютный порог low band ----
+    // Даже при правильном соотношении частот тихий шум с лёгким НЧ-уклоном
+    // не должен триггерить alert. Порог вычислен адаптивно в первые 3 сек.
+    if (f.lowBandEnergy < _minLowBandEnergy) {
+      _pushConfirm(false);
+      _statusLine = 'below floor low=${f.lowBandEnergy.toStringAsFixed(0)} '
+          '< ${_minLowBandEnergy.toStringAsFixed(0)}';
+      return;
+    }
+
+    // ---- B (v5.4.0): выбор ветки decision logic ----
+    // Все общие пред-фильтры (silence/wind/step/noise floor) уже пройдены.
+    // Если есть ≥1 car + ≥1 noise профиль — Mahalanobis-классификация,
+    // иначе — улучшенная пороговая логика (Часть A).
+    if (_useClassification) {
+      _classifyFrame(f);
+    } else {
+      _thresholdFrame(f);
+    }
+  }
+
+  /// Пороговая decision logic (Часть A v5.4.0). Используется, когда нет
+  /// достаточно эталонов для Mahalanobis-классификации (нет car или нет
+  /// noise профиля).
+  void _thresholdFrame(SpectrumFeatures f) {
     // ---- Decision logic ----
     // 1. Доминирование НЧ: low должна быть больше mid и high с запасом.
     final bool lowDom = f.lowBandEnergy > f.midBandEnergy * _lowDominanceRatio &&
@@ -357,39 +542,119 @@ class CarDetectionService extends ChangeNotifier {
       score += 0.2;
       reasons.add('peaked');
     }
-    score += lowFrac * 0.15; // бонус за высокую долю НЧ
+    // A3 (v5.4.0): бонус за высокую долю НЧ — только если НЧ действительно
+    // доминирует (lowFrac > 0.6). Раньше давался всегда, и шум с лёгким
+    // НЧ-уклоном мог добрать score до порога.
+    if (lowFrac > 0.6) {
+      score += lowFrac * 0.15;
+      reasons.add('lowFrac');
+    }
     score = score.clamp(0.0, 1.0);
 
-    final bool isHit = score >= _scoreThresholdLow;
-    _pushConfirm(isHit);
-
-    // Текущая «мгновенная» уверенность.
-    if (score > _currentScore) {
-      _currentScore = score;
+    // A2 (v5.4.0): moving average score вместо мгновенного — сглаживает
+    // короткие всплески (удар, щелчок) на N кадрах.
+    _scoreWindow.addLast(score);
+    while (_scoreWindow.length > _scoreWindowSize) {
+      _scoreWindow.removeFirst();
+    }
+    double avgScore = 0.0;
+    if (_scoreWindow.isNotEmpty) {
+      double sum = 0.0;
+      for (final double v in _scoreWindow) {
+        sum += v;
+      }
+      avgScore = sum / _scoreWindow.length;
     }
 
-    _statusLine = 'score=${score.toStringAsFixed(2)} '
+    final bool isHit = avgScore >= _scoreThresholdLow;
+    _pushConfirm(isHit);
+
+    // Текущая «сглаженная» уверенность — максимум из релаксированной и avg.
+    if (avgScore > _currentScore) {
+      _currentScore = avgScore;
+    }
+
+    // В пороговом режиме классификация неизвестна.
+    _nearestClass = null;
+    _nearestDistance = double.infinity;
+
+    _statusLine = 'score=${avgScore.toStringAsFixed(2)} '
         'low=${(f.lowBandEnergy).toStringAsFixed(0)} '
         'cent=${f.spectralCentroid.toStringAsFixed(0)} '
-        'flat=${f.spectralFlatness.toStringAsFixed(2)}';
+        'flat=${f.spectralFlatness.toStringAsFixed(2)} '
+        'streak=$_consecutiveHits';
 
-    // Подтверждение: N срабатываний в окне → триггер.
+    // Подтверждение: N hits ПОДРЯД → триггер.
     if (isHit) {
-      _maybeFireAlert(score, f, reasons.join('+'));
+      _maybeFireAlert(avgScore, f, reasons.join('+'));
+    }
+  }
+
+  /// Mahalanobis-классификация (Часть B v5.4.0). Используется при наличии
+  /// ≥1 car + ≥1 noise эталона: для каждого профиля вычисляется distance, и
+  /// кадр считается «hit», если ближайший профиль — машина и distance меньше
+  /// адаптивного порога [_maxDistance] (масштабируется от sensitivity).
+  void _classifyFrame(SpectrumFeatures f) {
+    if (_profiles.isEmpty) {
+      // Защита: не должно случаться, т.к. _useClassification=false при пустом.
+      _pushConfirm(false);
+      return;
+    }
+
+    CalibrationProfile? nearest;
+    double minDist = double.infinity;
+    for (final p in _profiles) {
+      final double d = p.distanceTo(f);
+      if (d < minDist) {
+        minDist = d;
+        nearest = p;
+      }
+    }
+    _nearestClass = nearest?.cls;
+    _nearestDistance = minDist;
+
+    // Hit только если ближайший класс — машина И расстояние меньше порога.
+    final bool isCar = nearest != null && nearest.cls.isCar;
+    final bool isHit = isCar && minDist < _maxDistance;
+    _pushConfirm(isHit);
+
+    // Текущая уверенность: нормируем distance обратно в 0..1 для UI/оверлея.
+    // d=0 → 1.0 (точно эталон), d=_maxDistance → 0.0 (на границе срабатывания),
+    // d>_maxDistance → clamp в 0.
+    if (isHit) {
+      final double norm = (1.0 - minDist / _maxDistance).clamp(0.0, 1.0);
+      if (norm > _currentScore) {
+        _currentScore = norm;
+      }
+    }
+
+    final String clsLabel = _nearestClass?.name ?? '?';
+    _statusLine = 'cls=$clsLabel d=${minDist.toStringAsFixed(1)}/'
+        '${_maxDistance.toStringAsFixed(1)} '
+        'low=${(f.lowBandEnergy).toStringAsFixed(0)} '
+        'streak=$_consecutiveHits';
+
+    if (isHit) {
+      _maybeFireAlert(
+        _currentScore,
+        f,
+        '${clsLabel}@${minDist.toStringAsFixed(2)}',
+      );
     }
   }
 
   void _pushConfirm(bool hit) {
-    _confirmQueue.addLast(hit);
-    while (_confirmQueue.length > _confirmWindow) {
-      _confirmQueue.removeFirst();
+    // A1 (v5.4.0): считаем ПОСЛЕДОВАТЕЛЬНЫЕ hits — любой miss сбрасывает.
+    if (hit) {
+      _consecutiveHits++;
+    } else {
+      _consecutiveHits = 0;
     }
   }
 
-  int get _confirmHits => _confirmQueue.where((h) => h).length;
-
   void _maybeFireAlert(double score, SpectrumFeatures f, String reason) {
-    final bool enoughHits = _confirmHits >= _confirmMinHits;
+    // A1 (v5.4.0): подтверждение — _confirmMinHits hits ПОДРЯД.
+    final bool enoughHits = _consecutiveHits >= _confirmMinHits;
     if (!enoughHits) return;
 
     // A5: адаптивный throttle. Если study mode сейчас озвучивает перевод,
@@ -428,9 +693,9 @@ class CarDetectionService extends ChangeNotifier {
         'reason=$reason rms=${(f.rms * 1000).toStringAsFixed(1)}m '
         'cent=${f.spectralCentroid.toStringAsFixed(0)}Hz flat=${f.spectralFlatness.toStringAsFixed(2)}');
 
-    // Сбрасываем очередь подтверждения, чтобы следующее срабатывание
+    // Сбрасываем серию подтверждения, чтобы следующее срабатывание
     // требовало нового набора попаданий.
-    _confirmQueue.clear();
+    _consecutiveHits = 0;
 
     notifyListeners();
   }
@@ -449,7 +714,9 @@ class CarDetectionService extends ChangeNotifier {
           'flat=${f.spectralFlatness.toStringAsFixed(2)} '
           'rms=${(f.rms * 1000).toStringAsFixed(1)}m');
     }
-    buf.writeln('hits=$_confirmHits/$_confirmWindow score=${_currentScore.toStringAsFixed(2)}');
+    buf.writeln('streak=$_consecutiveHits/$_confirmMinHits '
+        'score=${_currentScore.toStringAsFixed(2)} '
+        'floor=${_noiseFloorCalibrated ? _minLowBandEnergy.toStringAsFixed(0) : "calib"}');
     final d = _lastDetection;
     if (d != null) {
       buf.writeln('last: ${d.levelLabel} ${d.score.toStringAsFixed(2)} '

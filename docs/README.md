@@ -1,6 +1,6 @@
-# LingoTune - Изучение языков через музыку
+﻿# LingoTune - Изучение языков через музыку
 
-**Версия:** 5.3.5
+**Версия:** 5.5.0
 **Разработчики:** Z.AI GLM & Цимбалов Артем
 **Платформа:** Android (Flutter)
 **Языки интерфейса:** Русский, Английский, Румынский, Французский, Немецкий, Испанский, Итальянский, Португальский, Китайский, Арабский, Украинский
@@ -108,20 +108,51 @@ cp build/app/outputs/flutter-apk/app-release.apk builds/LingoTune-v{версия
 - [Рабочий процесс](WORKFLOW.md) - рабочий процесс приложения
 - [Разработка](DEVELOPMENT.md) - конвенции кода и разработка
 - [Решение проблем](TROUBLESHOOTING.md) - FAQ и решение проблем
-- [План: Калибровка детекции машин](PLAN_CAR_DETECTION_CALIBRATION.md) - план v5.4.0 (эталоны + Mahalanobis)
+- [Калибровка детекции машин](PLAN_CAR_DETECTION_CALIBRATION.md) - реализация v5.5.0 (эталоны + Mahalanobis)
 
-## 🎯 План следующей версии (5.4.0)
+## 🎯 Новое в версии 5.5.0
 
-**Статус:** ⏳ Запланировано (не начато)
+### 🎯 Новая фича: Калибровка детектора машин (эталоны + Mahalanobis)
+- **Задача:** в 5.3.x детектор машин срабатывал на любой шум (ветер, шаги, голоса, музыка из наушников) — пороговая логика (lowDom + centroid + flatness + RMS) не способна надёжно отличить машину от других звуков. Пользователь не мог повлиять на это, кроме как уменьшить sensitivity (что убирает и полезные срабатывания)
+- **Решение:** вместо одной пороговой логики — **две ветви** в `CarDetectionService._analyzeFrame`:
+  - **Пороговая** (улучшенная, Часть A) — работает, когда у пользователя нет сохранённых эталонов
+  - **Mahalanobis-классификация** (Часть B) — включается автоматически при наличии ≥1 car + ≥1 noise эталона; для каждого кадра вычисляется расстояние до каждого профиля, и кадр считается «машина», если ближайший профиль — автомобильный и расстояние меньше адаптивного порога
+- **Что может пользователь:**
+  - Открыть **экран калибровки** (Настройки → Детекция машин → Калибровка) — отдельный экран с live-спектром
+  - **Записать эталон** (5 секунд, выбор класса из 10, имя): carClose/carFar/carTruck/carMotorcycle (триггерят alert), wind/steps/voice/street/music/other (не триггерят). После записи ≥1 car + ≥1 noise — детектор автоматически переключается на Mahalanobis
+  - **Загрузить демо-эталоны** одной кнопкой (7 синтетических классов в `assets/calibration/default_profiles.json`, без WAV — пресчитанные mean/std из акустических характеристик)
+  - **Удалить** отдельный эталон или **сбросить всё**
+- **Улучшения пороговой логики (Часть A, работают и без эталонов):**
+  - Окно подтверждения 5 кадров ПОДРЯД (любой miss сбрасывает счётчик) — раньше считались hits в скользящем окне
+  - Moving average score за 8 кадров — сглаживает короткие всплески
+  - Бонус `lowFrac × 0.15` только если `lowFrac > 0.6` — раньше давался всегда, и шум с лёгким НЧ-уклоном мог добрать score
+  - **Adaptive noise floor**: первые ~3 сек после старта пишется фоновый `lowBandEnergy`, затем `_minLowBandEnergy = средний_фон × 3`. Alert выдаётся только если `lowBandEnergy > _minLowBandEnergy` — тихий шум с правильным спектром отсеивается
+- **Приватность:** эталоны (только JSON mean/std, без исходного аудио) хранятся локально в SharedPreferences (`carCalibrationProfiles`). Звук анализируется on-device, ничего не записывается и не отправляется
 
-Полный план в [`PLAN_CAR_DETECTION_CALIBRATION.md`](PLAN_CAR_DETECTION_CALIBRATION.md).
+### 🔧 Технические изменения
+- `lib/services/calibration_profile.dart` (новый, ~270 строк): `enum ProfileClass` (10 значений) с `extension ProfileClassX` (isCar, icon, wireName); `class CalibrationProfile` с Mahalanobis `distanceTo(SpectrumFeatures)` (диагональная ковариация, ε=1e-6), `toJson`/`fromJson`/`fromSamples` (вычисление mean/std по 6 признакам)
+- `lib/services/car_detection_service.dart`:
+  - Константы `_confirmMinHits 3→5` (подряд), `_scoreWindowSize=8` (moving average), `_noiseFloorFrames=90` (~3 сек warmup)
+  - Новые поля `_consecutiveHits`, `_scoreWindow`, `_minLowBandEnergy`, `_noiseFloorCalibrated`, `_noiseFloorSamples`, `_profiles`, `_useClassification`, `_maxDistance`, `_nearestClass`, `_nearestDistance`
+  - `_applySensitivity` теперь также масштабирует `_maxDistance` (sens=0 → 2.0, sens=1 → 6.0)
+  - Метод `_analyzeFrame` разбит: общие пред-фильтры (noise floor/silence/wind/step/absolute low band threshold) + ветвление `_classifyFrame` (Mahalanobis) vs `_thresholdFrame` (улучшенная пороговая)
+  - `loadCalibrationProfiles()` / `setProfiles()` / `_recomputeClassificationFlag()` — управление эталонами
+  - Статический реестр `_activeInstances` + `reloadProfilesInAllActive()` — экран калибровки после изменений обновляет и свой live-сервис, и активный сервис плеера
+  - Геттеры для UI калибровки: `profiles`, `useClassification`, `nearestClass`, `nearestDistance`, `maxDistance`
+- `lib/screens/car_calibration_screen.dart` (новый, ~780 строк): экран с live-визуализацией спектра (3 bars + flatness/centroid/rms/low-mid), записью эталона (5 сек, dropdown класса, имя), списком эталонов с удалением, кнопками загрузки демо и сброса. Создаёт собственный `CarDetectionService` (изолированный от плеера)
+- `app/assets/calibration/default_profiles.json` (новый): 7 синтетических демо-профилей (carClose/carFar/carTruck/wind/steps/street/voice) с теоретическими mean/std в единицах SpectrumFeatures
+- `lib/widgets/settings/car_detection_settings_tile.dart`: внутри ExpansionTile добавлен ListTile «Калибровка» (icon tune) → `Navigator.push(CarCalibrationScreen())`
+- `pubspec.yaml`: ассет `assets/calibration/`
+- `lib/l10n/app_*.arb` (11 файлов) + `app_localizations*.dart` (12 файлов): 35 новых ключей (24 carCalibration* + 10 profileClass* + 1 subtitle) × 11 языков. Генерация через `scripts/add_calibration_l10n.py` (без внешних зависимостей)
+- `pubspec.yaml`/`app_info.dart`/`build.gradle`/`local.properties` — 5.5.0 (versionCode 217); features += «🎯 Car detector calibration»
 
-Кратко: вместо пороговой логики детекции — **классификация по эталонам с Mahalanobis distance**.
-Пользователь сможет:
-- Записывать свои эталоны звуков (машина близко/далеко/грузовик, ветер, шаги, голоса, улица)
-- Видеть live-спектр и ближайший класс в реальном времени
-- Загружать синтетические демо-эталоны (7 звуков в `assets/calibration/`)
-- Точно настраивать детектор под свои условия бега/устройства/наушников
+### ⚠️ Известные ограничения
+- **Демо-эталоны синтетические** — значения mean/std вычислены теоретически из акустических характеристик (не из реальных записей). На точность Mahalanobis-классификации это влияет: демо-эталоны — стартовая точка, для реальной точности пользователь должен записать свои
+- **CPU при классификации**: Mahalanobis distance через 6 признаков × N профилей на каждом кадре. При N=10 и ~30 кадрах/сек = ~180 операций/сек — приемлемо для main isolate
+- **Запись своих WAV** для воспроизведения кнопкой ▶ не реализована (по решению разработки) — список эталонов только показывает профиль с кнопкой удаления
+- **Per-song калибровка** не реализована — эталоны глобальные на всё приложение
+
+---
 
 ## 🎯 Новое в версии 5.3.5
 

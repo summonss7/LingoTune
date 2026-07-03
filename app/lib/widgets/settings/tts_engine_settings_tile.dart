@@ -57,35 +57,46 @@ class _TtsEngineSettingsTileState extends State<TtsEngineSettingsTile> {
       // with no installed TTS engine. Show a hint instead of an empty dropdown.
       trailing = const Icon(Icons.warning_amber_outlined, color: Colors.orange);
     } else {
-      trailing = DropdownButton<String>(
-        value: _engines.any((e) => e.name == current) ? current : '',
-        icon: const Icon(Icons.arrow_drop_down),
-        underline: const SizedBox(),
-        isExpanded: false,
-        items: [
-          DropdownMenuItem(
-            value: '',
-            child: Text(l10n.ttsEngineAuto),
-          ),
-          ..._engines.map(
-            (e) => DropdownMenuItem(
-              value: e.name,
-              child: Text(e.label, overflow: TextOverflow.ellipsis),
-            ),
-          ),
-        ],
-        onChanged: (value) async {
-          if (value == null) return;
-          await settings.setTtsEngine(value);
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(l10n.ttsEngineReloadHint),
-                duration: const Duration(seconds: 3),
+      trailing = ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 130),
+        child: DropdownButton<String>(
+          value: _engines.any((e) => e.name == current) ? current : '',
+          icon: const Icon(Icons.arrow_drop_down),
+          underline: const SizedBox(),
+          isExpanded: true,
+          items: [
+            DropdownMenuItem(
+              value: '',
+              child: Text(
+                l10n.ttsEngineAuto,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            );
-          }
-        },
+            ),
+            ..._engines.map(
+              (e) => DropdownMenuItem(
+                value: e.name,
+                child: Text(
+                  e.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+          onChanged: (value) async {
+            if (value == null) return;
+            await settings.setTtsEngine(value);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(l10n.ttsEngineReloadHint),
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
+          },
+        ),
       );
     }
 

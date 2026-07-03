@@ -1989,4 +1989,190 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get carDetectionMicDenied => 'Permisiunea microfonului a fost refuzată — detecție imposibilă';
+
+  @override
+  String get carCalibrationTitle => 'Calibrarea detectorului';
+
+  @override
+  String get carCalibrationSubtitle => 'Antrenează detectorul pe sunetele tale';
+
+  @override
+  String get carCalibrationMicDenied => 'Acces la microfon refuzat — calibrare imposibilă';
+
+  @override
+  String get carCalibrationLive => 'Spectru live';
+
+  @override
+  String get carCalibrationModeClassify => 'Mod: clasificare';
+
+  @override
+  String get carCalibrationModeThreshold => 'Mod: prag';
+
+  @override
+  String carCalibrationNearest(String cls, String dist) {
+    return 'Cel mai apropiat: $cls (d=$dist)';
+  }
+
+  @override
+  String get carCalibrationNoMatch => 'Nicio potrivire';
+
+  @override
+  String carCalibrationThresholdScore(String score) {
+    return 'Scor: $score';
+  }
+
+  @override
+  String get carCalibrationRecordTitle => 'Înregistrează eșantion';
+
+  @override
+  String get carCalibrationClass => 'Clasă';
+
+  @override
+  String get carCalibrationName => 'Numele eșantionului';
+
+  @override
+  String get carCalibrationRecord => 'Înregistrează 5 sec';
+
+  @override
+  String carCalibrationRecording(int s) {
+    return 'Înregistrare... ${s}s';
+  }
+
+  @override
+  String carCalibrationProfilesCount(int n) {
+    return 'Profiluri ($n)';
+  }
+
+  @override
+  String get carCalibrationEmpty => 'Niciun eșantion — înregistrează primul';
+
+  @override
+  String get carCalibrationDelete => 'Șterge';
+
+  @override
+  String carCalibrationDeleteConfirm(String name) {
+    return 'Ștergi \"$name\"?';
+  }
+
+  @override
+  String get carCalibrationReset => 'Resetează tot';
+
+  @override
+  String get carCalibrationResetConfirm => 'Ștergi toate profilurile de calibrare?';
+
+  @override
+  String get carCalibrationCancel => 'Anulează';
+
+  @override
+  String get carCalibrationConfirm => 'Șterge';
+
+  @override
+  String get carCalibrationLoadDemo => 'Încarcă profiluri demo';
+
+  @override
+  String get carCalibrationDemoPrefix => 'Demo';
+
+  @override
+  String carCalibrationDemoLoaded(int n) {
+    return 'Încărcate $n profiluri demo';
+  }
+
+  @override
+  String get profileClassCarClose => 'Mașină aproape';
+
+  @override
+  String get profileClassCarFar => 'Mașină departe';
+
+  @override
+  String get profileClassCarTruck => 'Camion';
+
+  @override
+  String get profileClassCarMotorcycle => 'Motocicletă';
+
+  @override
+  String get profileClassWind => 'Vânt';
+
+  @override
+  String get profileClassSteps => 'Pași';
+
+  @override
+  String get profileClassVoice => 'Voce';
+
+  @override
+  String get profileClassStreet => 'Stradă';
+
+  @override
+  String get profileClassMusic => 'Muzică';
+
+  @override
+  String get profileClassOther => 'Altele';
+
+  @override
+  String get ttsSource => 'Sursă TTS';
+
+  @override
+  String get ttsSourceOffline => 'Offline';
+
+  @override
+  String get ttsSourceSystem => 'Sistem';
+
+  @override
+  String get ttsSourceOfflineSubtitle => 'TTS neural integrat (recomandat, stabil pe toate dispozitivele)';
+
+  @override
+  String get ttsSourceSystemSubtitle => 'Motor TTS de sistem Android';
+
+  @override
+  String get ttsSourceSwitchedHint => 'Sursa TTS a fost schimbată';
+
+  @override
+  String get voicePackages => 'Pachete vocale';
+
+  @override
+  String get voicePackagesSubtitle => 'Modele TTS offline pentru limbi';
+
+  @override
+  String get voicePackagesDescription => 'Descarcă modele TTS neurale offline pentru ca vorbirea să funcționeze fără internet și să fie stabilă pe orice dispozitiv. Modelul rus este inclus în aplicație; restul pot fi descărcate aici.';
+
+  @override
+  String get voicePackageReady => 'Gata';
+
+  @override
+  String get voicePackageBundled => 'Inclus în aplicație';
+
+  @override
+  String get voicePackageDownload => 'Descarcă';
+
+  @override
+  String get voicePackageInstall => 'Instalează';
+
+  @override
+  String get voicePackageRetry => 'Reîncearcă';
+
+  @override
+  String get voicePackageDownloading => 'Se descarcă...';
+
+  @override
+  String get voicePackageExtracting => 'Se extrage...';
+
+  @override
+  String get voicePackageError => 'Eroare';
+
+  @override
+  String get voicePackageDelete => 'Șterge';
+
+  @override
+  String voicePackageInstalledSuccess(Object lang) {
+    return 'Modelul pentru \"$lang\" a fost instalat';
+  }
+
+  @override
+  String voicePackageInstalledFailed(Object lang) {
+    return 'Nu s-a putut instala modelul pentru \"$lang\"';
+  }
+
+  @override
+  String voicePackageDeleteConfirm(Object lang) {
+    return 'Ștergi modelul pentru \"$lang\"? Asta va elibera spațiu pe disc.';
+  }
 }

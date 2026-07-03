@@ -1989,4 +1989,190 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get carDetectionMicDenied => 'تم رفض إذن الميكروفون — لا يمكن الكشف';
+
+  @override
+  String get carCalibrationTitle => 'معايرة الكاشف';
+
+  @override
+  String get carCalibrationSubtitle => 'درّب الكاشف على أصواتك';
+
+  @override
+  String get carCalibrationMicDenied => 'تم رفض الميكروفون — لا يمكن المعايرة';
+
+  @override
+  String get carCalibrationLive => 'الطيف المباشر';
+
+  @override
+  String get carCalibrationModeClassify => 'الوضع: تصنيف';
+
+  @override
+  String get carCalibrationModeThreshold => 'الوضع: عتبة';
+
+  @override
+  String carCalibrationNearest(String cls, String dist) {
+    return 'الأقرب: $cls (d=$dist)';
+  }
+
+  @override
+  String get carCalibrationNoMatch => 'لا تطابق';
+
+  @override
+  String carCalibrationThresholdScore(String score) {
+    return 'النتيجة: $score';
+  }
+
+  @override
+  String get carCalibrationRecordTitle => 'تسجيل عينة';
+
+  @override
+  String get carCalibrationClass => 'الفئة';
+
+  @override
+  String get carCalibrationName => 'اسم العينة';
+
+  @override
+  String get carCalibrationRecord => 'تسجيل 5 ثوانٍ';
+
+  @override
+  String carCalibrationRecording(int s) {
+    return 'جارٍ التسجيل... $sث';
+  }
+
+  @override
+  String carCalibrationProfilesCount(int n) {
+    return 'الملفات الشخصية ($n)';
+  }
+
+  @override
+  String get carCalibrationEmpty => 'لا توجد عينات — سجل الأولى';
+
+  @override
+  String get carCalibrationDelete => 'حذف';
+
+  @override
+  String carCalibrationDeleteConfirm(String name) {
+    return 'حذف \"$name\"؟';
+  }
+
+  @override
+  String get carCalibrationReset => 'إعادة تعيين الكل';
+
+  @override
+  String get carCalibrationResetConfirm => 'حذف جميع ملفات المعايرة؟';
+
+  @override
+  String get carCalibrationCancel => 'إلغاء';
+
+  @override
+  String get carCalibrationConfirm => 'حذف';
+
+  @override
+  String get carCalibrationLoadDemo => 'تحميل ملفات تجريبية';
+
+  @override
+  String get carCalibrationDemoPrefix => 'تجريبي';
+
+  @override
+  String carCalibrationDemoLoaded(int n) {
+    return 'تم تحميل $n ملفات تجريبية';
+  }
+
+  @override
+  String get profileClassCarClose => 'سيارة قريبة';
+
+  @override
+  String get profileClassCarFar => 'سيارة بعيدة';
+
+  @override
+  String get profileClassCarTruck => 'شاحنة';
+
+  @override
+  String get profileClassCarMotorcycle => 'دراجة نارية';
+
+  @override
+  String get profileClassWind => 'رياح';
+
+  @override
+  String get profileClassSteps => 'خطوات';
+
+  @override
+  String get profileClassVoice => 'صوت';
+
+  @override
+  String get profileClassStreet => 'شارع';
+
+  @override
+  String get profileClassMusic => 'موسيقى';
+
+  @override
+  String get profileClassOther => 'أخرى';
+
+  @override
+  String get ttsSource => 'مصدر النطق';
+
+  @override
+  String get ttsSourceOffline => 'دون اتصال';
+
+  @override
+  String get ttsSourceSystem => 'النظام';
+
+  @override
+  String get ttsSourceOfflineSubtitle => 'نطق عصبي مدمج (موصى به، مستقر على جميع الأجهزة)';
+
+  @override
+  String get ttsSourceSystemSubtitle => 'محرك النطق الخاص بنظام أندرويد';
+
+  @override
+  String get ttsSourceSwitchedHint => 'تم تغيير مصدر النطق';
+
+  @override
+  String get voicePackages => 'حزم الأصوات';
+
+  @override
+  String get voicePackagesSubtitle => 'نماذج نطق دون اتصال للغات';
+
+  @override
+  String get voicePackagesDescription => 'حمّل نماذج النطق العصبية دون اتصال ليعمل النطق بدون إنترنت ويبقى مستقراً على أي جهاز. النموذج الروسي مضمّن في التطبيق؛ يمكن تحميل الباقي هنا.';
+
+  @override
+  String get voicePackageReady => 'جاهز';
+
+  @override
+  String get voicePackageBundled => 'مضمّن مع التطبيق';
+
+  @override
+  String get voicePackageDownload => 'تحميل';
+
+  @override
+  String get voicePackageInstall => 'تثبيت';
+
+  @override
+  String get voicePackageRetry => 'إعادة المحاولة';
+
+  @override
+  String get voicePackageDownloading => 'جارٍ التحميل...';
+
+  @override
+  String get voicePackageExtracting => 'جارٍ الاستخراج...';
+
+  @override
+  String get voicePackageError => 'خطأ';
+
+  @override
+  String get voicePackageDelete => 'حذف';
+
+  @override
+  String voicePackageInstalledSuccess(Object lang) {
+    return 'تم تثبيت نموذج \"$lang\"';
+  }
+
+  @override
+  String voicePackageInstalledFailed(Object lang) {
+    return 'فشل تثبيت نموذج \"$lang\"';
+  }
+
+  @override
+  String voicePackageDeleteConfirm(Object lang) {
+    return 'حذف نموذج \"$lang\"؟ سيؤدي ذلك إلى تحرير مساحة.';
+  }
 }

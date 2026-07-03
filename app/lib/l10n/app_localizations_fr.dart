@@ -1989,4 +1989,190 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get carDetectionMicDenied => 'Autorisation du micro refusée — détection impossible';
+
+  @override
+  String get carCalibrationTitle => 'Calibrage du détecteur';
+
+  @override
+  String get carCalibrationSubtitle => 'Entraînez le détecteur sur vos sons';
+
+  @override
+  String get carCalibrationMicDenied => 'Microphone refusé — calibrage impossible';
+
+  @override
+  String get carCalibrationLive => 'Spectre en direct';
+
+  @override
+  String get carCalibrationModeClassify => 'Mode : classification';
+
+  @override
+  String get carCalibrationModeThreshold => 'Mode : seuil';
+
+  @override
+  String carCalibrationNearest(String cls, String dist) {
+    return 'Le plus proche : $cls (d=$dist)';
+  }
+
+  @override
+  String get carCalibrationNoMatch => 'Pas de correspondance';
+
+  @override
+  String carCalibrationThresholdScore(String score) {
+    return 'Score : $score';
+  }
+
+  @override
+  String get carCalibrationRecordTitle => 'Enregistrer un échantillon';
+
+  @override
+  String get carCalibrationClass => 'Classe';
+
+  @override
+  String get carCalibrationName => 'Nom de l\'échantillon';
+
+  @override
+  String get carCalibrationRecord => 'Enregistrer 5 s';
+
+  @override
+  String carCalibrationRecording(int s) {
+    return 'Enregistrement... ${s}s';
+  }
+
+  @override
+  String carCalibrationProfilesCount(int n) {
+    return 'Profils ($n)';
+  }
+
+  @override
+  String get carCalibrationEmpty => 'Aucun échantillon — enregistrez le premier';
+
+  @override
+  String get carCalibrationDelete => 'Supprimer';
+
+  @override
+  String carCalibrationDeleteConfirm(String name) {
+    return 'Supprimer « $name » ?';
+  }
+
+  @override
+  String get carCalibrationReset => 'Tout réinitialiser';
+
+  @override
+  String get carCalibrationResetConfirm => 'Supprimer tous les profils de calibrage ?';
+
+  @override
+  String get carCalibrationCancel => 'Annuler';
+
+  @override
+  String get carCalibrationConfirm => 'Supprimer';
+
+  @override
+  String get carCalibrationLoadDemo => 'Charger profils démo';
+
+  @override
+  String get carCalibrationDemoPrefix => 'Démo';
+
+  @override
+  String carCalibrationDemoLoaded(int n) {
+    return '$n profils démo chargés';
+  }
+
+  @override
+  String get profileClassCarClose => 'Voiture proche';
+
+  @override
+  String get profileClassCarFar => 'Voiture loin';
+
+  @override
+  String get profileClassCarTruck => 'Camion';
+
+  @override
+  String get profileClassCarMotorcycle => 'Moto';
+
+  @override
+  String get profileClassWind => 'Vent';
+
+  @override
+  String get profileClassSteps => 'Pas';
+
+  @override
+  String get profileClassVoice => 'Voix';
+
+  @override
+  String get profileClassStreet => 'Rue';
+
+  @override
+  String get profileClassMusic => 'Musique';
+
+  @override
+  String get profileClassOther => 'Autre';
+
+  @override
+  String get ttsSource => 'Source TTS';
+
+  @override
+  String get ttsSourceOffline => 'Hors ligne';
+
+  @override
+  String get ttsSourceSystem => 'Système';
+
+  @override
+  String get ttsSourceOfflineSubtitle => 'TTS neuronal intégré (recommandé, stable sur tous les appareils)';
+
+  @override
+  String get ttsSourceSystemSubtitle => 'Moteur TTS système Android';
+
+  @override
+  String get ttsSourceSwitchedHint => 'Source TTS modifiée';
+
+  @override
+  String get voicePackages => 'Paquets vocaux';
+
+  @override
+  String get voicePackagesSubtitle => 'Modèles TTS hors ligne pour les langues';
+
+  @override
+  String get voicePackagesDescription => 'Téléchargez des modèles TTS neuronaux hors ligne pour que la synthèse fonctionne sans internet et reste stable sur tout appareil. Le modèle russe est inclus ; les autres peuvent être téléchargés ici.';
+
+  @override
+  String get voicePackageReady => 'Prêt';
+
+  @override
+  String get voicePackageBundled => 'Inclus avec l\'application';
+
+  @override
+  String get voicePackageDownload => 'Télécharger';
+
+  @override
+  String get voicePackageInstall => 'Installer';
+
+  @override
+  String get voicePackageRetry => 'Réessayer';
+
+  @override
+  String get voicePackageDownloading => 'Téléchargement...';
+
+  @override
+  String get voicePackageExtracting => 'Extraction...';
+
+  @override
+  String get voicePackageError => 'Erreur';
+
+  @override
+  String get voicePackageDelete => 'Supprimer';
+
+  @override
+  String voicePackageInstalledSuccess(Object lang) {
+    return 'Modèle pour « $lang » installé';
+  }
+
+  @override
+  String voicePackageInstalledFailed(Object lang) {
+    return 'Échec d\'installation du modèle pour « $lang »';
+  }
+
+  @override
+  String voicePackageDeleteConfirm(Object lang) {
+    return 'Supprimer le modèle pour « $lang » ? Cela libère de l\'espace.';
+  }
 }

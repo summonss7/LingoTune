@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lingotune/l10n/app_localizations.dart';
+import '../../screens/car_calibration_screen.dart';
 import '../../services/settings_provider.dart';
 
 /// Настройки детекции автомобилей через микрофон.
@@ -30,6 +31,24 @@ class CarDetectionSettingsTile extends StatelessWidget {
         onChanged: (value) => settings.setCarDetectionEnabled(value),
       ),
       children: [
+        // --- Калибровка детектора (v5.4.0) ---
+        // Открывает экран записи/загрузки эталонов звуков. При наличии
+        // ≥1 car + ≥1 noise профиля детектор переключается с пороговой
+        // логики на Mahalanobis-классификацию по эталонам.
+        ListTile(
+          leading: const Icon(Icons.tune),
+          title: Text(l10n.carCalibrationTitle),
+          subtitle: Text(l10n.carCalibrationSubtitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const CarCalibrationScreen(),
+              ),
+            );
+          },
+        ),
+        const Divider(),
         // --- Чувствительность ---
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),

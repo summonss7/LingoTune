@@ -3760,6 +3760,342 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Microphone permission denied — cannot detect cars'**
   String get carDetectionMicDenied;
+
+  /// No description provided for @carCalibrationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Detector calibration'**
+  String get carCalibrationTitle;
+
+  /// No description provided for @carCalibrationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Train detector on your sounds'**
+  String get carCalibrationSubtitle;
+
+  /// No description provided for @carCalibrationMicDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone permission denied — calibration impossible'**
+  String get carCalibrationMicDenied;
+
+  /// No description provided for @carCalibrationLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live spectrum'**
+  String get carCalibrationLive;
+
+  /// No description provided for @carCalibrationModeClassify.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode: classify'**
+  String get carCalibrationModeClassify;
+
+  /// No description provided for @carCalibrationModeThreshold.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode: threshold'**
+  String get carCalibrationModeThreshold;
+
+  /// No description provided for @carCalibrationNearest.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearest: {cls} (d={dist})'**
+  String carCalibrationNearest(String cls, String dist);
+
+  /// No description provided for @carCalibrationNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No match'**
+  String get carCalibrationNoMatch;
+
+  /// No description provided for @carCalibrationThresholdScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Score: {score}'**
+  String carCalibrationThresholdScore(String score);
+
+  /// No description provided for @carCalibrationRecordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Record sample'**
+  String get carCalibrationRecordTitle;
+
+  /// No description provided for @carCalibrationClass.
+  ///
+  /// In en, this message translates to:
+  /// **'Class'**
+  String get carCalibrationClass;
+
+  /// No description provided for @carCalibrationName.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample name'**
+  String get carCalibrationName;
+
+  /// No description provided for @carCalibrationRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Record 5 sec'**
+  String get carCalibrationRecord;
+
+  /// No description provided for @carCalibrationRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording... {s}s'**
+  String carCalibrationRecording(int s);
+
+  /// No description provided for @carCalibrationProfilesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Profiles ({n})'**
+  String carCalibrationProfilesCount(int n);
+
+  /// No description provided for @carCalibrationEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No samples yet — record your first'**
+  String get carCalibrationEmpty;
+
+  /// No description provided for @carCalibrationDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get carCalibrationDelete;
+
+  /// No description provided for @carCalibrationDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"?'**
+  String carCalibrationDeleteConfirm(String name);
+
+  /// No description provided for @carCalibrationReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset all'**
+  String get carCalibrationReset;
+
+  /// No description provided for @carCalibrationResetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all calibration profiles?'**
+  String get carCalibrationResetConfirm;
+
+  /// No description provided for @carCalibrationCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get carCalibrationCancel;
+
+  /// No description provided for @carCalibrationConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get carCalibrationConfirm;
+
+  /// No description provided for @carCalibrationLoadDemo.
+  ///
+  /// In en, this message translates to:
+  /// **'Load demo profiles'**
+  String get carCalibrationLoadDemo;
+
+  /// No description provided for @carCalibrationDemoPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo'**
+  String get carCalibrationDemoPrefix;
+
+  /// No description provided for @carCalibrationDemoLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Loaded {n} demo profiles'**
+  String carCalibrationDemoLoaded(int n);
+
+  /// No description provided for @profileClassCarClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Car close'**
+  String get profileClassCarClose;
+
+  /// No description provided for @profileClassCarFar.
+  ///
+  /// In en, this message translates to:
+  /// **'Car far'**
+  String get profileClassCarFar;
+
+  /// No description provided for @profileClassCarTruck.
+  ///
+  /// In en, this message translates to:
+  /// **'Truck'**
+  String get profileClassCarTruck;
+
+  /// No description provided for @profileClassCarMotorcycle.
+  ///
+  /// In en, this message translates to:
+  /// **'Motorcycle'**
+  String get profileClassCarMotorcycle;
+
+  /// No description provided for @profileClassWind.
+  ///
+  /// In en, this message translates to:
+  /// **'Wind'**
+  String get profileClassWind;
+
+  /// No description provided for @profileClassSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps'**
+  String get profileClassSteps;
+
+  /// No description provided for @profileClassVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice'**
+  String get profileClassVoice;
+
+  /// No description provided for @profileClassStreet.
+  ///
+  /// In en, this message translates to:
+  /// **'Street'**
+  String get profileClassStreet;
+
+  /// No description provided for @profileClassMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Music'**
+  String get profileClassMusic;
+
+  /// No description provided for @profileClassOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get profileClassOther;
+
+  /// No description provided for @ttsSource.
+  ///
+  /// In en, this message translates to:
+  /// **'TTS source'**
+  String get ttsSource;
+
+  /// No description provided for @ttsSourceOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get ttsSourceOffline;
+
+  /// No description provided for @ttsSourceSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get ttsSourceSystem;
+
+  /// No description provided for @ttsSourceOfflineSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in neural TTS (recommended, stable on all devices)'**
+  String get ttsSourceOfflineSubtitle;
+
+  /// No description provided for @ttsSourceSystemSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Android system TTS engine'**
+  String get ttsSourceSystemSubtitle;
+
+  /// No description provided for @ttsSourceSwitchedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'TTS source switched'**
+  String get ttsSourceSwitchedHint;
+
+  /// No description provided for @voicePackages.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice packages'**
+  String get voicePackages;
+
+  /// No description provided for @voicePackagesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline TTS models for languages'**
+  String get voicePackagesSubtitle;
+
+  /// No description provided for @voicePackagesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Download offline neural TTS models so speech works without internet and stays stable on any device. The Russian model is bundled with the app; others can be downloaded here.'**
+  String get voicePackagesDescription;
+
+  /// No description provided for @voicePackageReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get voicePackageReady;
+
+  /// No description provided for @voicePackageBundled.
+  ///
+  /// In en, this message translates to:
+  /// **'Bundled with the app'**
+  String get voicePackageBundled;
+
+  /// No description provided for @voicePackageDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get voicePackageDownload;
+
+  /// No description provided for @voicePackageInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get voicePackageInstall;
+
+  /// No description provided for @voicePackageRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get voicePackageRetry;
+
+  /// No description provided for @voicePackageDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading...'**
+  String get voicePackageDownloading;
+
+  /// No description provided for @voicePackageExtracting.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracting...'**
+  String get voicePackageExtracting;
+
+  /// No description provided for @voicePackageError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get voicePackageError;
+
+  /// No description provided for @voicePackageDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get voicePackageDelete;
+
+  /// No description provided for @voicePackageInstalledSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Model for \"{lang}\" installed'**
+  String voicePackageInstalledSuccess(Object lang);
+
+  /// No description provided for @voicePackageInstalledFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to install model for \"{lang}\"'**
+  String voicePackageInstalledFailed(Object lang);
+
+  /// No description provided for @voicePackageDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete model for \"{lang}\"? This frees up disk space.'**
+  String voicePackageDeleteConfirm(Object lang);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

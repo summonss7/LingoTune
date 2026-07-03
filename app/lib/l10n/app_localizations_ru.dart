@@ -1989,4 +1989,190 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get carDetectionMicDenied => 'Доступ к микрофону запрещён — детекция невозможна';
+
+  @override
+  String get carCalibrationTitle => 'Калибровка детектора';
+
+  @override
+  String get carCalibrationSubtitle => 'Обучить детектор на ваших звуках';
+
+  @override
+  String get carCalibrationMicDenied => 'Нет доступа к микрофону — калибровка невозможна';
+
+  @override
+  String get carCalibrationLive => 'Live-спектр';
+
+  @override
+  String get carCalibrationModeClassify => 'Режим: классификация';
+
+  @override
+  String get carCalibrationModeThreshold => 'Режим: пороги';
+
+  @override
+  String carCalibrationNearest(String cls, String dist) {
+    return 'Ближайший: $cls (d=$dist)';
+  }
+
+  @override
+  String get carCalibrationNoMatch => 'Нет совпадения';
+
+  @override
+  String carCalibrationThresholdScore(String score) {
+    return 'Очки: $score';
+  }
+
+  @override
+  String get carCalibrationRecordTitle => 'Записать эталон';
+
+  @override
+  String get carCalibrationClass => 'Класс';
+
+  @override
+  String get carCalibrationName => 'Имя эталона';
+
+  @override
+  String get carCalibrationRecord => 'Записать 5 сек';
+
+  @override
+  String carCalibrationRecording(int s) {
+    return 'Запись... $s с';
+  }
+
+  @override
+  String carCalibrationProfilesCount(int n) {
+    return 'Эталоны ($n)';
+  }
+
+  @override
+  String get carCalibrationEmpty => 'Эталонов нет — запишите первый';
+
+  @override
+  String get carCalibrationDelete => 'Удалить';
+
+  @override
+  String carCalibrationDeleteConfirm(String name) {
+    return 'Удалить \"$name\"?';
+  }
+
+  @override
+  String get carCalibrationReset => 'Сбросить всё';
+
+  @override
+  String get carCalibrationResetConfirm => 'Удалить все эталоны?';
+
+  @override
+  String get carCalibrationCancel => 'Отмена';
+
+  @override
+  String get carCalibrationConfirm => 'Удалить';
+
+  @override
+  String get carCalibrationLoadDemo => 'Загрузить демо-эталоны';
+
+  @override
+  String get carCalibrationDemoPrefix => 'Демо';
+
+  @override
+  String carCalibrationDemoLoaded(int n) {
+    return 'Загружено $n демо-эталонов';
+  }
+
+  @override
+  String get profileClassCarClose => 'Машина близко';
+
+  @override
+  String get profileClassCarFar => 'Машина далеко';
+
+  @override
+  String get profileClassCarTruck => 'Грузовик';
+
+  @override
+  String get profileClassCarMotorcycle => 'Мотоцикл';
+
+  @override
+  String get profileClassWind => 'Ветер';
+
+  @override
+  String get profileClassSteps => 'Шаги';
+
+  @override
+  String get profileClassVoice => 'Голос';
+
+  @override
+  String get profileClassStreet => 'Улица';
+
+  @override
+  String get profileClassMusic => 'Музыка';
+
+  @override
+  String get profileClassOther => 'Прочее';
+
+  @override
+  String get ttsSource => 'Источник озвучки';
+
+  @override
+  String get ttsSourceOffline => 'Офлайн';
+
+  @override
+  String get ttsSourceSystem => 'Системный';
+
+  @override
+  String get ttsSourceOfflineSubtitle => 'Встроенный нейро-TTS (рекомендуется, стабильно на всех устройствах)';
+
+  @override
+  String get ttsSourceSystemSubtitle => 'Системный движок Android';
+
+  @override
+  String get ttsSourceSwitchedHint => 'Источник озвучки переключён';
+
+  @override
+  String get voicePackages => 'Голосовые пакеты';
+
+  @override
+  String get voicePackagesSubtitle => 'Офлайн-TTS модели для языков';
+
+  @override
+  String get voicePackagesDescription => 'Скачивайте офлайн-нейро TTS модели, чтобы озвучка работала без интернета и была стабильной на любом устройстве. Русская модель встроена в приложение; остальные можно скачать здесь.';
+
+  @override
+  String get voicePackageReady => 'Готово';
+
+  @override
+  String get voicePackageBundled => 'Встроен в приложение';
+
+  @override
+  String get voicePackageDownload => 'Скачать';
+
+  @override
+  String get voicePackageInstall => 'Установить';
+
+  @override
+  String get voicePackageRetry => 'Повторить';
+
+  @override
+  String get voicePackageDownloading => 'Скачивается...';
+
+  @override
+  String get voicePackageExtracting => 'Распаковывается...';
+
+  @override
+  String get voicePackageError => 'Ошибка';
+
+  @override
+  String get voicePackageDelete => 'Удалить';
+
+  @override
+  String voicePackageInstalledSuccess(Object lang) {
+    return 'Модель для \"$lang\" установлена';
+  }
+
+  @override
+  String voicePackageInstalledFailed(Object lang) {
+    return 'Не удалось установить модель для \"$lang\"';
+  }
+
+  @override
+  String voicePackageDeleteConfirm(Object lang) {
+    return 'Удалить модель для \"$lang\"? Это освободит место на диске.';
+  }
 }

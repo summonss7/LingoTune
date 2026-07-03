@@ -1989,4 +1989,190 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get carDetectionMicDenied => 'Permissão de microfone negada — detecção impossível';
+
+  @override
+  String get carCalibrationTitle => 'Calibração do detector';
+
+  @override
+  String get carCalibrationSubtitle => 'Treine o detector com seus sons';
+
+  @override
+  String get carCalibrationMicDenied => 'Microfone negado — calibração impossível';
+
+  @override
+  String get carCalibrationLive => 'Espectro ao vivo';
+
+  @override
+  String get carCalibrationModeClassify => 'Modo: classificar';
+
+  @override
+  String get carCalibrationModeThreshold => 'Modo: limite';
+
+  @override
+  String carCalibrationNearest(String cls, String dist) {
+    return 'Mais próximo: $cls (d=$dist)';
+  }
+
+  @override
+  String get carCalibrationNoMatch => 'Sem correspondência';
+
+  @override
+  String carCalibrationThresholdScore(String score) {
+    return 'Pontuação: $score';
+  }
+
+  @override
+  String get carCalibrationRecordTitle => 'Gravar amostra';
+
+  @override
+  String get carCalibrationClass => 'Classe';
+
+  @override
+  String get carCalibrationName => 'Nome da amostra';
+
+  @override
+  String get carCalibrationRecord => 'Gravar 5 s';
+
+  @override
+  String carCalibrationRecording(int s) {
+    return 'Gravando... ${s}s';
+  }
+
+  @override
+  String carCalibrationProfilesCount(int n) {
+    return 'Perfis ($n)';
+  }
+
+  @override
+  String get carCalibrationEmpty => 'Sem amostras — grave a primeira';
+
+  @override
+  String get carCalibrationDelete => 'Excluir';
+
+  @override
+  String carCalibrationDeleteConfirm(String name) {
+    return 'Excluir \"$name\"?';
+  }
+
+  @override
+  String get carCalibrationReset => 'Redefinir tudo';
+
+  @override
+  String get carCalibrationResetConfirm => 'Excluir todos os perfis de calibração?';
+
+  @override
+  String get carCalibrationCancel => 'Cancelar';
+
+  @override
+  String get carCalibrationConfirm => 'Excluir';
+
+  @override
+  String get carCalibrationLoadDemo => 'Carregar perfis demo';
+
+  @override
+  String get carCalibrationDemoPrefix => 'Demo';
+
+  @override
+  String carCalibrationDemoLoaded(int n) {
+    return '$n perfis demo carregados';
+  }
+
+  @override
+  String get profileClassCarClose => 'Carro perto';
+
+  @override
+  String get profileClassCarFar => 'Carro longe';
+
+  @override
+  String get profileClassCarTruck => 'Caminhão';
+
+  @override
+  String get profileClassCarMotorcycle => 'Moto';
+
+  @override
+  String get profileClassWind => 'Vento';
+
+  @override
+  String get profileClassSteps => 'Passos';
+
+  @override
+  String get profileClassVoice => 'Voz';
+
+  @override
+  String get profileClassStreet => 'Rua';
+
+  @override
+  String get profileClassMusic => 'Música';
+
+  @override
+  String get profileClassOther => 'Outro';
+
+  @override
+  String get ttsSource => 'Fonte TTS';
+
+  @override
+  String get ttsSourceOffline => 'Offline';
+
+  @override
+  String get ttsSourceSystem => 'Sistema';
+
+  @override
+  String get ttsSourceOfflineSubtitle => 'TTS neural integrado (recomendado, estável em todos os dispositivos)';
+
+  @override
+  String get ttsSourceSystemSubtitle => 'Motor TTS do sistema Android';
+
+  @override
+  String get ttsSourceSwitchedHint => 'Fonte TTS alterada';
+
+  @override
+  String get voicePackages => 'Pacotes de voz';
+
+  @override
+  String get voicePackagesSubtitle => 'Modelos TTS offline para idiomas';
+
+  @override
+  String get voicePackagesDescription => 'Baixe modelos TTS neurais offline para que a fala funcione sem internet e permaneça estável em qualquer dispositivo. O modelo russo está incluído; os outros podem ser baixados aqui.';
+
+  @override
+  String get voicePackageReady => 'Pronto';
+
+  @override
+  String get voicePackageBundled => 'Incluído no aplicativo';
+
+  @override
+  String get voicePackageDownload => 'Baixar';
+
+  @override
+  String get voicePackageInstall => 'Instalar';
+
+  @override
+  String get voicePackageRetry => 'Tentar novamente';
+
+  @override
+  String get voicePackageDownloading => 'Baixando...';
+
+  @override
+  String get voicePackageExtracting => 'Extraindo...';
+
+  @override
+  String get voicePackageError => 'Erro';
+
+  @override
+  String get voicePackageDelete => 'Excluir';
+
+  @override
+  String voicePackageInstalledSuccess(Object lang) {
+    return 'Modelo para \"$lang\" instalado';
+  }
+
+  @override
+  String voicePackageInstalledFailed(Object lang) {
+    return 'Falha ao instalar o modelo para \"$lang\"';
+  }
+
+  @override
+  String voicePackageDeleteConfirm(Object lang) {
+    return 'Excluir o modelo para \"$lang\"? Isso libera espaço.';
+  }
 }

@@ -17,6 +17,8 @@ import '../widgets/settings/default_auto_scroll_focus_offset_control.dart';
 import '../widgets/settings/timestamp_offset_control.dart';
 import '../widgets/settings/lyrics_position_offset_control.dart';
 import '../widgets/settings/tts_engine_settings_tile.dart';
+import '../widgets/settings/tts_source_tile.dart';
+import '../widgets/settings/voice_packages_tile.dart';
 import '../widgets/settings/car_detection_settings_tile.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -387,6 +389,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const TtsEngineSettingsTile(),
+          const TtsSourceSettingsTile(),
+          const VoicePackagesTile(),
           const Divider(),
           const CarDetectionSettingsTile(),
           ListTile(

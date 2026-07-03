@@ -1,30 +1,27 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'tts/offline_tts_engine.dart';
+import 'tts/system_tts_engine.dart';
+import 'tts/tts_engine.dart';
 
 /// Приоритет TTS-запроса. Определяет поведение при конфликте.
 ///
-/// Причина введения: `flutter_tts` использует единый `MethodChannel('flutter_tts')`
-/// на всё приложение — два экземпляра `FlutterTts` перетирают друг другу
-/// `setCompletionHandler`/`setErrorHandler`, из-за чего TTS study mode
-/// «зависал» после срабатывания детекции машин (watchdog убивал озвучку
-/// перевода на всю сессию).
-///
-/// [TtsCoordinator] — единственный держатель `FlutterTts` в приложении;
-/// все запросы на речь идут через [speak] с приоритетом.
+/// Причина введения (в версии 5.3.2): разные источники TTS (study mode и
+/// alert детекции машин) не должны перебивать друг друга. Координатор хранит
+/// единую очередь запросов с приоритетами и маршрутизирует их в активный
+/// [TtsEngine].
 enum TtsPriority {
   /// Озвучка перевода в study mode. Высший приоритет.
   ///
-  /// Если в момент запроса уже звучит alert — он прерывается (completer
-  /// alert-запроса завершается немедленно, чтобы alert-логика не ждала).
+  /// Если в момент запроса уже звучит alert — он прерывается.
   study,
 
   /// Голосовое предупреждение детекции машин. Низший приоритет.
   ///
   /// Если в момент запроса звучит перевод (study) — alert **пропускается**
-  /// (completer завершается сразу, без фактического вызова speak). Это
+  /// (Future завершается сразу, без фактического вызова speak). Это
   /// гарантирует, что детекция никогда не перебивает перевод.
   alert,
 }
@@ -51,67 +48,176 @@ class _TtsRequest {
 
 /// Единый координатор синтеза речи для всего приложения.
 ///
-/// Один `FlutterTts`, одна пара `setCompletionHandler`/`setErrorHandler`.
-/// Запросы [speak] упорядочены по приоритету: study-mode перевод всегда
-/// доминирует над alert-голосом детекции машин (см. [TtsPriority]).
+/// Архитектура (с версии 5.5.0): координатор держит **полиморфный**
+/// [TtsEngine] (`SystemTtsEngine` или `OfflineTtsEngine`), выбираемый по
+/// настройке `ttsSource`. Все запросы речи упорядочены по приоритету:
+/// study-mode перевод всегда доминирует над alert-голосом детекции машин.
 ///
-/// Конфигурационные методы (`setLanguage`, `isLanguageAvailable`, `setEngine`,
-/// `getVoices`, `setVoice` и т.д.) делегируются через геттер [tts] — StudyMode
-/// вызывает их напрямую для настройки движка/языка, а речь — через [speak].
-class TtsCoordinator {
+/// Источник движка меняется через [setTtsSource]. Координатор отвечает за:
+/// 1. Создание/утилизацию `TtsEngine` (free нативной памяти при смене).
+/// 2. Приоритетную очередь ([speak] / [stop]).
+/// 3. Проксирование диагностических геттеров ([activeEngine], ...) наружу.
+///
+/// Конфигурация языка и движка делегируется в активный `TtsEngine`.
+class TtsCoordinator extends ChangeNotifier {
   TtsCoordinator._();
   static final TtsCoordinator instance = TtsCoordinator._();
 
-  final FlutterTts _tts = FlutterTts();
+  TtsEngine? _engine;
+
+  /// Текущий активный запрос (для приоритетной очереди). null = ничего не
+  /// говорится.
   _TtsRequest? _current;
+
+  /// Выбранный источник (соответствует `_engine.source` когда engine создан).
+  TtsSource _source = TtsSource.offline;
+
+  /// Текущий язык перевода ('ru', 'en', ...). Сохраняется между сменами
+  /// движка, чтобы новый engine применял тот же язык.
+  String _languageCode = 'ru';
+
   bool _initialized = false;
 
-  // Engine/language state (для диагностики и для applyConfiguredEngine).
-  List<String> _availableEngines = const [];
-  String? _activeEngine;
-  String? _selectedEngine;
+  // -------------------------------------------------------------------
+  // Engine management
+  // -------------------------------------------------------------------
 
-  /// Прямой доступ к underlying FlutterTts — ТОЛЬКО для конфигурации
-  /// (setLanguage, isLanguageAvailable, setEngine, getVoices, setVoice,
-  /// getDefaultEngine, setPitch/setVolume когда нет речи). Речь —
-  /// ИСКЛЮЧИТЕЛЬНО через [speak] / [stop], чтобы приоритеты соблюдались.
-  FlutterTts get tts => _tts;
+  /// Текущий движок (или null до первого [ensureInitialized]).
+  TtsEngine? get engine => _engine;
 
-  bool get isInitialized => _initialized;
-  bool get isSpeaking => _current != null;
-  List<String> get availableEngines => List.unmodifiable(_availableEngines);
-  String? get activeEngine => _activeEngine;
-  String? get selectedEngine => _selectedEngine;
+  /// Текущий источник (offline/system). Может меняться через [setTtsSource].
+  TtsSource get currentSource => _source;
 
-  /// Ленивая инициализация (идемпотентная). Должна вызываться до первого
-  /// speak(). Handlers ставятся ОДИН раз — повторная установка не нужна,
-  /// т.к. _tts инстанс единственный на приложение.
-  Future<void> ensureInitialized() async {
-    if (_initialized) return;
-    _initialized = true;
+  /// Текущий язык перевода.
+  String get languageCode => _languageCode;
 
-    try {
-      final result = await _tts.getEngines;
-      _availableEngines = (result as List<dynamic>? ?? const [])
-          .map((e) => e.toString())
-          .toList();
-      debugPrint('🎧 TtsCoordinator: engines = $_availableEngines');
-    } catch (e) {
-      debugPrint('⚠ TtsCoordinator: getEngines error: $e');
+  /// Переключает источник TTS. Создаёт новый [TtsEngine] соответствующего
+  /// типа, инициализирует его и применяет текущий язык. Старый engine
+  /// останавливается (с прерыванием активной речи) и dispose'ится.
+  ///
+  /// Если новый source совпадает с текущим — no-op (engine уже корректен).
+  Future<void> setTtsSource(
+    TtsSource source, {
+    String? languageCode,
+  }) async {
+    if (languageCode != null) _languageCode = languageCode;
+
+    if (_initialized && _source == source && _engine != null) {
+      // Тот же источник — только перер_apply язык если нужно.
+      try {
+        await _engine!.setLanguage(_languageCode);
+      } catch (e) {
+        debugPrint('⚠ TtsCoordinator: setLanguage on existing engine: $e');
+      }
+      return;
     }
 
-    await _applyConfiguredEngine();
+    debugPrint('🔄 TtsCoordinator: switching source → $source');
 
-    // ЕДИНСТВЕННОЕ место установки handlers на всё приложение.
-    _tts.setCompletionHandler(_handleCompletion);
-    _tts.setErrorHandler((e) => _handleError(e));
+    // Останавливаем активную речь и текущий engine.
+    await _interruptCurrent();
+    final oldEngine = _engine;
+    _engine = null;
+    if (oldEngine != null) {
+      oldEngine.removeListener(_onEngineChanged);
+      try {
+        oldEngine.dispose();
+      } catch (e) {
+        debugPrint('⚠ TtsCoordinator: old engine dispose: $e');
+      }
+    }
 
-    debugPrint('✓ TtsCoordinator: initialized (engine=$_selectedEngine)');
+    // Создаём новый engine.
+    final TtsEngine newEngine;
+    switch (source) {
+      case TtsSource.offline:
+        newEngine = OfflineTtsEngine();
+        break;
+      case TtsSource.system:
+        newEngine = SystemTtsEngine();
+        break;
+    }
+    newEngine.addListener(_onEngineChanged);
+
+    try {
+      await newEngine.initialize();
+      await newEngine.setLanguage(_languageCode);
+    } catch (e, st) {
+      debugPrint('✗ TtsCoordinator: new engine init failed: $e\n$st');
+      // Fallback: если offline не смог — попробуем system.
+      if (source == TtsSource.offline) {
+        debugPrint('↩ TtsCoordinator: fallback to SystemTtsEngine');
+        newEngine.removeListener(_onEngineChanged);
+        try {
+          newEngine.dispose();
+        } catch (_) {}
+        final fb = SystemTtsEngine();
+        fb.addListener(_onEngineChanged);
+        try {
+          await fb.initialize();
+          await fb.setLanguage(_languageCode);
+          _engine = fb;
+          _source = TtsSource.system;
+        } catch (e2) {
+          debugPrint('✗ TtsCoordinator: even system engine failed: $e2');
+          fb.removeListener(_onEngineChanged);
+        }
+      } else {
+        newEngine.removeListener(_onEngineChanged);
+      }
+      _initialized = _engine != null;
+      notifyListeners();
+      return;
+    }
+
+    _engine = newEngine;
+    _source = source;
+    _initialized = true;
+    debugPrint('✓ TtsCoordinator: source=$source ready');
+    notifyListeners();
   }
 
-  // -------------------------------------------------------------------------
-  // Speak / Stop — единственный путь речи в приложении
-  // -------------------------------------------------------------------------
+  void _onEngineChanged() {
+    notifyListeners();
+  }
+
+  // -------------------------------------------------------------------
+  // Initialization / language / engine config
+  // -------------------------------------------------------------------
+
+  /// Ленивая идемпотентная инициализация. Если source уже задан —
+  /// создаёт engine. Безопасна для повторных вызовов.
+  Future<void> ensureInitialized() async {
+    if (_initialized && _engine != null) return;
+    await setTtsSource(_source, languageCode: _languageCode);
+  }
+
+  /// Сменить язык перевода (делегирует в engine).
+  Future<void> setLanguage(String languageCode) async {
+    _languageCode = languageCode;
+    if (_engine != null) {
+      try {
+        await _engine!.setLanguage(languageCode);
+      } catch (e) {
+        debugPrint('⚠ TtsCoordinator: setLanguage($languageCode): $e');
+      }
+    }
+  }
+
+  /// Повторно применяет сконфигурированный в настройках движок (для системы
+  /// — `setEngine`, для офлайна — no-op). Делегируется из StudyModeService.
+  Future<void> applyConfiguredEngine() async {
+    if (_engine == null) return;
+    try {
+      await _engine!.applyConfiguredEngine();
+    } catch (e) {
+      debugPrint('⚠ TtsCoordinator: applyConfiguredEngine: $e');
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // Speak / Stop — приоритетная очередь
+  // -------------------------------------------------------------------
 
   /// Произносит [text] с заданным [priority]. Future завершается, когда речь
   /// закончена, либо когда запрос был пропущен/вытеснен.
@@ -132,7 +238,10 @@ class TtsCoordinator {
     double? volume,
   }) async {
     await ensureInitialized();
-    final completer = Completer<void>();
+    if (_engine == null) {
+      debugPrint('✗ TtsCoordinator: no engine after init, dropping speak');
+      return;
+    }
 
     // Alert во время study → сразу отказываем (без прерывания перевода).
     if (priority == TtsPriority.alert &&
@@ -142,9 +251,10 @@ class TtsCoordinator {
       return;
     }
 
-    // Прерываем текущий запрос (если есть), завершая его completer.
+    // Прерываем текущий запрос, завершая его completer.
     await _interruptCurrent();
 
+    final completer = Completer<void>();
     final req = _TtsRequest(
       text: text,
       priority: priority,
@@ -156,46 +266,41 @@ class TtsCoordinator {
     );
     _current = req;
 
-    // Применяем параметры речи прямо перед speak — минимизирует гонки.
-    if (locale != null) {
+    // Применяем язык если передан (например alert с другим locale).
+    if (locale != null && locale.isNotEmpty) {
       try {
-        await _tts.setLanguage(locale);
-      } catch (e) {
-        debugPrint('⚠ TtsCoordinator: setLanguage($locale) error: $e');
-      }
-    }
-    if (rate != null) {
-      try {
-        await _tts.setSpeechRate(rate);
-      } catch (_) {}
-    }
-    if (pitch != null) {
-      try {
-        await _tts.setPitch(pitch);
-      } catch (_) {}
-    }
-    if (volume != null) {
-      try {
-        await _tts.setVolume(volume);
+        await _engine!.setLanguage(locale);
       } catch (_) {}
     }
 
-    try {
-      await _tts.speak(text);
-    } catch (e) {
-      debugPrint('✗ TtsCoordinator: speak() error: $e');
-      _current = null;
-      if (!completer.isCompleted) completer.complete();
-    }
+    // Запускаем engine.speak без await; completion / interrupt
+    // синхронизируются с _current через identical-проверку.
+    _engine!.speak(
+      text,
+      rate: rate ?? 0.5,
+      pitch: pitch,
+      volume: volume,
+    ).then((_) {
+      // Engine закончил говорить. Завершаем completer только если это всё
+      // ещё наш запрос (не вытеснен новым speak / stop).
+      if (identical(_current, req)) {
+        _current = null;
+        if (!completer.isCompleted) completer.complete();
+      }
+    }).catchError((Object e) {
+      debugPrint('✗ TtsCoordinator: engine.speak() error: $e');
+      if (identical(_current, req)) {
+        _current = null;
+        if (!completer.isCompleted) completer.complete();
+      }
+    });
+
     return completer.future;
   }
 
   /// Полная остановка речи. Завершает текущий completer (если есть).
   Future<void> stop() async {
     await _interruptCurrent();
-    try {
-      await _tts.stop();
-    } catch (_) {}
   }
 
   Future<void> _interruptCurrent() async {
@@ -204,80 +309,22 @@ class TtsCoordinator {
     if (cur != null && !cur.completer.isCompleted) {
       cur.completer.complete();
     }
-    if (cur != null) {
+    if (_engine != null) {
       try {
-        await _tts.stop();
+        await _engine!.stop();
       } catch (_) {}
     }
   }
 
-  void _handleCompletion() {
-    final cur = _current;
-    _current = null;
-    if (cur != null && !cur.completer.isCompleted) {
-      cur.completer.complete();
-    }
-  }
+  // -------------------------------------------------------------------
+  // Диагностика (для overlay в player_screen)
+  // -------------------------------------------------------------------
 
-  void _handleError(Object e) {
-    debugPrint('✗ TtsCoordinator error: $e');
-    final cur = _current;
-    _current = null;
-    if (cur != null && !cur.completer.isCompleted) {
-      cur.completer.complete();
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // Engine configuration (делегируется из StudyModeService)
-  // -------------------------------------------------------------------------
-
-  /// Применяет выбранный движок: пользовательский (из prefs 'ttsEngine'),
-  /// иначе Google TTS если доступен, иначе системный дефолт.
-  Future<void> _applyConfiguredEngine() async {
-    String? configured;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      configured = prefs.getString('ttsEngine');
-    } catch (_) {}
-
-    String? desired;
-    if (configured != null &&
-        configured.isNotEmpty &&
-        _availableEngines.contains(configured)) {
-      desired = configured;
-    } else if (_availableEngines.contains('com.google.android.tts')) {
-      desired = 'com.google.android.tts';
-    }
-
-    String? def;
-    try {
-      def = (await _tts.getDefaultEngine)?.toString();
-    } catch (_) {}
-
-    if (desired != null && desired != def) {
-      try {
-        final res = await _tts.setEngine(desired);
-        if (res == 1) {
-          _selectedEngine = desired;
-          debugPrint('🎧 TtsCoordinator: switched engine -> $desired');
-        } else {
-          _selectedEngine = def;
-        }
-      } catch (e) {
-        _selectedEngine = def;
-        debugPrint('⚠ TtsCoordinator: setEngine($desired) error: $e');
-      }
-    } else {
-      _selectedEngine = def;
-    }
-    _activeEngine = _selectedEngine ?? def;
-  }
-
-  /// Повторно применяет выбранный движок (например, после смены в Настройках).
-  /// Делегируется из StudyModeService.applyConfiguredEngine.
-  Future<void> applyConfiguredEngine() async {
-    if (!_initialized) return;
-    await _applyConfiguredEngine();
-  }
+  bool get isInitialized => _initialized;
+  bool get isSpeaking => _current != null;
+  bool get isLanguageAvailable => _engine?.isLanguageAvailable ?? true;
+  List<String> get availableEngines => _engine?.availableEngines ?? const [];
+  String? get activeEngine => _engine?.activeEngine;
+  String? get selectedEngine => _engine?.selectedEngine;
+  int get lastGenerationMs => _engine?.lastGenerationMs ?? 0;
 }

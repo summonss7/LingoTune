@@ -81,3 +81,9 @@ debug/
 app/android/.gradle/
 app/android/local.properties
 app/android/.gradle/
+
+# TTS voice models (sherpa_onnx VITS) — large binaries, must be downloaded on-demand
+app/assets/tts/*.tar.bz2
+app/assets/tts/*.tar.gz
+app/assets/tts/*.zip
+

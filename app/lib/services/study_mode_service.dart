@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:just_audio/just_audio.dart' show ProcessingState;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'audio_service.dart';
 import 'lyrics_service.dart';
 import 'translation_service.dart';
+import 'tts/tts_engine.dart' show TtsSource;
 import 'tts_coordinator.dart';
 
 enum StudyPhase { idle, speaking, playingSegment }
@@ -36,13 +36,12 @@ class StudyModeService extends ChangeNotifier {
   final AudioService _audio;
   final LyricsService _lyrics;
   final TranslationService _translations;
-  // Все вызовы речи в приложении идут через единый TtsCoordinator — это
-  // гарантирует, что study mode и CarAlert не перебивают друг друга через
-  // общий MethodChannel('flutter_tts'). Конфигурация (setLanguage, setEngine,
-  // getVoices, setSpeechRate при отсутствии речи) выполняется через
-  // _tts = TtsCoordinator.instance.tts.
+  // Все вызовы речи идут через единый TtsCoordinator, который с v5.5.0 держит
+  // полиморфный TtsEngine (SystemTtsEngine или OfflineTtsEngine). Конфигурация
+  // языка/движка делегируется координатору (setLanguage, applyConfiguredEngine,
+  // setTtsSource). Скорость речи (_speechRate) передаётся через speak —
+  // прямой FlutterTts API больше не используется.
   final TtsCoordinator _ttsCoordinator = TtsCoordinator.instance;
-  FlutterTts get _tts => _ttsCoordinator.tts;
 
   bool _isActive = false;
   bool _isUserPaused = false;
@@ -248,11 +247,7 @@ class StudyModeService extends ChangeNotifier {
       _perSongOverride = prefs.getBool('song_${songId}_override') ?? false;
       await _loadValuesFromPrefs(prefs,
           perSong: _perSongOverride, songId: songId);
-      if (_ttsReady) {
-        try {
-          await _tts.setSpeechRate(_speechRate);
-        } catch (_) {}
-      }
+      // rate применяется при следующем speak через координатор (как параметр).
       debugPrint(
           '🎧 StudyModeService: applyPerSongSettings($songId) override=$_perSongOverride order=$_order rate=$_speechRate');
       notifyListeners();
@@ -294,11 +289,7 @@ class StudyModeService extends ChangeNotifier {
       }
       // Перезагрузить значения (per-song если включили, global если выключили).
       await _loadValuesFromPrefs(prefs, perSong: value, songId: id);
-      if (_ttsReady) {
-        try {
-          await _tts.setSpeechRate(_speechRate);
-        } catch (_) {}
-      }
+      // rate применяется при следующем speak через координатор (как параметр).
       debugPrint('🎧 StudyModeService: setPerSongOverride($value)');
       notifyListeners();
     } catch (e) {
@@ -323,11 +314,7 @@ class StudyModeService extends ChangeNotifier {
 
   Future<void> setSpeechRate(double rate) async {
     _speechRate = rate;
-    if (_ttsReady) {
-      try {
-        await _tts.setSpeechRate(rate);
-      } catch (_) {}
-    }
+    // rate применяется при следующем speak через координатор (как параметр).
     try {
       final prefs = await SharedPreferences.getInstance();
       if (_usePerSong) {
@@ -369,18 +356,14 @@ class StudyModeService extends ChangeNotifier {
 
   Future<void> _initTts() async {
     try {
-      // TtsCoordinator — единый держатель FlutterTts на приложение. Он
-      // инициализирует engine, ставит completion/error handlers (которые
-      // маршрутизируют к текущему запросу с приоритетом). Здесь мы только
-      // убеждаемся что он готов, и применяем язык перевода.
+      // Координатор держит полиморфный TtsEngine. Здесь убеждаемся что он
+      // готов и применяем язык перевода. Rate/pitch/volume больше не
+      // выставляются напрямую — они применяются в speak() через параметры.
       await _ttsCoordinator.ensureInitialized();
       _availableEngines = _ttsCoordinator.availableEngines;
       _selectedEngine = _ttsCoordinator.selectedEngine;
       _activeEngine = _ttsCoordinator.activeEngine;
 
-      await _tts.setSpeechRate(_speechRate);
-      await _tts.setPitch(1.0);
-      await _tts.setVolume(1.0);
       await _setTtsLanguage(_ttsLanguage);
       _ttsReady = true;
       debugPrint(
@@ -391,7 +374,7 @@ class StudyModeService extends ChangeNotifier {
   }
 
   /// Re-applies the configured engine at runtime. Делегируется в координатор
-  /// (там же логика выбора Google TTS / пользовательского движка).
+  /// (для system — setEngine на FlutterTts, для offline — no-op).
   Future<void> _applyConfiguredEngine() async {
     await _ttsCoordinator.applyConfiguredEngine();
     _selectedEngine = _ttsCoordinator.selectedEngine;
@@ -399,16 +382,10 @@ class StudyModeService extends ChangeNotifier {
   }
 
   /// Re-applies the configured engine at runtime (e.g. after the user changes
-  /// the engine in Settings while a study session is active). setEngine
-  /// re-binds the engine, so speech params and language are re-applied.
+  /// the engine in Settings while a study session is active).
   Future<void> applyConfiguredEngine() async {
     if (!_ttsReady) return;
     await _applyConfiguredEngine();
-    try {
-      await _tts.setSpeechRate(_speechRate);
-      await _tts.setPitch(1.0);
-      await _tts.setVolume(1.0);
-    } catch (_) {}
     await _setTtsLanguage(_ttsLanguage);
     notifyListeners();
   }
@@ -436,7 +413,8 @@ class StudyModeService extends ChangeNotifier {
           .timeout(Duration(seconds: watchdogSeconds), onTimeout: () {
         debugPrint('⚠ StudyMode TTS watchdog (${watchdogSeconds}s) '
             '— disabling TTS for this session');
-        // Останавливаем координатор — он завершит completer и вызовет _tts.stop().
+        // Останавливаем координатор — он завершит completer и вызовет
+        // engine.stop() (FlutterTts.stop или остановка AudioPlayer у офлайна).
         _ttsCoordinator.stop();
         // Авто-отключение TTS до конца сессии, чтобы не висеть на каждой строке.
         setSpeakDisabled(true);
@@ -449,68 +427,20 @@ class StudyModeService extends ChangeNotifier {
   Future<void> _setTtsLanguage(String languageCode) async {
     final locale = _mapLanguageToLocale(languageCode);
     _ttsLanguage = locale;
-    bool available = true;
-    try {
-      final res = await _tts.isLanguageAvailable(locale);
-      available = res == true;
-      if (available) {
-        await _tts.setLanguage(locale);
-        debugPrint('✓ StudyModeService: TTS language set to $locale');
-      } else {
-        // Fallback: some Chinese ROM engines LIE in isLanguageAvailable
-        // (report false even when a matching voice is actually installed).
-        // Enumerate voices and set one whose locale matches — setVoice is
-        // more granular and often works where setLanguage/isLanguageAvailable
-        // don't.
-        final voiceFound = await _trySetVoiceByLocale(locale);
-        if (voiceFound) {
-          available = true;
-          debugPrint(
-              '✓ StudyModeService: language $locale unavailable per API, but a '
-              'matching voice was set via setVoice');
-        } else {
-          debugPrint(
-              '⚠ StudyModeService: TTS language $locale NOT available on this '
-              'device (no installed voice). Speech will be skipped.');
-        }
-      }
-    } catch (e) {
-      available = false;
-      debugPrint('⚠ StudyModeService: TTS setLanguage($locale) error: $e');
-    }
+    // Делегируем в координатор — он сам проверит доступность языка через
+    // активный TtsEngine (SystemTtsEngine: isLanguageAvailable + getVoices
+    // fallback; OfflineTtsEngine: наличие модели).
+    await _ttsCoordinator.setLanguage(languageCode);
+    final available = _ttsCoordinator.isLanguageAvailable;
+    _activeEngine = _ttsCoordinator.activeEngine;
+    _selectedEngine = _ttsCoordinator.selectedEngine;
+    debugPrint(
+        available
+            ? '✓ StudyModeService: TTS language set to $locale (engine=$_activeEngine)'
+            : '⚠ StudyModeService: TTS language $locale NOT available');
     final changed = _langAvailable != available;
     _langAvailable = available;
     if (changed) notifyListeners();
-  }
-
-  /// Tries to find and apply a voice matching [locale] via getVoices/setVoice.
-  /// Returns true if a matching voice was applied. Workaround for engines that
-  /// misreport isLanguageAvailable (common on Chinese ROMs).
-  Future<bool> _trySetVoiceByLocale(String locale) async {
-    try {
-      final voices = await _tts.getVoices;
-      if (voices == null) return false;
-      final norm = locale.toLowerCase().replaceAll('_', '-');
-      final langPrefix = norm.split('-').first;
-      for (final v in voices) {
-        if (v is! Map) continue;
-        final rawLocale = (v['locale'] ?? '').toString();
-        final vLocale = rawLocale.toLowerCase().replaceAll('_', '-');
-        if (vLocale == norm ||
-            vLocale.startsWith('$langPrefix-') ||
-            vLocale == langPrefix) {
-          final name = v['name'];
-          if (name != null) {
-            final res = await _tts
-                .setVoice({'name': name, 'locale': rawLocale});
-            return res == 1;
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('⚠ StudyModeService: getVoices/setVoice fallback error: $e');
-    }
-    return false;
   }
 
   String _mapLanguageToLocale(String code) {
@@ -603,11 +533,7 @@ class StudyModeService extends ChangeNotifier {
     if (current != null) {
       await _setTtsLanguage(current.language);
     }
-    if (_ttsReady) {
-      try {
-        await _tts.setSpeechRate(_speechRate);
-      } catch (_) {}
-    }
+    // rate применяется при следующем speak через координатор (как параметр).
 
     final posSec = _audio.position.inMilliseconds / 1000.0;
     int idx = _findLineIndexForPosition(posSec);

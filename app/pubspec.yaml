@@ -2,7 +2,7 @@ name: lingotune
 description: Language learning through music application
 
 publish_to: 'none'
-version: 5.3.5
+version: 5.5.0
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -36,6 +36,7 @@ dependencies:
   # image_cropper: ^8.0.1  # Temporarily disabled due to Android 13+ crashes
   device_info_plus: ^10.1.0
   flutter_tts: ^4.2.0
+  sherpa_onnx: ^1.13.3
 
 dev_dependencies:
   flutter_test:
@@ -51,6 +52,8 @@ flutter:
   assets:
     - assets/
     - assets/sounds/
+    - assets/calibration/
+    - assets/tts/
 
   fonts:
     - family: Roboto

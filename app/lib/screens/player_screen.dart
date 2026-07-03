@@ -23,6 +23,8 @@ import '../services/car_alert_service.dart';
 import '../services/export_import_service.dart';
 import '../services/database_service.dart';
 import '../services/folder_config_service.dart';
+import '../services/tts_coordinator.dart';
+import '../services/tts/tts_engine.dart' show TtsSource;
 import '../widgets/lyric_line_widget.dart';
 import '../widgets/settings/vertical_focus_offset_slider.dart';
 import 'translation_editor_screen.dart';
@@ -105,6 +107,11 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   SettingsProvider? _settingsProvider;
 
+  // Единый TTS-координатор (singleton) — читаем диагностику для overlay.
+  final TtsCoordinator _ttsCoordinator = TtsCoordinator.instance;
+  // Кеш текущего ttsSource (чтобы реагировать на смену в Настройках).
+  String _currentTtsSource = 'offline';
+
   late final CarDetectionService _carDetectionService;
   late final CarAlertService _carAlertService;
 
@@ -171,7 +178,33 @@ class _PlayerScreenState extends State<PlayerScreen>
     final sp = _settingsProvider;
     if (sp != null) {
       widget.lyricsService.setPositionOffset(sp.lyricsPositionOffset);
+      // Реакция на смену источника TTS (offline/system) в Настройках.
+      if (sp.ttsSource != _currentTtsSource) {
+        _currentTtsSource = sp.ttsSource;
+        _applyTtsSource();
+      }
     }
+  }
+
+  /// Переключает координатор на текущий ttsSource из SettingsProvider.
+  /// Безопасно вызывать многократно — координатор сам пропустит no-op.
+  Future<void> _applyTtsSource() async {
+    final sp = _settingsProvider;
+    if (sp == null) return;
+    final source =
+        sp.ttsSource == 'system' ? TtsSource.system : TtsSource.offline;
+    final lang =
+        widget.translationService.currentTranslation?.language ?? 'ru';
+    try {
+      await _ttsCoordinator.setTtsSource(source, languageCode: lang);
+      // После смены движка — синхронизируем доступность языка в study.
+      if (_studyModeService.isActive) {
+        await _studyModeService.applyConfiguredEngine();
+      }
+    } catch (e) {
+      debugPrint('⚠ PlayerScreen: setTtsSource($source) error: $e');
+    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -181,8 +214,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (_settingsProvider != sp) {
       _settingsProvider?.removeListener(_onSettingsChanged);
       _settingsProvider = sp;
+      _currentTtsSource = sp.ttsSource;
       _settingsProvider!.addListener(_onSettingsChanged);
       widget.lyricsService.setPositionOffset(sp.lyricsPositionOffset);
+      // Первый запуск координатора с правильным ttsSource. Безопасен для
+      // повторных вызовов — координатор идемпотентен.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _applyTtsSource());
     }
     debugPrint('=== PlayerScreen: didChangeDependencies ===');
     debugPrint('Widget song: ${widget.song.title}');
@@ -2607,6 +2644,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                   () {
                     final p = widget.audioService.player;
                     final s = _studyModeService;
+                    final src = _ttsCoordinator.currentSource.name;
+                    final gen = _ttsCoordinator.lastGenerationMs;
                     return 'STUDY active=${s.isActive} '
                         'persist=${s.enabledPersist} '
                         'phase=${s.phase.name} '
@@ -2620,9 +2659,11 @@ class _PlayerScreenState extends State<PlayerScreen>
                         'load=$_isSongLoading\n'
                         'SEG target=${s.debugSegmentEnd?.toStringAsFixed(2) ?? "null"}s '
                         'ticks=${s.debugSegmentTicks}\n'
-                        'TTS engine=${s.selectedEngine ?? s.activeEngine ?? "?"} '
+                        'TTS src=$src '
+                        'engine=${s.selectedEngine ?? s.activeEngine ?? "?"} '
                         'engines=${s.availableEngines.length} '
                         'langAvail=${s.isLanguageAvailable} '
+                        'gen=${gen}ms '
                         'speakDisabled=${s.speakDisabled}\n'
                         'EVT: $_lastStudyEvent';
                   }(),
