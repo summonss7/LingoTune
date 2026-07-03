@@ -109,6 +109,7 @@ cp build/app/outputs/flutter-apk/app-release.apk builds/LingoTune-v{версия
 - [Разработка](DEVELOPMENT.md) - конвенции кода и разработка
 - [Решение проблем](TROUBLESHOOTING.md) - FAQ и решение проблем
 - [Калибровка детекции машин](PLAN_CAR_DETECTION_CALIBRATION.md) - реализация v5.5.0 (эталоны + Mahalanobis)
+- [Офлайн-TTS (sherpa_onnx VITS)](PLAN_v5.3.0_offline_tts.md) - реализация v5.5.0 (стабильная озвучка перевода без системного TTS)
 
 ## 🎯 Новое в версии 5.5.0
 
@@ -151,6 +152,52 @@ cp build/app/outputs/flutter-apk/app-release.apk builds/LingoTune-v{версия
 - **CPU при классификации**: Mahalanobis distance через 6 признаков × N профилей на каждом кадре. При N=10 и ~30 кадрах/сек = ~180 операций/сек — приемлемо для main isolate
 - **Запись своих WAV** для воспроизведения кнопкой ▶ не реализована (по решению разработки) — список эталонов только показывает профиль с кнопкой удаления
 - **Per-song калибровка** не реализована — эталоны глобальные на всё приложение
+
+### 🗣️ Новая фича: Офлайн нейро-TTS (sherpa_onnx VITS)
+- **Задача:** на realme GT8 Pro (ColorOS China) системный TTS нестабилен в режиме изучения — озвучка «выбивает» через половину песни. Корень: study-режим делает десятки передач аудиофокуса за песню (пауза песни → системный TTS grabs focus → completion → реактивация сессии), что на китайских ROM деградирует в зомби-состояния
+- **Решение:** встроенный офлайн-нейро TTS на `sherpa_onnx` (Piper VITS). Аудио TTS проигрывается тем же `just_audio` (второй `AudioPlayer`), что и песня → нет OS-level арбитража фокуса между двумя подсистемами. Системный TTS-сервис не участвует вовсе
+- **Архитектура (вариант A — TtsEngine внутри TtsCoordinator):**
+  - `TtsCoordinator` (синглтон) сохраняет приоритетную очередь `study > alert` (введена в 5.3.2), но теперь держит **полиморфный `TtsEngine`** вместо прямого `FlutterTts`
+  - `SystemTtsEngine` — точная копия логики 5.4.0 (handlers/engine-config/getVoices fallback). Поведение 1-в-1
+  - `OfflineTtsEngine` — sherpa_onnx Piper VITS + второй `AudioPlayer` + `writeWave` + Completer + lazy load/`free()`. Для языков без Piper-модели (uk/zh/ar/ja/ko) автоматически fallback'ает на внутренний `SystemTtsEngine`
+  - `CarAlertService` остался **без изменений** — координатор сам маршрутизирует alert в активный движок с учётом приоритета
+- **Каталог моделей (Piper VITS medium, ~63 МБ/язык):**
+  - **ru** — бандл в APK (`assets/tts/ru_RU.tar.bz2`), распаковка при первом включении
+  - en/de/es/fr/it/pt/ro — докачка из «Голосовых пакетов» по требованию
+  - uk/zh/ar — fallback на системный TTS (нет Piper-моделей)
+- **UI:**
+  - В Настройках新增 тайл **«Источник озвучки»** (Офлайн / Системный) + тайл **«Голосовые пакеты»** (переход на экран управления моделями)
+  - Экран «Голосовые пакеты»: список 8 языков с статусами (готов / не установлено / скачивается / ошибка), кнопки «Скачать/Установить/Удалить», прогресс-бар
+  - Диагностический оверлей плеера расширено: `src=offline|system`, `gen=...ms` (время генерации sherpa)
+- **Локализация:** 21 новый ключ (`ttsSource*`, `voicePackages*`, `voicePackage*`) × 11 языков через `scripts/add_tts_l10n.py`
+
+### 🔧 Технические изменения (офлайн-TTS)
+- **Новые файлы:**
+  - `lib/services/tts/tts_engine.dart` — абстракция `TtsEngine` (extends ChangeNotifier): `isReady`/`isLanguageAvailable`/`activeEngine`/`selectedEngine`/`availableEngines`/`lastGenerationMs`/`source`; методы `initialize`/`setLanguage`/`speak({rate,pitch,volume})`/`stop`/`applyConfiguredEngine`/`dispose`
+  - `lib/services/tts/system_tts_engine.dart` — перенос логики FlutterTts из `tts_coordinator.dart` 5.4.0 (handlers/engine-config/voice-fallback/locale-mapping), speak через `Completer` + `setCompletionHandler`/`setErrorHandler`
+  - `lib/services/tts/offline_tts_engine.dart` — sherpa `OfflineTts` (VITS) + второй `AudioPlayer` + `writeWave` + lazy load/`free()` + внутренний `SystemTtsEngine` fallback для языков без модели
+  - `lib/services/tts/tts_catalog.dart` — карта 8 языков: `TtsVoiceInfo` (localeCode, voiceName, speakerName, url, bundled?)
+  - `lib/services/tts/tts_model_manager.dart` — ChangeNotifier: статусы моделей, распаковка bundled-ассета (BZip2+Tar через `archive 3.6`), докачка с прогрессом, удаление, атомарный rename через `.tmp`
+  - `lib/screens/voice_packages_screen.dart` — UI списка моделей с прогрессом/статусами
+  - `lib/widgets/settings/tts_source_tile.dart` — тайл «Источник озвучки» (Dropdown)
+  - `lib/widgets/settings/voice_packages_tile.dart` — тайл-переход на экран
+- **Изменяемые:**
+  - `tts_coordinator.dart` — `FlutterTts _tts` → `TtsEngine _engine`; новая `setTtsSource(source, {languageCode})` создаёт/утилизирует engine (с fallback'ом на system если offline init упал); speak/stop делегируют; handlers переехали в `SystemTtsEngine`; координатор стал `ChangeNotifier` (проксирует `notifyListeners` из engine)
+  - `study_mode_service.dart` — убран геттер `_tts` (FlutterTts) и все прямые `setSpeechRate`/`setPitch`/`setVolume`/`setLanguage`/`isLanguageAvailable`/`getVoices`/`setVoice`; `_initTts`/`_setTtsLanguage`/`applyConfiguredEngine` делегируют в координатор; `_trySetVoiceByLocale` удалён (переехал в SystemTtsEngine); watchdog и `_kickPlaybackAsync` остались (safety-net; для офлайна kick выходит на 1-й попытке — сессия не деактивируется)
+  - `car_alert_service.dart` — **без изменений** (координатор сам маршрутизирует alert в активный engine)
+  - `settings_provider.dart` — `+ttsSource` ('offline'\|'system', дефолт **'offline'**) + persistence
+  - `player_screen.dart` — поле `_ttsCoordinator`, `_currentTtsSource`; `_onSettingsChanged` реагирует на смену `ttsSource` → `_applyTtsSource()` → `coordinator.setTtsSource`; overlay показывает `src` и `gen`
+  - `pubspec.yaml` — `+sherpa_onnx: ^1.13.3`, `assets: - assets/tts/`, версия 5.5.0
+  - `proguard-rules.pro` — `-keep class com.k2fsa.sherpa.onnx.**` для нативных символов
+  - `app_info.dart`/`build.gradle` — 5.5.0/versionCode 217; features += «🗣️ Offline neural TTS (sherpa_onnx VITS)»
+
+### ⚠️ Известные ограничения (офлайн-TTS)
+- **Размер APK ~214 МБ** (вместо ~64): бандл ru (64 МБ) + нативные `.so` sherpa_onnx для 4 Android ABI (arm64-v8a/armeabi-v7a/x86/x86_64). Митигация: `flutter build apk --split-per-ABI` → arm64 APK ~110 МБ, либо `appbundle` для Play Store
+- **Генерация в main isolate** — `sherpa_onnx.generate()` синхронный, блокирует UI на ~0.3–0.5 с на короткую строку перевода (study mode и так паузит песню в этот момент). Isolate-генерация (готовый паттерн `isolate_tts` от sherpa) — будущая оптимизация
+- **`ttsSource` не в экспорте настроек** — при переносе настроек на другое устройство источник озвучки не переедет (только глобальные `studyMode*`). Фаза 2
+- **`AndroidAudioAttributes(usage: speech)`** на TTS-плеере не проставлен (план §9 mitigation) — теоретически может конфликтовать за фокус с плеером песни, но на практике оба в одной `just_audio` сессии и конфликтов не наблюдалось
+- **ProGuard keep-rules для `com.k2fsa.sherpa.onnx.**`** — добавлены превентивно; точный package name Dart-биндингов не верифицирован декомпиляцией. Если release упадёт с `UnsatisfiedLinkError` на первом `OfflineTts()` — корректировать здесь
+- **uk/zh/ar через matcha/MMS-модели** — будущая работа (другая конфигурация sherpa, lexicon)
 
 ---
 

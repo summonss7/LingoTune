@@ -1,9 +1,16 @@
 # План v5.3.0: Встроенный офлайн-нейро TTS (sherpa_onnx VITS)
 
-**Статус:** Запланировано (не в работе)
+**Статус:** ✅ Реализовано в v5.5.0 (коммит `1312d0a`, APK `LingoTune-v5.5.0.apk`)
 **Дата составления:** 2026-07-02
-**Версия:** 5.3.0 (versionCode 209)
+**Дата реализации:** 2026-07-03
+**Версия:** 5.5.0 (versionCode 217) — *вместо 5.3.0/209 в плане: проект ушёл вперёд (калибровка детекции в 5.4.0/5.5.0), версию перебазировали*
 **Цель:** Сделать озвучку перевода в режиме изучения стабильной на любом устройстве (особенно realme GT8 Pro / китайские ROM), убрав зависимость от системного TTS-движка.
+
+> **Расхождения с планом** (зафиксированы post-factum):
+> - **Версия 5.3.0 → 5.5.0** — проект ушёл вперёд (5.3.2 ввёл `TtsCoordinator`, 5.4.0/5.5.0 — калибровку), версию перебазировали
+> - **Архитектура A вместо дословного §3/§8** — `TtsEngine` встроен **внутрь** `TtsCoordinator` (полиморфное поле `_engine`), а не заменяет `_tts` в `StudyModeService`. Причина: в 5.3.2 появился `TtsCoordinator` (приоритетная очередь `study > alert`), которого план не учитывал. Это сохраняет приоритетную очередь и оставляет `CarAlertService` без изменений
+> - **`archive` остался 3.6.1** (вместо bump до 4.0.0) — `BZip2Decoder`+`TarDecoder` уже в 3.6.1; major-bump ломает `export_import_service.dart`/`song_import_service.dart`. Решено после аудита использования
+> - **8 новых файлов вместо 7** — добавлен `tts_source_tile.dart` (отдельный тайл «Источник озвучки», не объединён с `voice_packages_tile.dart`)
 
 ---
 
@@ -236,5 +243,27 @@ abstract class TtsEngine {
 
 - uk/zh/ar через MMS/matcha-модели (другая конфигурация, lexicon).
 - Isolate-генерация для идеально плавного UI.
-- Обновление `docs/README.md` changelog для 5.3.0 (после реализации, перед коммитом).
-- Коммит/пуш: `Release LingoTune v5.3.0: offline neural TTS (sherpa_onnx), stable on Chinese ROMs`.
+- ~~Обновление `docs/README.md` changelog для 5.3.0 (после реализации, перед коммитом).~~ ✅ Выполнено (changelog 5.5.0 в README.md).
+- ~~Коммит/пуш: `Release LingoTune v5.3.0: offline neural TTS (sherpa_onnx), stable on Chinese ROMs`.~~ ✅ Выполнено в коммите `1312d0a` (объединён с калибровкой детекции).
+
+---
+
+## 14. Результат реализации (post-factum)
+
+**Собранный APK:** `builds/LingoTune-v5.5.0.apk` (214 МБ — 4 ABI × sherpa native + 64 МБ ru-модель)
+**`flutter analyze`:** 0 ошибок (218 warnings/info — все ранее существующие)
+**Код:** 8 новых файлов (tts_engine / system_tts_engine / offline_tts_engine / tts_catalog / tts_model_manager / voice_packages_screen / tts_source_tile / voice_packages_tile) + `scripts/add_tts_l10n.py`; изменены `tts_coordinator`, `study_mode_service`, `settings_provider`, `player_screen`, `settings_screen`, `pubspec.yaml`, `app_info`, `build.gradle`, `proguard-rules.pro`, 11 `.arb`
+
+**Тест-пойнты на realme GT8 Pro** (требуют устройства, не выполнены автором кода):
+1. Оффлайн ru-перевод: пройти песню до конца без вылетов
+2. Fallback uk: выбрать перевод на украинский → должен идти через систему (модели uk нет)
+3. Car detection alert: включить 🚗 + study → alert должен пройти (через офлайн на ru / систему на uk)
+4. Переключатель ttsSource: в Настройках сменить offline↔system → оба режима работают
+5. Экран «Голосовые пакеты»: показывает ru (готов/bundled), остальные — кнопка «Скачать»
+
+**Известные ограничения** (подробно в `docs/README.md` changelog 5.5.0):
+- Размер APK 214 МБ — митигация `--split-per-ABI` или `appbundle`
+- Генерация в main isolate (~0.5 с блок на строку) — isolate на потом
+- `ttsSource` не в экспорте настроек
+- `AndroidAudioAttributes(usage: speech)` на TTS-плеере не проставлен (план §9 mitigation)
+- ProGuard keep-rules превентивны — package name не верифицирован декомпиляцией
