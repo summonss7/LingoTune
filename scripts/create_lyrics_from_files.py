@@ -8,11 +8,15 @@ Creates LRC and JSON files from existing translation files
 import os
 import json
 import zipfile
+from pathlib import Path
 from typing import List, Dict, Tuple
 
+# Project root (this file is in <root>/scripts/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 # Configuration
-INPUT_DIR = r"D:\Ai-Projects\LingoTune\input"
-OUTPUT_DIR = r"D:\Ai-Projects\LingoTune\output"
+INPUT_DIR = str(PROJECT_ROOT / "input")
+OUTPUT_DIR = str(PROJECT_ROOT / "output")
 TIMING_STEP = 5.0
 START_MINUTE = 30.0
 

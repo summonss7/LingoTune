@@ -3,7 +3,7 @@
 **Дата:** 08.04.2026
 **Платформа:** Android (Flutter), Windows 11
 **Flutter SDK:** C:\flutter
-**Выходной APK:** `D:\ProjectAI\LingoTune\builds\LingoTune-v4.6.0.apk`
+**Выходной APK:** `D:\Ai-LingoTune\builds\LingoTune-v4.6.0.apk`
 
 ---
 
@@ -162,14 +162,14 @@
 ## Фаза 6: Сборка APK
 
 ```batch
-cd D:\ProjectAI\LingoTune\app
+cd D:\Ai-LingoTune\app
 C:\flutter\bin\flutter build apk --release
 
-mkdir D:\ProjectAI\LingoTune\builds 2>nul
-copy D:\ProjectAI\LingoTune\app\build\app\outputs\flutter-apk\app-release.apk D:\ProjectAI\LingoTune\builds\LingoTune-v4.6.0.apk
+mkdir D:\Ai-LingoTune\builds 2>nul
+copy D:\Ai-LingoTune\app\build\app\outputs\flutter-apk\app-release.apk D:\Ai-LingoTune\builds\LingoTune-v4.6.0.apk
 ```
 
-**Выходной файл:** `D:\ProjectAI\LingoTune\builds\LingoTune-v4.6.0.apk`
+**Выходной файл:** `D:\Ai-LingoTune\builds\LingoTune-v4.6.0.apk`
 
 ---
 

@@ -90,7 +90,7 @@ python -m pip install --upgrade pip
 ### 1. Клонирование/распаковка проекта
 
 ```bash
-cd D:\Ai-Projects\LingoTune
+cd D:\Ai-LingoTune
 ```
 
 ### 2. Установка зависимостей Flutter
@@ -133,7 +133,7 @@ pip install pyyaml
 Создайте файл `.env` в корневой директории проекта:
 
 ```bash
-# В D:\ProjectAI\LingoTune\
+# В D:\Ai-LingoTune\
 echo "DEEPSEEK_API_KEY=ваш_ключ_здесь" > .env
 ```
 
@@ -150,7 +150,7 @@ DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 Создайте необходимые директории:
 
 ```bash
-cd D:\ProjectAI\LingoTune
+cd D:\Ai-LingoTune
 
 # Создание директорий для уроков
 mkdir lessons
@@ -194,7 +194,7 @@ flutter devices
 ## Запуск приложения в режиме разработки
 
 ```bash
-cd D:\ProjectAI\LingoTune\app
+cd D:\Ai-LingoTune\app
 flutter run
 ```
 
@@ -251,7 +251,7 @@ android {
 ### Сборка release APK
 
 ```bash
-cd D:\ProjectAI\LingoTune\app
+cd D:\Ai-LingoTune\app
 
 # Сборка APK
 flutter build apk --release
@@ -392,14 +392,14 @@ pause
 1. Установите Flutter расширение
 2. Установите Dart расширение
 3. Установите Python расширение
-4. Откройте директорию `D:\ProjectAI\LingoTune\app`
+4. Откройте директорию `D:\Ai-LingoTune\app`
 5. Установите кодек (codeLens) для Flutter
 
 ### Android Studio
 
 1. Установите Flutter плагин
 2. Установите Dart плагин
-3. Откройте директорию `D:\ProjectAI\LingoTune\app`
+3. Откройте директорию `D:\Ai-LingoTune\app`
 4. Выберите "Open Android Studio Project in Android Studio"
 
 ## Решение проблем

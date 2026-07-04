@@ -11,8 +11,8 @@ import zipfile
 from pathlib import Path
 
 # Directory paths
-LYRICS_DIR = r"D:\Ai-Projects\LingoTune\lyrics\arabic"
-OUTPUT_DIR = r"D:\Ai-Projects\LingoTune\output\arabic"
+LYRICS_DIR = str(Path(__file__).resolve().parent.parent / "lyrics" / "arabic")
+OUTPUT_DIR = str(Path(__file__).resolve().parent.parent / "output" / "arabic")
 
 # Timing configuration
 TIMING_STEP = 5.0  # 5 seconds per line

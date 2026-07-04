@@ -7,11 +7,15 @@ Test script for processing a single song
 import os
 import json
 import zipfile
+from pathlib import Path
 from typing import List, Dict, Tuple
 
+# Project root (this file is in <root>/scripts/)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 # Configuration
-INPUT_DIR = r"D:\ProjectAI\LingoTune\input"
-OUTPUT_DIR = r"D:\ProjectAI\LingoTune\output"
+INPUT_DIR = str(_PROJECT_ROOT / "input")
+OUTPUT_DIR = str(_PROJECT_ROOT / "output")
 TIMING_STEP = 5.0
 START_MINUTE = 30.0
 

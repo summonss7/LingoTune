@@ -7,7 +7,7 @@ echo Building LingoTune-v4.6.12 APK
 echo ====================================
 echo.
 
-cd /d "D:\Ai-Projects\LingoTune\app"
+cd /d "D:\Ai-LingoTune\app"
 
 echo [1/5] Clean...
 C:\flutter\bin\flutter.bat clean
@@ -52,7 +52,7 @@ copy /Y "build\app\outputs\flutter-apk\app-release.apk" "..\builds\LingoTune-v4.
 echo.
 echo ====================================
 echo BUILD SUCCESSFUL!
-echo APK: D:\Ai-Projects\LingoTune\builds\LingoTune-v4.6.12.apk
+echo APK: D:\Ai-LingoTune\builds\LingoTune-v4.6.12.apk
 echo ====================================
 echo.
 pause

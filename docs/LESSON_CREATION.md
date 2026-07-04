@@ -62,7 +62,7 @@ LingoTune использует структурированный подход �
 ### Использование DeepSeek Generator v3
 
 ```bash
-cd D:\ProjectAI\LingoTune
+cd D:\Ai-LingoTune
 
 python scripts/deepseek_generator_v3.py \
   --text "Привет, как тебя зовут?\nМеня зовут [ИМЯ]\n..." \
@@ -255,7 +255,7 @@ Rock with duduk, violin, cello, flute, organ, melodic interludes, medium tempo, 
 
 Скачанный аудиофайл сохраните в:
 ```
-D:\ProjectAI\LingoTune\lessons\Arabic\Arabic_Alphabet_Lesson.mp3
+D:\Ai-LingoTune\lessons\Arabic\Arabic_Alphabet_Lesson.mp3
 ```
 
 ## Шаг 7: Добавление в приложение

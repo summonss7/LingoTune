@@ -2,6 +2,9 @@ import json
 import os
 from pathlib import Path
 
+# Project root (this file is in <root>/scripts/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 
 def seconds_to_lrc_time(seconds):
     minutes = int(seconds // 60)
@@ -67,8 +70,8 @@ def process_txt_file(txt_path, output_dir):
 
 
 def main():
-    input_dir = Path("D:/Ai-Projects/LingoTune/input/best")
-    output_dir = Path("D:/Ai-Projects/LingoTune/output")
+    input_dir = PROJECT_ROOT / "input" / "best"
+    output_dir = PROJECT_ROOT / "output"
     
     output_dir.mkdir(parents=True, exist_ok=True)
     

@@ -72,7 +72,7 @@
 
 APK находится в:
 ```
-D:\Ai-Projects\LingoTune\builds\LingoTune-v4.6.15.apk
+D:\Ai-LingoTune\builds\LingoTune-v4.6.15.apk
 ```
 
 ## 📊 Информация о сборке

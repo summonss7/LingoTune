@@ -1,5 +1,6 @@
 import os
 import re
+from pathlib import Path
 
 def fix_imports(file_path):
     # Читаем файл
@@ -16,8 +17,10 @@ def fix_imports(file_path):
     print(f"Исправлено {file_path}")
     return file_path
 
+# Project root (this file is in <root>/scripts/)
+dart_dir = str(Path(__file__).resolve().parent.parent / "app" / "lib")
+
 # Обрабатываем все .dart файлы
-dart_dir = r"D:\ProjectAI\LingoTune\app\lib"
 for root, dirs, files in os.walk(dart_dir):
     for filename in files:
         if filename.endswith('.dart'):

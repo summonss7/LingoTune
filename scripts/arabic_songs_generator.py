@@ -8,6 +8,7 @@ Generates educational Arabic songs and SUNO prompts using DeepSeek API
 import requests
 import json
 import os
+from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -20,13 +21,16 @@ if not API_KEY:
 BASE_URL = "https://api.deepseek.com/v1"
 MODEL = "deepseek-reasoner"
 
+# Project root (this file is in <root>/scripts/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 # Directory paths
-PROMPTS_DIR = r"D:\Ai-Projects\LingoTune\prompts\arabic"
-LYRICS_DIR = r"D:\Ai-Projects\LingoTune\lyrics\arabic"
+PROMPTS_DIR = PROJECT_ROOT / "prompts" / "arabic"
+LYRICS_DIR = PROJECT_ROOT / "lyrics" / "arabic"
 
 # Ensure directories exist
-os.makedirs(PROMPTS_DIR, exist_ok=True)
-os.makedirs(LYRICS_DIR, exist_ok=True)
+os.makedirs(str(PROMPTS_DIR), exist_ok=True)
+os.makedirs(str(LYRICS_DIR), exist_ok=True)
 
 # Song configurations
 SONGS_CONFIG = [

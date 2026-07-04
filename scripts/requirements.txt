@@ -1,0 +1,19 @@
+# LingoTune scripts - Python dependencies
+# Install with:  pip install -r requirements.txt
+#
+# System dependency: ffmpeg must be installed and available in PATH
+#   (required by pydub for MP3 read/write and by the atempo tempo change).
+#   Windows:  winget install Gyan.FFmpeg
+#   macOS:    brew install ffmpeg
+#   Linux:    sudo apt install ffmpeg
+
+# --- Core (always required) ---
+edge-tts>=6.1.0
+pydub>=0.25.1
+
+# --- Optional: karaoke mode (--mode karaoke) ---
+# Only needed when separating vocals via Demucs. Install separately:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install demucs
+torch>=2.0
+demucs>=4.0

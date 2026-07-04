@@ -2,6 +2,10 @@ from PIL import Image, ImageDraw, ImageFont
 import math
 import random
 import sys
+from pathlib import Path
+
+# Project root (this file is in <root>/scripts/)
+_ASSETS_DIR = Path(__file__).resolve().parent.parent / "app" / "assets"
 
 def create_gradient_icon(size=1024):
     """Create icon with gradient background (original style)"""
@@ -388,7 +392,7 @@ def create_all_sizes(style='gradient'):
         print(f'Creating {size}x{size} icon ({style} style)...')
         icon = create_func(size)
         
-        output_path = f'D:/ProjectAI/LingoTune/app/assets/icon.png' if size == 1024 else f'D:/ProjectAI/LingoTune/app/assets/icon_{size}x{size}.png'
+        output_path = _ASSETS_DIR / 'icon.png' if size == 1024 else _ASSETS_DIR / f'icon_{size}x{size}.png'
         icon.save(output_path, 'PNG')
         print(f'  Saved: {output_path}')
 

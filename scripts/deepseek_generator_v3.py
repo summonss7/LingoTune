@@ -10,12 +10,16 @@ import json
 import os
 import zipfile
 import sys
+from pathlib import Path
 from typing import List, Dict, Tuple
 import time
 from dotenv import load_dotenv
 from langdetect import detect
 
 load_dotenv()
+
+# Project root (this file is in <root>/scripts/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Configuration
 API_KEY = os.getenv("DEEPSEEK_API_KEY")
@@ -166,7 +170,7 @@ Return ONLY the valid JSON, nothing else.'''
 
 def save_raw_response(content: str, filename: str):
     """Save raw API response to file for debugging"""
-    debug_dir = r"D:\Ai-Projects\LingoTune\debug"
+    debug_dir = str(PROJECT_ROOT / "debug")
     os.makedirs(debug_dir, exist_ok=True)
     debug_file = os.path.join(debug_dir, filename)
     with open(debug_file, 'w', encoding='utf-8') as f:
@@ -519,8 +523,8 @@ def main():
     print(f"Transcription language: {TRANSCRIPTION_ALPHABET_NAMES.get(transcription_language, transcription_language)}")
 
     # Directories
-    input_dir = r"D:\Ai-Projects\LingoTune\input"
-    output_dir = r"D:\Ai-Projects\LingoTune\output"
+    input_dir = str(PROJECT_ROOT / "input")
+    output_dir = str(PROJECT_ROOT / "output")
 
     if not os.path.exists(input_dir):
         print(f"\n✗ Input directory not found: {input_dir}")

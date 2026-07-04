@@ -227,7 +227,7 @@ def main():
     print(f"\n{'='*60}")
     print("✓ All lesson archives created successfully!")
     print(f"{'='*60}")
-    print(f"\nOutput directory: D:\\ProjectAI\\LingoTune\\lessons\\Arabic\\output")
+    print(f"\nOutput directory: {Path(__file__).resolve().parent / 'output'}")
     print("\nFiles created:")
     print("  001-lesson.zip (43 words, 360 total words, 30 minutes)")
     print("  002-lesson.zip (45 words, 360 total words, 30 minutes)")

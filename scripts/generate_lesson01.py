@@ -11,8 +11,8 @@ import zipfile
 from pathlib import Path
 
 # Directory paths
-LESSONS_DIR = r"D:\Ai-Projects\LingoTune\lessons\Arabic"
-OUTPUT_DIR = r"D:\Ai-Projects\LingoTune\lessons\Arabic\output"
+LESSONS_DIR = str(Path(__file__).resolve().parent.parent / "lessons" / "Arabic")
+OUTPUT_DIR = str(Path(__file__).resolve().parent.parent / "lessons" / "Arabic" / "output")
 
 # Timing configuration for educational song (clear pronunciation)
 TIMING_STEP = 6.0  # 6 seconds per line for clear pronunciation

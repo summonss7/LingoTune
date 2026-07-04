@@ -6,11 +6,12 @@
 import subprocess
 import os
 import sys
+from pathlib import Path
 
 def create_keystore():
     """Создает keystore для подписи APK"""
 
-    keystore_path = "/d/ProjectAI/LingoTune/app/android/app/lingotune-release.jks"
+    keystore_path = str(Path(__file__).resolve().parent / "android" / "app" / "lingotune-release.jks")
 
     if os.path.exists(keystore_path):
         print(f"✅ Keystore уже существует: {keystore_path}")

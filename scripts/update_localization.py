@@ -3,6 +3,10 @@
 
 import json
 import sys
+from pathlib import Path
+
+# Project root (this file is in <root>/scripts/)
+_L10N_DIR = Path(__file__).resolve().parent.parent / "app" / "lib" / "l10n"
 
 # Arabic translations
 ar_translations = {
@@ -314,11 +318,11 @@ def update_language(language_code):
     translations = translations_map[language_code]
     
     # Read English ARB as template
-    with open(r'D:\ProjectAI\LingoTune\app\lib\l10n\app_en.arb', 'r', encoding='utf-8') as f:
+    with open(_L10N_DIR / "app_en.arb", 'r', encoding='utf-8') as f:
         en_arb = json.load(f)
-    
+
     # Read current ARB
-    ar_file = f'D:\\ProjectAI\\LingoTune\\app\\lib\\l10n\\app_{language_code}.arb'
+    ar_file = _L10N_DIR / f'app_{language_code}.arb'
     with open(ar_file, 'r', encoding='utf-8') as f:
         current_arb = json.load(f)
     

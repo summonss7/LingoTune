@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import List, Tuple
 
 
-INPUT_DIR = Path(r"D:\ProjectAI\LingoTune\input")
-OUTPUT_DIR = Path(r"D:\ProjectAI\LingoTune\output")
+INPUT_DIR = Path(__file__).resolve().parent.parent / "input"
+OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 START_MINUTE = 30.0
 TIME_STEP = 5.0
 

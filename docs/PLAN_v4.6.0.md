@@ -5,7 +5,7 @@
 **VersionCode:** 168  
 **Платформа:** Android (Flutter/Dart)  
 **Сборка:** `C:\flutter\bin\flutter build apk --release`  
-**Выходной APK:** `D:\Ai-Projects\LingoTune\builds\LingoTune-v4.6.12.apk`
+**Выходной APK:** `D:\Ai-LingoTune\builds\LingoTune-v4.6.12.apk`
 
 ---
 
@@ -322,7 +322,7 @@ C:\flutter\bin\flutter build apk --release
 
 ### Задача 12.3 — Копирование APK
 ```bash
-copy app\build\app\outputs\flutter-apk\*.apk D:\ProjectAI\LingoTune\builds\
+copy app\build\app\outputs\flutter-apk\*.apk D:\Ai-LingoTune\builds\
 ```
 
 ### Задача 12.4 — Проверка

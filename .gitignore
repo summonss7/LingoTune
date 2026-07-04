@@ -69,10 +69,18 @@ app/lib/l10n/insertion.txt
 app/lib/l10n/new_methods.txt
 app/lib/l10n/*_getters.txt
 
-# Binary blobs
+# Binary blobs / user data (large, not needed to build the app)
 driver/
-media/LingoTune/
+media/
 output/
+translate/
+backups/
+input/
+
+# Local scratch / working files
+promt.txt
+promt_done.txt
+backup.bat
 
 # Debug
 debug/

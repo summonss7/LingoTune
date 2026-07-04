@@ -8,6 +8,10 @@ Copy this file and rename to generate_lessonXX.py, then customize the configurat
 import json
 import os
 import zipfile
+from pathlib import Path
+
+# Project root (this file is in <root>/scripts/)
+_ARABIC_LESSONS_DIR = Path(__file__).resolve().parent.parent / "lessons" / "Arabic"
 
 # ============================================================
 # CONFIGURATION - MODIFY THESE VALUES FOR EACH LESSON
@@ -19,8 +23,8 @@ LESSON_NAME = "Lesson-Name"  # Change to: Alphabet, Numbers, Greetings, etc.
 LESSON_TITLE_RU = "Название урока на русском"  # Russian title for README
 
 # File paths
-LESSON_DIR = r"D:\ProjectAI\LingoTune\lessons\Arabic"
-OUTPUT_DIR = r"D:\ProjectAI\LingoTune\lessons\Arabic\output"
+LESSON_DIR = str(_ARABIC_LESSONS_DIR)
+OUTPUT_DIR = str(_ARABIC_LESSONS_DIR / "output")
 
 # Timing configuration (adjust based on lesson complexity)
 TIMING_STEP = 6.0  # Seconds per line (6.0 = slow/clear, 4.0 = fast)
@@ -178,7 +182,7 @@ def create_readme_file():
 
 ## 📁 Структура файлов
 
-### Основные файлы в `D:\\ProjectAI\\LingoTune\\lessons\\Arabic\\`:
+### Основные файлы в `D:\\Ai-LingoTune\\lessons\\Arabic\\`:
 
 1. **{LESSON_ID}-{LESSON_NAME.lower()}-arabic.txt** - Текст песни на арабском языке (египетский диалект)
 2. **{LESSON_ID}-{LESSON_NAME.lower()}-russian.txt** - Перевод на русский язык
