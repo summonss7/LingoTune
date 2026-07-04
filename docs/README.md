@@ -1,6 +1,6 @@
 ﻿# LingoTune - Изучение языков через музыку
 
-**Версия:** 5.6.0
+**Версия:** 5.6.1
 **Разработчики:** Z.AI GLM & Цимбалов Артем
 **Платформа:** Android (Flutter)
 **Языки интерфейса:** Русский, Английский, Румынский, Французский, Немецкий, Испанский, Итальянский, Португальский, Китайский, Арабский, Украинский
@@ -28,6 +28,7 @@ LingoTune - инновационное приложение для изучен�
 - 💾 **Экспорт/импорт настроек** - резервное копирование настроек
 - 📦 **Библиотека песен** - управление плейлистами и песнями
 - 🔄 **Фоновое воспроизведение** - воспроизведение в фоне с уведомлением
+- 📞 **Пауза при звонке** - автоматическая пауза песни и озвучки перевода во время входящего звонка, возобновление после разговора
 - ⏩ **Управление скоростью** - изменение скорости воспроизведения (0.5x - 2.0x)
 - 🎧 **Режим изучения** - озвучка перевода (TTS) + фрагмент песни для каждой строки
 - 🚗 **Детекция машин** - анализ звука с микрофона (FFT, on-device) и предупреждение бегуна о приближающемся транспорте (звук/вибрация/голос)
@@ -110,6 +111,47 @@ cp build/app/outputs/flutter-apk/app-release.apk builds/LingoTune-v{версия
 - [Решение проблем](TROUBLESHOOTING.md) - FAQ и решение проблем
 - [Калибровка детекции машин](PLAN_CAR_DETECTION_CALIBRATION.md) - реализация v5.5.0 (эталоны + Mahalanobis)
 - [Офлайн-TTS (sherpa_onnx VITS)](PLAN_v5.3.0_offline_tts.md) - реализация v5.5.0 (стабильная озвучка перевода без системного TTS)
+
+## 🎯 Новое в версии 5.6.1
+
+### 🐛 Фикс: после полного закрытия приложения офлайн-TTS «слетал» на системный
+- **Симптом:** при свернутом приложении всё работало, но после **полного выхода** (свайп из шторки/убийство процесса) и повторного входа озвучка перевода шла через **системный** TTS, а не через офлайн (sherpa_onnx). Причём открытие и закрытие настроек «чинило» поведение до следующего перезапуска.
+- **Корень (гонка при холодном старте):** `TtsCoordinator.setTtsSource` не был сериализован. На холодном старте его **одновременно** дёргают два пути:
+  1. `StudyModeService._initTts()` → `ensureInitialized()` → `setTtsSource(offline, 'ru')` (из конструктора `PlayerScreen.initState`);
+  2. `PlayerScreen.didChangeDependencies` → post-frame → `_applyTtsSource()` → `setTtsSource(offline, lang)`.
+  
+  Проверка `_initialized && _source == source && _engine != null` читает состояние, которое меняется на `await`-ах, поэтому **оба** вызова видели `_initialized=false` и шли в полный путь: создавалось **два** `OfflineTtsEngine`, каждый со своим `OfflineTtsIsolate`, и оба грузили 63 МБ модель. Под холодным стартом (memory/CPU pressure спавна двух изоляторов) один `_loadModel` падал/таймаутил → в «проигравшем» гонку движке `_langAvailable=false` → `OfflineTtsEngine.speak` делегировал во внутренний `_fallback` (SystemTtsEngine) → **системный TTS**.
+- **Почему открытие настроек чинило:** повторный `_applyTtsSource` уходил в no-op ветку `setTtsSource`, которая вызывает `_engine.setLanguage(_languageCode)` ещё раз → `_loadedLang != lang` (модель не загрузилась) → `_loadModel` **ретраится** без конкуренции → успех → `_langAvailable=true` → офлайн.
+- **Решение:** Future-chain мьютекс `_sourceLock` в `TtsCoordinator` сериализует `setTtsSource`/`setLanguage`. Второй вызов ждёт первый, видит `_initialized=true, _source=offline` → no-op → создаётся ровно **один** движок/изолятор. Дедлоков нет (методы не реентерят лок).
+
+### 📞 Новая фича: пауза песни (и озвучки перевода) при входящем звонке
+- **Симптом:** во время разговора песня была «тихонько слышно» (ОС делала приглушение/дакинг, а не паузу); озвучка перевода (study mode) вообще продолжала звучать на отдельном `AudioPlayer`.
+- **Корень (песня):** `AudioSessionConfiguration.music()` не задаёт `androidWillPauseWhenDucked` (поле `null` → `false`). При звонке ОС получает `AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK` и **сама снижает громкость** медиапотока, не присылая interruption-событие приложению → `pause()` в обработчике не гарантированно срабатывал над уже-дакнутым потоком (особенно на ColorOS China).
+- **Корень (озвучка):** TTS играет на **втором** `AudioPlayer` (`OfflineTtsEngine._player`), который interruption-обработчик не трогает; простой `TtsCoordinator.stop()` здесь не подходит — он завершает `_speak()`, после чего study-runner запускает `_kickPlayback()` и пытается играть песню прямо во время звонка.
+- **Решение:**
+  - `androidWillPauseWhenDucked: true` в конфигурации сессии → ОС **не дакит сама**, а присылает событие → существующий обработчик честно паузит (`begin`) и возобновляет (`end`). См. маппинг `lossTransientCanDuck` в `audio_session-0.1.25/lib/src/core.dart`.
+  - Новые колбэки `onPlaybackInterrupted` (возвращает `bool` — взял ли study на себя паузу) / `onPlaybackResumed` на `BackgroundAudioHandler`. `PlayerScreen` подключает их к `StudyModeService.pauseSession()` / `resumeSession()` — корректно стопает TTS + дренирует kick-цикл через `_isUserPaused`, а после звонка поднимает сессию. Если колбэк вернул `true`, handler НЕ делает авто-resume песни (этим занимается `resumeSession`), избегая double-resume.
+
+### 🔧 Технические изменения
+- **`lib/services/tts_coordinator.dart`**:
+  - Новое поле `Future<void>? _sourceLock`.
+  - `setTtsSource` стал обёрткой: захватывает очередь (`prev` → `done`), ждёт предыдущий вызов, делегирует в `_setTtsSourceInner` (тело без изменений), освобождает в `finally`.
+  - `setLanguage` обёрнут в ту же очередь — иначе `setLanguage` мог вызваться на движке, который в этот момент пересоздаётся/утилизируется.
+- **`lib/services/background_audio_handler.dart`**:
+  - `_initAudioSession`: `session.configure(AudioSessionConfiguration.music().copyWith(androidWillPauseWhenDucked: true))`.
+  - Новые поля `bool Function()? onPlaybackInterrupted` / `Function()? onPlaybackResumed`.
+  - Interruption-listener: на `begin` вызывает `onPlaybackInterrupted` (если вернул `true` — не захватывает `_wasPlayingBeforeInterruption`), затем `pause()`; на `end` — `play()` (если было playing) + `onPlaybackResumed`. Добавлены debug-логи `📞`.
+- **`lib/screens/player_screen.dart`**:
+  - Новое поле `bool _studyPausedForCall = false`.
+  - В `_initBackgroundAudio`: подключение `onPlaybackInterrupted` (если study активен и не на паузе → `_studyPausedForCall=true`, `pauseSession()` fire-and-forget, возврат `true`) и `onPlaybackResumed` (`resumeSession()` если `_studyPausedForCall`).
+  - В `dispose()`: очистка обоих колбэков (вместе с `onSkipToNextRequested`).
+- **`pubspec.yaml`/`app_info.dart`/`build.gradle`/`local.properties`** — 5.6.1 (versionCode 219).
+
+### ⚠️ Известные ограничения
+- **Car detection во время звонка:** детектор машин использует микрофон, который во время разговора занят телефонией; анализа не будет. После звонка детектор автоматически возобновляет захват (если был активен). Специальной паузы car detection на звонок не делается — это редкий кейс (бегун обычно не разговаривает по телефону во время бега).
+- **Double interruption:** при быстрой серии прерываний флаг `_studyPausedForCall` защищает от двойного resume, но пауза `pauseSession()` идемпотентна (`_isUserPaused` проверяется).
+
+---
 
 ## 🎯 Новое в версии 5.6.0
 

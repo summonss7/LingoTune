@@ -78,6 +78,17 @@ class TtsCoordinator extends ChangeNotifier {
 
   bool _initialized = false;
 
+  /// Сериализует [setTtsSource] / [setLanguage]. При холодном старте их
+  /// одновременно дёргают `StudyModeService._initTts` (через
+  /// [ensureInitialized]) и `PlayerScreen._applyTtsSource` (post-frame). Без
+  /// очереди оба видели `_initialized=false` и создавали по
+  /// `OfflineTtsEngine` (со своим `OfflineTtsIsolate`), грузя 63 МБ модель
+  /// дважды; «проигравший» гонку движок оставался с незагруженной моделью →
+  /// `_langAvailable=false` → вечный fallback на системный TTS (симптом
+  /// «после полного выхода офлайн слетал на систему»). Очередь гарантирует
+  /// один движок/изолятор, второй вызов уходит в no-op ветку.
+  Future<void>? _sourceLock;
+
   // -------------------------------------------------------------------
   // Engine management
   // -------------------------------------------------------------------
@@ -97,6 +108,24 @@ class TtsCoordinator extends ChangeNotifier {
   ///
   /// Если новый source совпадает с текущим — no-op (engine уже корректен).
   Future<void> setTtsSource(
+    TtsSource source, {
+    String? languageCode,
+  }) async {
+    // Сериализация: ждём завершения предыдущего setTtsSource/setLanguage,
+    // иначе при холодном старте два concurrent-вызова создавали два движка.
+    final prev = _sourceLock;
+    final done = Completer<void>();
+    _sourceLock = done.future;
+    try {
+      if (prev != null) await prev;
+      await _setTtsSourceInner(source, languageCode: languageCode);
+    } finally {
+      if (identical(_sourceLock, done.future)) _sourceLock = null;
+      if (!done.isCompleted) done.complete();
+    }
+  }
+
+  Future<void> _setTtsSourceInner(
     TtsSource source, {
     String? languageCode,
   }) async {
@@ -192,15 +221,26 @@ class TtsCoordinator extends ChangeNotifier {
     await setTtsSource(_source, languageCode: _languageCode);
   }
 
-  /// Сменить язык перевода (делегирует в engine).
+  /// Сменить язык перевода (делегирует в engine). Сериализован общей очередью
+  /// с [setTtsSource], чтобы не вызвать `setLanguage` на движке, который в
+  /// этот момент утилизируется/пересоздаётся.
   Future<void> setLanguage(String languageCode) async {
-    _languageCode = languageCode;
-    if (_engine != null) {
-      try {
-        await _engine!.setLanguage(languageCode);
-      } catch (e) {
-        debugPrint('⚠ TtsCoordinator: setLanguage($languageCode): $e');
+    final prev = _sourceLock;
+    final done = Completer<void>();
+    _sourceLock = done.future;
+    try {
+      if (prev != null) await prev;
+      _languageCode = languageCode;
+      if (_engine != null) {
+        try {
+          await _engine!.setLanguage(languageCode);
+        } catch (e) {
+          debugPrint('⚠ TtsCoordinator: setLanguage($languageCode): $e');
+        }
       }
+    } finally {
+      if (identical(_sourceLock, done.future)) _sourceLock = null;
+      if (!done.isCompleted) done.complete();
     }
   }
 

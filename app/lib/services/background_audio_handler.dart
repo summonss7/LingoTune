@@ -19,6 +19,21 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   Function()? onSkipToNextRequested;
   Function()? onSkipToPreviousRequested;
 
+  /// Вызывается в начале прерывания аудиосессии (входящий звонок, будильник,
+  /// другой плеер). Возвращает `true` если колбэк взял управление паузой на себя
+  /// (активен study mode → pauseSession стопает TTS + drain kick-цикла). В этом
+  /// случае handler НЕ захватывает `_wasPlayingBeforeInterruption` и НЕ делает
+  /// авто-resume песни после звонка — это делает [onPlaybackResumed]
+  /// (resumeSession). TTS играет на отдельном AudioPlayer, который обычный
+  /// pause() не затрагивает; простой TtsCoordinator.stop() здесь НЕ подходит:
+  /// он завершает _speak() и study runner тут же запускает _kickPlayback(),
+  /// пытающийся играть песню во время звонка.
+  bool Function()? onPlaybackInterrupted;
+
+  /// Вызывается по завершении прерывания (конец звонка). PlayerScreen
+  /// возобновляет study-сессию, если она была паузнута ради звонка.
+  Function()? onPlaybackResumed;
+
   StreamSubscription? _playbackEventSubscription;
   StreamSubscription? _positionSubscription;
   StreamSubscription? _playingSubscription;
@@ -54,17 +69,39 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   Future<void> _initAudioSession() async {
     try {
       final session = await AudioSession.instance;
-      await session.configure(const AudioSessionConfiguration.music());
+      // androidWillPauseWhenDucked: true — при входящем звонке ОС получает
+      // AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK. С дефолтом (false) ОС сама делает
+      // дакинг (приглушает медиапоток), из-за чего песня «тихонько слышно» во
+      // время разговора, а наш pause() может не подействовать над уже-дакнутым
+      // потоком (особенно на ColorOS China). С true ОС НЕ дакит сама, а
+      // присылает interruption-событие → мы честно паузим и возобновляем.
+      await session.configure(
+        const AudioSessionConfiguration.music()
+            .copyWith(androidWillPauseWhenDucked: true),
+      );
       
       _interruptionSubscription = session.interruptionEventStream.listen((event) {
+        debugPrint(
+            '📞 BackgroundAudioHandler: interruption begin=${event.begin} type=${event.type}');
         if (event.begin) {
-          _wasPlayingBeforeInterruption = _player.playing;
+          // Даём study mode корректно поставить сессию на паузу (стоп TTS +
+          // drain kick-цикла). Если колбэк взял управление на себя — НЕ
+          // захватываем wasPlaying и не делаем авто-resume после звонка, этим
+          // займётся onPlaybackResumed (resumeSession).
+          final studyHandled = onPlaybackInterrupted?.call() ?? false;
+          if (studyHandled) {
+            _wasPlayingBeforeInterruption = false;
+          } else {
+            _wasPlayingBeforeInterruption = _player.playing;
+          }
           pause();
         } else {
-          if (_wasPlayingBeforeInterruption) {
+          final wasPlaying = _wasPlayingBeforeInterruption;
+          _wasPlayingBeforeInterruption = false;
+          if (wasPlaying) {
             play();
           }
-          _wasPlayingBeforeInterruption = false;
+          onPlaybackResumed?.call();
         }
       });
       
@@ -72,7 +109,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         pause();
       });
       
-      debugPrint('✓ BackgroundAudioHandler: AudioSession configured with interruption handling');
+      debugPrint('✓ BackgroundAudioHandler: AudioSession configured (willPauseWhenDucked=true) with interruption handling');
     } catch (e) {
       debugPrint('✗ BackgroundAudioHandler: Error configuring AudioSession: $e');
     }

@@ -100,6 +100,11 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isReloading = false;
   bool _isSongLoading = false;
 
+  /// Была ли study-сессия паузнута ради входящего звонка/прерывания. Ставится
+  /// в onPlaybackInterrupted (BackgroundAudioHandler) и снимается в
+  /// onPlaybackResumed, чтобы после звонка корректно возобновить озвучку.
+  bool _studyPausedForCall = false;
+
   // === DIAGNOSTIC (5.0.7): last study-mode lifecycle event, shown in the
   // service-data overlay so we can trace why study fails to restart after a
   // song switch. Remove after the root cause is fixed. ===
@@ -1238,6 +1243,33 @@ class _PlayerScreenState extends State<PlayerScreen>
         if (mounted) _playPreviousSong();
       };
 
+      // Звонок/прерывание: паузим study-сессию (стоп TTS + drain kick-цикла),
+      // чтобы озвучка перевода не звучала во время разговора. Обычный pause()
+      // в BackgroundAudioHandler стопает только песню, а TTS играет на отдельном
+      // AudioPlayer. Возвращаем true → handler не делает авто-resume песни
+      // после звонка, этим займётся onPlaybackResumed (resumeSession).
+      widget.audioService.backgroundHandler!.onPlaybackInterrupted = () {
+        if (!mounted) return false;
+        if (_studyModeService.isActive && !_studyModeService.isUserPaused) {
+          debugPrint('📞 PlayerScreen: pausing study for call/interruption');
+          _studyPausedForCall = true;
+          // fire-and-forget: _isUserPaused=true выставится синхронно (runner
+          // остановится), TTS и kick дренируются в фоне; песню паузит сам
+          // handler сразу после колбэка.
+          _studyModeService.pauseSession();
+          return true;
+        }
+        return false;
+      };
+      widget.audioService.backgroundHandler!.onPlaybackResumed = () {
+        if (!mounted) return;
+        if (_studyPausedForCall) {
+          debugPrint('📞 PlayerScreen: resuming study after call/interruption');
+          _studyPausedForCall = false;
+          _studyModeService.resumeSession();
+        }
+      };
+
       if (widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
         final currentIndex =
             widget.playlistSongs!.indexWhere((s) => s.id == widget.song.id);
@@ -1540,6 +1572,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (handler != null) {
       handler.onSkipToNextRequested = null;
       handler.onSkipToPreviousRequested = null;
+      handler.onPlaybackInterrupted = null;
+      handler.onPlaybackResumed = null;
     }
 
     super.dispose();
