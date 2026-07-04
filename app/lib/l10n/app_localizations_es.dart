@@ -1922,6 +1922,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get studyModeSpeechRate => 'Velocidad de voz';
 
   @override
+  String get studyModeSpeechVolume => 'Volumen de voz';
+
+  @override
   String get studyModeLongPressHint => 'Pulsación larga para ajustes';
 
   @override

@@ -1922,6 +1922,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studyModeSpeechRate => 'Speech rate';
 
   @override
+  String get studyModeSpeechVolume => 'Speech volume';
+
+  @override
   String get studyModeLongPressHint => 'Long press for settings';
 
   @override

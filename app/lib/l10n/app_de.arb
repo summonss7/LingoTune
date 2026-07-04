@@ -608,6 +608,7 @@
       "studyModeOrderOriginalFirst": "Zuerst Original",
       "studyModeOrderOverlay": "Überlagert (leises Original)",
       "studyModeSpeechRate": "Sprechgeschwindigkeit",
+      "studyModeSpeechVolume": "Sprechlautstärke",
       "studyModeLongPressHint": "Lange drücken für Einstellungen",
       "exportCurrentSong": "Lied exportieren",
       "studyModeOverlayTiming": "Wann sprechen",

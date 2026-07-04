@@ -1,6 +1,6 @@
 ﻿# LingoTune - Изучение языков через музыку
 
-**Версия:** 5.5.0
+**Версия:** 5.6.0
 **Разработчики:** Z.AI GLM & Цимбалов Артем
 **Платформа:** Android (Flutter)
 **Языки интерфейса:** Русский, Английский, Румынский, Французский, Немецкий, Испанский, Итальянский, Португальский, Китайский, Арабский, Украинский
@@ -110,6 +110,64 @@ cp build/app/outputs/flutter-apk/app-release.apk builds/LingoTune-v{версия
 - [Решение проблем](TROUBLESHOOTING.md) - FAQ и решение проблем
 - [Калибровка детекции машин](PLAN_CAR_DETECTION_CALIBRATION.md) - реализация v5.5.0 (эталоны + Mahalanobis)
 - [Офлайн-TTS (sherpa_onnx VITS)](PLAN_v5.3.0_offline_tts.md) - реализация v5.5.0 (стабильная озвучка перевода без системного TTS)
+
+## 🎯 Новое в версии 5.6.0
+
+### 🐛 Фикс: зависание/краш при открытии песни + ошибка «TTS model integrity check failed»
+- **Симптомы:** после внедрения офлайн-TTS (5.5.0) приложение зависало при открытии песни, перемотка не работала, воспроизведение «слетало» через пару секунд; при установке русского голосового пакета появлялась ошибка `FileSystemException: TTS model integrity check failed`.
+- **Корень (integrity):** бандл `assets/tts/ru_RU.tar.bz2` содержит модель под реальным именем `ru_RU-irina-medium.onnx` (+ `ru_RU-irina-medium.onnx.json`), а `TtsModelManager` везде искал каноническое `model.onnx`. Распаковка Strip'ала верхнюю папку, но не переименовывала файл → integrity-чек не находил `model.onnx` → бросал `FileSystemException` → модель никогда не устанавливалась.
+- **Корень (зависание):** т.к. `isInstalled('ru')` всегда возвращал `false`, а дефолтный `ttsSource='offline'`, при **каждом** открытии песни заново распаковывался 64 МБ архив синхронно в главном изоляте (`BZip2Decoder`+`TarDecoder`) → UI вставал на секунды → перемотка не отвечала → watchdog'и/session-трэш глушили воспроизведение.
+- **Решение:**
+  - В `_extractTarBz2` реальные `*.onnx` и `*.onnx.json` **переименовываются** в канонические `model.onnx` / `model.onnx.json` (sherpa_onnx выводит имя `.json` из пути модели) → integrity-чек проходит, `isInstalled` возвращает `true`, повторная распаковка прекращается.
+  - Декодирование BZip2+Tar и запись ~300 файлов вынесены в **фоновый изолятор** через `compute` (top-level `_extractTtsArchiveInIsolate`) — главный изолят больше не морозится. Эталон — `compute(_decodeArchive, …)` из `settings_export_service.dart`.
+
+### 🚀 Ускорение: генерация речи (sherpa_onnx) в воркер-изоляторе
+- **Задача:** `OfflineTts.generate()` синхронна и блочит вызвавший изолят на сотни миллисекунд на каждую строку перевода в study-режиме → UI stutter. Объект `OfflineTts` нельзя пересылать между изолятами.
+- **Решение:** новый `lib/services/tts/offline_tts_isolate.dart` — **долгоживущий воркер-изолятор**, владеющий `OfflineTts`. Запросы `generate` уходят через `SendPort`/`ReceivePort` (handshake + op-codes + request-id), воркер синтезирует и возвращает `Float32List` samples + sampleRate. `OfflineTtsEngine.speak` вызывает `_isolate.generate(text, rate, gain)`, WAV пишется и играется уже в main. При ошибке/таймауте — откат на системный TTS (как раньше).
+- `_loadModel`/`_maybeUnload` делегируют в изолятор (`loadModel`/`freeModel`); `_tts` поле удалено из движка.
+
+### 🔊 Новая фича: громкость речи + буст до 3.0x (нормализация)
+- **Задача:** раньше громкость сгенерированной речи не регулировалась (`volume` в `speak()` всегда был `null`), а `setVolume` ограничен 1.0 — речь была тише «мастеренной» песни даже на максимуме.
+- **Решение:**
+  - Новая настройка **«Громкость речи»** в диалоге study-режима (⚙) — ползунок **0.0–3.0x** (множитель, единообразно с ползунком скорости). Хранится в `studyModeSpeechVolume` (глобально) / `song_{id}_speechVolume` (per-song), дефолт **1.0x**, с поддержкой per-song override (наследуется при первом включении).
+  - Скорость речи переделана с ChoiceChip'ов (0.3–1.1) на **ползунок 0.3–2.5x**.
+  - **Пик-нормализация:** сэмплы речи всегда нормализуются до ~0.98 в воркере (Piper-выход обычно далеко не на пике) → даже на **1.0x** речь в ~2–3 раза громче прежнего.
+  - **Буст >1.0x:** значения ползунка выше 1.0 усиливают сэмплы (`gain`) с жёстким клиппингом пиков → можно выкрутить очень громко (на 2.5–3.0x возможны искажения). До 1.0 — обычное ослабление через `setVolume`.
+  - **Поток:** `StudyModeService._speechVolume` → `TtsCoordinator.speak(volume:)` → офлайн: `_isolate.generate(gain:)` + `_player.setVolume(min(V,1.0))`; система: `FlutterTts.setVolume` (клампится до 1.0, буст физически невозможен — fallback-путь).
+- **Локализация:** 1 новый ключ `studyModeSpeechVolume` × 11 языков (через `flutter gen-l10n`).
+
+### 🐛 Фикс: зацикливание режима `LoopMode.allPlaylists`
+- **Симптом:** в режиме проигрывания по разным плейлистам играл весь текущий плейлист → одна песня из другого → снова весь текущий → та же песня из другого → ∞ (вместо последовательного перехода по плейлистам).
+- **Корень:** `_playNextFromAllPlaylists` искал текущую песню в **устаревшем** `widget.playlistSongs` (фиксируется при создании экрана). Когда играла песня B0 из другого плейлиста, `indexWhere` = −1 → играл `playlistSongs[0]` (прыжок в начало исходного плейлиста A). Дополнительно `_playSong` безусловно сбрасывал `audioService.currentPlaylist` обратно на `widget.playlistSongs`, затирая переход.
+- **Решение:**
+  - Заведён живой state-флаг `_activePlaybackList` (изначально = `widget.playlistSongs`), который **обновляется** при смене плейлиста. Все операции next/prev/queue работают с ним, а не с устаревшим `widget.playlistSongs`.
+  - Новый `_switchToNextPlaylist`: доиграли плейлист → выбираем **другой**. **Shuffle ВЫКЛ** → следующий по `createdAt` с wrap-around, пустые пропускаются; **Shuffle ВКЛ** → случайный (≠ текущему). `_playSong` больше не сбрасывает очередь.
+  - `DatabaseService.getAllPlaylists()` → `orderBy: 'createdAt ASC'` (детерминированный порядок).
+  - Трейс теперь: A (целиком) → B (целиком) → C → A… или случайные плейлисты при shuffle.
+
+### 🔧 Технические изменения
+- **`lib/services/tts/tts_model_manager.dart`**:
+  - `_extractTarBz2` переписан: распаковка через `compute(_extractTtsArchiveInIsolate, _ExtractJob)` (новые top-level классы `_ExtractJob`/`_ExtractResult` + функция); внутри — переименование реального `*.onnx`/`*.onnx.json` в `model.onnx`/`model.onnx.json`; integrity-чек в main после `compute`.
+  - Документация класса/каталога обновлена под реальную структуру архива.
+- **`lib/services/tts/offline_tts_isolate.dart`** (новый, ~320 строк): `OfflineTtsIsolate` (persistent worker) + `_LoadResult`/`_GenResult` + top-level `_offlineTtsWorkerMain` + op-code константы. Методы `ensureStarted`/`loadModel`/`generate({gain})`/`freeModel`/`dispose` с request-id и таймаутами. Воркер: `initBindings` + lazy `OfflineTts` + `generate` с пик-нормализацией (0.98) × gain и clamp.
+- **`lib/services/tts/offline_tts_engine.dart`**: поле `_tts` → `_isolate`; `_loadModel`/`_maybeUnload` делегируют в изолятор; `speak` вызывает `_isolate.generate(text, rate, gain: gain)`, маппит `volume` (0–3) → `playerVol=min(V,1.0)` + `gain=V>1?V:1`, применяет `_player.setVolume(playerVol)`; генерация/`writeWave`/play в main.
+- **`lib/services/tts/system_tts_engine.dart`**: поле `_lastVolume`; `volume` кешируется и переприменяется в `speak`/`initialize`/`applyConfiguredEngine` (раньше хардкод 1.0).
+- **`lib/services/study_mode_service.dart`**: новое поле `_speechVolume=1.0`, геттер `speechVolume`, `setSpeechVolume` (кламп 0–3), загрузка/наследование per-song (`studyModeSpeechVolume` / `song_{id}_speechVolume`); в `_speak` передаётся `volume: _speechVolume`.
+- **`lib/screens/player_screen.dart`**:
+  - `_studySpeechRates` (ChoiceChip'ы) удалён → ползунок скорости 0.3–2.5 (divisions 22).
+  - Новый ползунок громкости речи 0.0–3.0 (divisions 30, множитель) + переменная `currentVolume` (синхронизируется при per-song toggle).
+  - `_activePlaybackList` (живой список) + `_switchToNextPlaylist`; `_playNextFromAllPlaylists`/`_playSong`/`_playNextSong`/`_playPreviousSong`/`_canPlayNext`/`_canPlayPrevious` переведены на `_activePlaybackList ?? widget.playlistSongs`.
+- **`lib/services/database_service.dart`**: `getAllPlaylists()` → `orderBy: 'createdAt ASC'`.
+- **`lib/services/tts/tts_catalog.dart`**: комментарий о структуре архива исправлен (реальные имена `*.onnx`/`*.onnx.json`).
+- **`lib/l10n/app_*.arb`** (11) + `app_localizations*.dart` (реген через `flutter gen-l10n`): ключ `studyModeSpeechVolume` × 11 языков.
+- **`pubspec.yaml`/`app_info.dart`/`build.gradle`/`local.properties`** — 5.6.0 (versionCode 218); features += «🔊 TTS speech volume boost up to 3.0x».
+
+### ⚠️ Известные ограничения
+- **Буст речи >1.0x** работает только для офлайн-TTS (системный FlutterTts физически ограничен `setVolume(1.0)`); на 2.5–3.0x возможны искажения (клиппинг пиков) — плата за громкость выше пиковой.
+- **Системный TTS rate** при значениях >1.0 ведёт себя ROM-зависимо (для дефолтного офлайн-источника это неактуально — там 1.0=норма маппится 1-в-1 в sherpa `speed`).
+- **Per-song `speechVolume`** не включён в экспорт/импорт настроек (как и остальные per-song ключи) — фаза 2.
+
+---
 
 ## 🎯 Новое в версии 5.5.0
 

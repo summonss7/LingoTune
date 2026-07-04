@@ -1922,6 +1922,9 @@ class AppLocalizationsRo extends AppLocalizations {
   String get studyModeSpeechRate => 'Viteză vorbire';
 
   @override
+  String get studyModeSpeechVolume => 'Volum vorbire';
+
+  @override
   String get studyModeLongPressHint => 'Apăsați lung pentru setări';
 
   @override

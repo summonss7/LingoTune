@@ -608,6 +608,7 @@
       "studyModeOrderOriginalFirst": "Original first",
       "studyModeOrderOverlay": "Overlay (quiet original)",
       "studyModeSpeechRate": "Speech rate",
+      "studyModeSpeechVolume": "Speech volume",
       "studyModeLongPressHint": "Long press for settings",
       "exportCurrentSong": "Export song",
       "studyModeOverlayTiming": "When to speak",

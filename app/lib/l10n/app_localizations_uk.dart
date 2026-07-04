@@ -1922,6 +1922,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get studyModeSpeechRate => 'Швидкість мовлення';
 
   @override
+  String get studyModeSpeechVolume => 'Гучність мовлення';
+
+  @override
   String get studyModeLongPressHint => 'Довге натискання — налаштування';
 
   @override

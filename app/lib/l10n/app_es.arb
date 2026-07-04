@@ -608,6 +608,7 @@
       "studyModeOrderOriginalFirst": "Primero original",
       "studyModeOrderOverlay": "Superpuesto (original bajo)",
       "studyModeSpeechRate": "Velocidad de voz",
+      "studyModeSpeechVolume": "Volumen de voz",
       "studyModeLongPressHint": "Pulsación larga para ajustes",
       "exportCurrentSong": "Exportar canción",
       "studyModeOverlayTiming": "Cuándo hablar",

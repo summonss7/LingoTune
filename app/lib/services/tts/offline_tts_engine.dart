@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa_onnx;
 
+import 'offline_tts_isolate.dart';
 import 'tts_catalog.dart';
 import 'tts_engine.dart';
 import 'tts_model_manager.dart';
@@ -35,8 +36,13 @@ import 'system_tts_engine.dart';
 /// минимум арбитража фокуса. Для translationFirst/originalFirst песня
 /// ставится на паузу → TTS-плеер играет в той же сессии. Для overlay —
 /// песня ducked (`setVolume(0.3)`) + TTS одновременно.
+///
+/// **Синтез в изоляторе**: тяжёлая `OfflineTts.generate()` (CPU, сотни мс)
+/// выполняется в долгоживущем воркер-изоляторе [OfflineTtsIsolate], чтобы
+/// не морозить main/UI изолят. WAV пишется и играется уже в main.
 class OfflineTtsEngine extends TtsEngine {
-  sherpa_onnx.OfflineTts? _tts;
+  /// Воркер-изолятор, владеющий нативной OfflineTts и синтезирующий аудио.
+  final OfflineTtsIsolate _isolate = OfflineTtsIsolate();
 
   /// Какой язык сейчас загружен в [_tts] (например 'ru'). null = модель не
   /// загружена (тогда speak идёт в [_fallback]).
@@ -188,7 +194,7 @@ class OfflineTtsEngine extends TtsEngine {
     if (text.trim().isEmpty) return;
 
     // Если модель не активна — fallback на систему.
-    if (!_langAvailable || _tts == null) {
+    if (!_langAvailable) {
       return _fallback.speak(text, rate: rate, pitch: pitch, volume: volume);
     }
 
@@ -197,25 +203,27 @@ class OfflineTtsEngine extends TtsEngine {
 
     final sw = Stopwatch()..start();
 
-    // === Generate ===
-    sherpa_onnx.GeneratedAudio audio;
-    try {
-      audio = _tts!.generate(text: text, sid: 0, speed: rate);
-    } catch (e, st) {
-      debugPrint('✗ OfflineTtsEngine: generate() failed: $e\n$st');
-      // Fallback на систему при ошибке генерации.
-      return _fallback.speak(text, rate: rate, pitch: pitch, volume: volume);
-    }
+    // Громкость речи V (0.0–3.0): часть до 1.0 → setVolume плеера, всё что
+    // выше 1.0 → буст сэмплов (gain) в воркере, т.к. setVolume ограничен 1.0.
+    final double v = volume ?? 1.0;
+    final double playerVol = v < 1.0 ? v : 1.0;
+    final double gain = v > 1.0 ? v : 1.0;
+
+    // === Generate (в фоновом изоляторе, main не блочится) ===
+    final gen = await _isolate.generate(text, rate, gain: gain);
     sw.stop();
     _genMsValue = sw.elapsedMilliseconds;
-    debugPrint(
-        '🎤 OfflineTtsEngine: generated ${audio.samples.length} samples '
-        '(${_genMsValue}ms, rate=$rate)');
 
-    if (audio.samples.isEmpty) {
-      debugPrint('⚠ OfflineTtsEngine: empty samples → fallback');
+    if (gen.samples == null || gen.samples!.isEmpty) {
+      debugPrint(
+          '⚠ OfflineTtsEngine: generate failed/empty (${gen.error}) → fallback (${_genMsValue}ms)');
       return _fallback.speak(text, rate: rate, pitch: pitch, volume: volume);
     }
+    final Float32List samples = gen.samples!;
+    final int sampleRate = gen.sampleRate;
+    debugPrint(
+        '🎤 OfflineTtsEngine: generated ${samples.length} samples '
+        '(${_genMsValue}ms, rate=$rate)');
 
     // === Write WAV to temp ===
     final tempDir = await getTemporaryDirectory();
@@ -224,8 +232,8 @@ class OfflineTtsEngine extends TtsEngine {
     try {
       sherpa_onnx.writeWave(
         filename: wavPath,
-        samples: audio.samples,
-        sampleRate: audio.sampleRate,
+        samples: samples,
+        sampleRate: sampleRate,
       );
     } catch (e, st) {
       debugPrint('✗ OfflineTtsEngine: writeWave() failed: $e\n$st');
@@ -250,6 +258,11 @@ class OfflineTtsEngine extends TtsEngine {
 
     try {
       await _player.setFilePath(wavPath);
+      // Громкость сгенерированной речи. setVolume ограничен 1.0; всё что выше
+      // уже заложено в сэмплы через gain (нормализация + буст).
+      try {
+        await _player.setVolume(playerVol.clamp(0.0, 1.0));
+      } catch (_) {}
       await _player.play();
     } catch (e, st) {
       debugPrint('✗ OfflineTtsEngine: play() failed: $e\n$st');
@@ -314,7 +327,7 @@ class OfflineTtsEngine extends TtsEngine {
   // Загрузка/выгрузка моделей (lazy, одна модель в RAM)
   // -------------------------------------------------------------------
 
-  /// Загружает модель для языка. Возвращает false при ошибке.
+  /// Загружает модель для языка в воркер-изоляторе. Возвращает false при ошибке.
   Future<bool> _loadModel(String lang) async {
     try {
       final paths = await TtsModelManager.instance.modelPaths(lang);
@@ -322,47 +335,27 @@ class OfflineTtsEngine extends TtsEngine {
         debugPrint('✗ OfflineTtsEngine: no model paths for $lang');
         return false;
       }
-      final vits = sherpa_onnx.OfflineTtsVitsModelConfig(
-        model: paths.model,
-        tokens: paths.tokens,
-        lexicon: '',
-        dataDir: paths.dataDir,
-      );
-      final modelConfig = sherpa_onnx.OfflineTtsModelConfig(
-        vits: vits,
-        numThreads: 1,
-        debug: false,
-        provider: 'cpu',
-      );
-      final config = sherpa_onnx.OfflineTtsConfig(
-        model: modelConfig,
-        ruleFsts: '',
-        ruleFars: '',
-        maxNumSenetences: 1, // API опечатка в sherpa_onnx
-        silenceScale: 0.2,
-      );
-      _tts = sherpa_onnx.OfflineTts(config);
+      final res =
+          await _isolate.loadModel(paths.model, paths.tokens, paths.dataDir);
+      if (!res.ok) {
+        debugPrint(
+            '✗ OfflineTtsEngine: _loadModel($lang) failed in isolate: ${res.error}');
+        return false;
+      }
       debugPrint(
-          '✓ OfflineTtsEngine: model loaded for "$lang" (sampleRate=${_tts!.sampleRate})');
+          '✓ OfflineTtsEngine: model loaded for "$lang" in isolate (sampleRate=${res.sampleRate})');
       return true;
     } catch (e, st) {
       debugPrint('✗ OfflineTtsEngine: _loadModel($lang) failed: $e\n$st');
-      _tts = null;
       return false;
     }
   }
 
   Future<void> _maybeUnload() async {
-    final tts = _tts;
-    _tts = null;
-    _loadedLang = null;
-    if (tts != null) {
-      try {
-        tts.free();
-        debugPrint('🧹 OfflineTtsEngine: model freed');
-      } catch (e) {
-        debugPrint('⚠ OfflineTtsEngine: free() error: $e');
-      }
+    if (_loadedLang != null) {
+      await _isolate.freeModel();
+      _loadedLang = null;
+      debugPrint('🧹 OfflineTtsEngine: model freed (isolate)');
     }
   }
 
@@ -379,6 +372,7 @@ class OfflineTtsEngine extends TtsEngine {
     _disposed = true;
     _stopInternal();
     _maybeUnload();
+    _isolate.dispose();
     _player.dispose();
     _fallback.dispose();
     _isReady = false;

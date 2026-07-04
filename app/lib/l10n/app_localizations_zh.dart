@@ -1922,6 +1922,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studyModeSpeechRate => '语音速度';
 
   @override
+  String get studyModeSpeechVolume => '语音音量';
+
+  @override
   String get studyModeLongPressHint => '长按进行设置';
 
   @override

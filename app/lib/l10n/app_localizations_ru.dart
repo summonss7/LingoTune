@@ -1922,6 +1922,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get studyModeSpeechRate => 'Скорость речи';
 
   @override
+  String get studyModeSpeechVolume => 'Громкость речи';
+
+  @override
   String get studyModeLongPressHint => 'Долгое нажатие — настройки';
 
   @override

@@ -4,8 +4,8 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.5.0';
-  static const String versionCode = '217';
+  static const String version = '5.6.0';
+  static const String versionCode = '218';
 
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
@@ -39,9 +39,10 @@ class AppInfo {
     '💾 Export and import settings',
     '📦 Backup your song library',
     '🚗 Car detection via microphone (safety for runners)',
-    '🎚️ Per-song study settings (speed, order, speech rate)',
+    '🎚️ Per-song study settings (speed, order, speech rate, speech volume)',
     '🎯 Car detector calibration (record your own sound samples)',
     '🗣️ Offline neural TTS (sherpa_onnx VITS, stable on Chinese ROMs)',
+    '🔊 TTS speech volume boost up to 3.0x (peak-normalized)',
   ];
 
   static const List<String> supportedLanguages = [

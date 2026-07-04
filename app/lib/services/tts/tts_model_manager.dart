@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:archive/archive.dart';
-import 'package:archive/archive_io.dart' show InputStream;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
@@ -36,11 +35,14 @@ enum TtsModelStatus {
 ///
 /// Хранение: `<app-docs>/tts/<locale>/` с файлами:
 ///   - model.onnx
+///   - model.onnx.json   (Piper-конфиг; sherpa выводит имя из model.onnx)
 ///   - tokens.txt
 ///   - espeak-ng-data/...
-/// Папка назначения НЕ содержит voice-подпапку (she bangs верхний уровень
-/// tar-архива): например, `vits-piper-ru_RU-irina-medium/model.onnx` из архива
-/// кладётся как `<docs>/tts/ru_RU/model.onnx`.
+/// Папка назначения НЕ содержит voice-подпапку (strip верхнего уровня
+/// tar-архива): например, `vits-piper-ru_RU-irina-medium/ru_RU-irina-medium.onnx`
+/// из архива кладётся как `<docs>/tts/ru_RU/model.onnx`. Реальные имена
+/// модели `*.onnx` и `*.onnx.json` переименовываются в канонические
+/// `model.onnx` / `model.onnx.json` при распаковке.
 ///
 /// [ChangeNotifier] — UI (VoicePackagesScreen) подписывается на обновления
 /// статуса и прогресса.
@@ -284,7 +286,11 @@ class TtsModelManager extends ChangeNotifier {
   // -------------------------------------------------------------------
 
   /// Распаковывает tar.bz2 → tts/<locale>/ с strip верхнеуровневой папки.
-  /// Архив Piper: `vits-piper-XX-YY-medium/model.onnx` → `<docs>/tts/XX_YY/model.onnx`.
+  /// Архив Piper: `vits-piper-XX-YY-medium/<real>.onnx` →
+  /// `<docs>/tts/XX_YY/model.onnx` (с переименованием `.onnx`/`.onnx.json`).
+  ///
+  /// Тяжёлая работа (BZip2-декодирование 64 МБ + запись ~300 файлов)
+  /// выполняется в фоновом изоляторе через [compute], чтобы не морозить UI.
   Future<void> _extractTarBz2(List<int> bz2Bytes, TtsVoiceInfo voice) async {
     final targetDir = await modelDir(voice.localeCode);
     // Атомарность: распаковываем во временную папку, затем rename.
@@ -296,44 +302,33 @@ class TtsModelManager extends ChangeNotifier {
     }
     await tmpDir.create(recursive: true);
 
-    // 1) BZip2 → tar bytes
-    final tarBytes = BZip2Decoder().decodeBytes(bz2Bytes);
-    // 2) Tar → Archive
-    final archive = TarDecoder().decodeBytes(tarBytes);
-
-    // 3) Записываем файлы, strip'ая верхнеуровневую папку.
-    //    Архив содержит `vits-piper-ru_RU-irina-medium/model.onnx` → пишем в
-    //    tmpDir/model.onnx.
-    final voicePrefix = '${voice.voiceName}/';
-    for (final file in archive.files) {
-      if (!file.isFile) continue;
-      String rel = file.name;
-      if (rel.startsWith(voicePrefix)) {
-        rel = rel.substring(voicePrefix.length);
-      } else if (rel.startsWith(voice.voiceName)) {
-        // на всякий случай, если архив без trailing slash
-        rel = rel.substring(voice.voiceName.length);
-        if (rel.startsWith('/')) rel = rel.substring(1);
-      }
-      if (rel.isEmpty) continue;
-      final outFile = File(p.join(tmpDir.path, rel));
-      await outFile.parent.create(recursive: true);
-      // TarFile.content в archive 3.6 = InputStream; ZipFile.content = List<int>.
-      // Defensive: поддерживаем оба через проверку типа.
-      final c = file.content;
-      final List<int> data;
-      if (c is List<int>) {
-        data = c;
-      } else if (c is InputStream) {
-        data = c.toUint8List();
-      } else {
-        // Попытка через dynamic (например для InputStreamBase).
-        data = (c as dynamic).toUint8List() as List<int>;
-      }
-      await outFile.writeAsBytes(data, flush: true);
+    // BZip2+Tar декодирование и запись файлов — в изоляторе (main не блочится).
+    final job = _ExtractJob(
+      bytes: bz2Bytes is Uint8List ? bz2Bytes : Uint8List.fromList(bz2Bytes),
+      tmpDirPath: tmpDir.path,
+      voiceName: voice.voiceName,
+    );
+    final _ExtractResult result;
+    try {
+      result = await compute(_extractTtsArchiveInIsolate, job);
+    } catch (e, st) {
+      try {
+        await tmpDir.delete(recursive: true);
+      } catch (_) {}
+      debugPrint('TTS model extraction crashed in isolate: $e\n$st');
+      throw FileSystemException(
+          'TTS model extraction crashed in isolate: $e', tmpDir.path);
     }
 
-    // 4) Проверка целостности.
+    if (!result.success) {
+      try {
+        await tmpDir.delete(recursive: true);
+      } catch (_) {}
+      throw FileSystemException(
+          'TTS model extraction failed: ${result.error}', tmpDir.path);
+    }
+
+    // Проверка целостности (канонические имена после переименования).
     final modelFile = File(p.join(tmpDir.path, 'model.onnx'));
     final tokensFile = File(p.join(tmpDir.path, 'tokens.txt'));
     final dataDir = Directory(p.join(tmpDir.path, 'espeak-ng-data'));
@@ -380,5 +375,146 @@ class TtsModelManager extends ChangeNotifier {
           installed ? TtsModelStatus.ready : TtsModelStatus.absent;
     }
     notifyListeners();
+  }
+}
+
+// =============================================================================
+// Изолятор распаковки архива. BZip2+Tar декодирование и запись ~300 файлов
+// 64-МБ бандла — синхронная CPU-работа; если выполнять её в main isolate,
+// UI зависает на несколько секунд. Функция [compute]-совместимая (top-level).
+// =============================================================================
+
+/// Параметры распаковки, передаваемые в изолятор.
+class _ExtractJob {
+  final Uint8List bytes;
+  final String tmpDirPath;
+  final String voiceName;
+
+  const _ExtractJob({
+    required this.bytes,
+    required this.tmpDirPath,
+    required this.voiceName,
+  });
+}
+
+/// Результат распаковки из изолятора.
+class _ExtractResult {
+  final bool success;
+  final String? error;
+  final List<String> writtenFiles;
+  final bool hasModel;
+  final bool hasTokens;
+  final bool hasDataDir;
+
+  const _ExtractResult({
+    required this.success,
+    this.error,
+    this.writtenFiles = const [],
+    this.hasModel = false,
+    this.hasTokens = false,
+    this.hasDataDir = false,
+  });
+}
+
+/// Top-level функция для [compute]: декодирует bz2→tar→файлы, strip'ает
+/// верхнеуровневую папку voice'а, переименовывает реальный `*.onnx` и
+/// `*.onnx.json` в канонические `model.onnx` / `model.onnx.json`.
+Future<_ExtractResult> _extractTtsArchiveInIsolate(_ExtractJob job) async {
+  try {
+    final tmpDir = Directory(job.tmpDirPath);
+    if (tmpDir.existsSync()) {
+      try {
+        tmpDir.deleteSync(recursive: true);
+      } catch (_) {}
+    }
+    tmpDir.createSync(recursive: true);
+
+    // 1) BZip2 → tar bytes
+    final tarBytes = BZip2Decoder().decodeBytes(job.bytes);
+    // 2) Tar → Archive
+    final archive = TarDecoder().decodeBytes(tarBytes);
+
+    // 3) Записываем файлы, strip'ая верхнеуровневую папку.
+    final voicePrefix = '${job.voiceName}/';
+    String? realOnnxRel;
+    String? realOnnxJsonRel;
+    bool hasTokens = false;
+    bool hasDataDir = false;
+    final written = <String>[];
+
+    for (final file in archive.files) {
+      if (!file.isFile) continue;
+      String rel = file.name;
+      if (rel.startsWith(voicePrefix)) {
+        rel = rel.substring(voicePrefix.length);
+      } else if (rel.startsWith(job.voiceName)) {
+        // на всякий случай, если архив без trailing slash
+        rel = rel.substring(job.voiceName.length);
+        if (rel.startsWith('/')) rel = rel.substring(1);
+      }
+      if (rel.isEmpty) continue;
+
+      // Запоминаем реальные имена модели (для переименования ниже).
+      if (rel.endsWith('.onnx.json')) {
+        realOnnxJsonRel = rel;
+      } else if (rel.endsWith('.onnx')) {
+        realOnnxRel = rel;
+      }
+      if (rel == 'tokens.txt') hasTokens = true;
+      if (rel.startsWith('espeak-ng-data/')) hasDataDir = true;
+
+      final outFile = File(p.join(tmpDir.path, rel));
+      outFile.parent.createSync(recursive: true);
+      // TarFile.content в archive 3.6 = InputStream; ZipFile.content = List<int>.
+      // Defensive: поддерживаем оба через проверку типа.
+      final c = file.content;
+      final List<int> data;
+      if (c is List<int>) {
+        data = c;
+      } else if (c is InputStream) {
+        data = c.toUint8List();
+      } else {
+        // Попытка через dynamic (например для InputStreamBase).
+        data = (c as dynamic).toUint8List() as List<int>;
+      }
+      outFile.writeAsBytesSync(data, flush: true);
+      written.add(rel);
+    }
+
+    // 4) Переименовываем реальные имена модели в канонические, чтобы
+    //    downstream-код (isInstalled/modelPaths/_loadModel) находил model.onnx,
+    //    а sherpa_onnx выводил model.onnx.json из пути model.onnx.
+    bool hasModel = false;
+    if (realOnnxRel != null) {
+      if (realOnnxRel != 'model.onnx') {
+        final src = File(p.join(tmpDir.path, realOnnxRel));
+        final dst = File(p.join(tmpDir.path, 'model.onnx'));
+        if (src.existsSync()) {
+          try {
+            src.renameSync(dst.path);
+          } catch (_) {}
+        }
+      }
+      hasModel = File(p.join(tmpDir.path, 'model.onnx')).existsSync();
+    }
+    if (realOnnxJsonRel != null && realOnnxJsonRel != 'model.onnx.json') {
+      final src = File(p.join(tmpDir.path, realOnnxJsonRel));
+      final dst = File(p.join(tmpDir.path, 'model.onnx.json'));
+      if (src.existsSync()) {
+        try {
+          src.renameSync(dst.path);
+        } catch (_) {}
+      }
+    }
+
+    return _ExtractResult(
+      success: true,
+      writtenFiles: written,
+      hasModel: hasModel,
+      hasTokens: hasTokens,
+      hasDataDir: hasDataDir,
+    );
+  } catch (e, st) {
+    return _ExtractResult(success: false, error: '$e\n$st');
   }
 }

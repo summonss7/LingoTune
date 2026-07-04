@@ -608,6 +608,7 @@
       "studyModeOrderOriginalFirst": "الأصل أولاً",
       "studyModeOrderOverlay": "متداخل (الأصل منخفض)",
       "studyModeSpeechRate": "سرعة الكلام",
+      "studyModeSpeechVolume": "مستوى صوت الكلام",
       "studyModeLongPressHint": "اضغط مطولاً للإعدادات",
       "exportCurrentSong": "تصدير الأغنية",
       "studyModeOverlayTiming": "متى يتحدث",

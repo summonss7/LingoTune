@@ -54,15 +54,17 @@ class StudyModeService extends ChangeNotifier {
 
   StudyModeOrder _order = StudyModeOrder.translationFirst;
   double _speechRate = 0.5;
+  double _speechVolume = 1.0;
   double _duckVolume = 0.3;
   OverlayTiming _overlayTiming = OverlayTiming.start;
   double _savedVolume = 1.0;
   bool _isDucked = false;
 
   // Per-song override: когда [_perSongOverride] == true, значения выше
-  // (order/speechRate/overlayTiming/duckVolume) относятся к конкретной песне
-  // [_perSongSongId], а сеттеры пишут в `song_{id}_*` ключи. Иначе работают
-  // глобальные настройки (`studyMode*`). enabledPersist остаётся глобальным.
+  // (order/speechRate/speechVolume/overlayTiming/duckVolume) относятся к
+  // конкретной песне [_perSongSongId], а сеттеры пишут в `song_{id}_*` ключи.
+  // Иначе работают глобальные настройки (`studyMode*`). enabledPersist
+  // остаётся глобальным.
   bool _perSongOverride = false;
   String? _perSongSongId;
 
@@ -139,6 +141,7 @@ class StudyModeService extends ChangeNotifier {
   int get currentIndex => _currentIndex;
   StudyModeOrder get order => _order;
   double get speechRate => _speechRate;
+  double get speechVolume => _speechVolume;
   OverlayTiming get overlayTiming => _overlayTiming;
   double get duckVolume => _duckVolume;
 
@@ -214,6 +217,8 @@ class StudyModeService extends ChangeNotifier {
       }
       final sr = prefs.getDouble('song_${songId}_speechRate');
       if (sr != null) _speechRate = sr;
+      final sv = prefs.getDouble('song_${songId}_speechVolume');
+      if (sv != null) _speechVolume = sv.clamp(0.0, 3.0);
       final ti = prefs.getInt('song_${songId}_overlayTiming');
       if (ti != null) {
         _overlayTiming = OverlayTiming
@@ -226,6 +231,8 @@ class StudyModeService extends ChangeNotifier {
       _order = StudyModeOrder
           .values[orderIdx.clamp(0, StudyModeOrder.values.length - 1)];
       _speechRate = prefs.getDouble('studyModeSpeechRate') ?? 0.5;
+      _speechVolume =
+          (prefs.getDouble('studyModeSpeechVolume') ?? 1.0).clamp(0.0, 3.0);
       final ti = prefs.getInt('studyModeOverlayTiming') ?? 0;
       _overlayTiming =
           OverlayTiming.values[ti.clamp(0, OverlayTiming.values.length - 1)];
@@ -280,6 +287,9 @@ class StudyModeService extends ChangeNotifier {
         if (prefs.getDouble('song_${id}_speechRate') == null) {
           await prefs.setDouble('song_${id}_speechRate', _speechRate);
         }
+        if (prefs.getDouble('song_${id}_speechVolume') == null) {
+          await prefs.setDouble('song_${id}_speechVolume', _speechVolume);
+        }
         if (prefs.getInt('song_${id}_overlayTiming') == null) {
           await prefs.setInt('song_${id}_overlayTiming', _overlayTiming.index);
         }
@@ -321,6 +331,22 @@ class StudyModeService extends ChangeNotifier {
         await prefs.setDouble('song_${_perSongSongId!}_speechRate', rate);
       } else {
         await prefs.setDouble('studyModeSpeechRate', rate);
+      }
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  /// Громкость генерируемой речи (0.0–3.0). До 1.0 — attenuation плеера, выше
+  /// 1.0 — буст сэмплов (офлайн). Применяется при следующем speak.
+  Future<void> setSpeechVolume(double volume) async {
+    _speechVolume = volume.clamp(0.0, 3.0);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_usePerSong) {
+        await prefs
+            .setDouble('song_${_perSongSongId!}_speechVolume', _speechVolume);
+      } else {
+        await prefs.setDouble('studyModeSpeechVolume', _speechVolume);
       }
     } catch (_) {}
     notifyListeners();
@@ -409,6 +435,7 @@ class StudyModeService extends ChangeNotifier {
             priority: TtsPriority.study,
             locale: _ttsLanguage,
             rate: _speechRate,
+            volume: _speechVolume,
           )
           .timeout(Duration(seconds: watchdogSeconds), onTimeout: () {
         debugPrint('⚠ StudyMode TTS watchdog (${watchdogSeconds}s) '

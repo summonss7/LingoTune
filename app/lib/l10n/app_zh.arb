@@ -608,6 +608,7 @@
       "studyModeOrderOriginalFirst": "先原文",
       "studyModeOrderOverlay": "叠加（原声降低）",
       "studyModeSpeechRate": "语音速度",
+      "studyModeSpeechVolume": "语音音量",
       "studyModeLongPressHint": "长按进行设置",
       "exportCurrentSong": "导出歌曲",
       "studyModeOverlayTiming": "何时朗读",

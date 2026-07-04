@@ -3623,6 +3623,12 @@ abstract class AppLocalizations {
   /// **'Speech rate'**
   String get studyModeSpeechRate;
 
+  /// No description provided for @studyModeSpeechVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech volume'**
+  String get studyModeSpeechVolume;
+
   /// No description provided for @studyModeLongPressHint.
   ///
   /// In en, this message translates to:

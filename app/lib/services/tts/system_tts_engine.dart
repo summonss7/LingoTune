@@ -30,6 +30,8 @@ class SystemTtsEngine extends TtsEngine {
   // Кеш последнего применённого значения speech rate (для повторного
   // применения после setEngine / setLanguage, как в 5.4.0).
   double _lastRate = 0.5;
+  // Кеш последнего применённого значения громкости речи (0.0–1.0).
+  double _lastVolume = 1.0;
 
   SystemTtsEngine();
 
@@ -83,7 +85,7 @@ class SystemTtsEngine extends TtsEngine {
       await _tts.setPitch(1.0);
     } catch (_) {}
     try {
-      await _tts.setVolume(1.0);
+      await _tts.setVolume(_lastVolume);
     } catch (_) {}
 
     debugPrint('✓ SystemTtsEngine: initialized (engine=$_selectedEngineValue)');
@@ -147,6 +149,9 @@ class SystemTtsEngine extends TtsEngine {
     }
 
     _lastRate = rate;
+    if (volume != null) {
+      _lastVolume = volume.clamp(0.0, 1.0);
+    }
 
     // Применяем параметры речи прямо перед speak (как в координаторе 5.4.0).
     try {
@@ -160,11 +165,9 @@ class SystemTtsEngine extends TtsEngine {
         await _tts.setPitch(pitch);
       } catch (_) {}
     }
-    if (volume != null) {
-      try {
-        await _tts.setVolume(volume);
-      } catch (_) {}
-    }
+    try {
+      await _tts.setVolume(_lastVolume);
+    } catch (_) {}
 
     final completer = Completer<void>();
     _speakCompleter = completer;
@@ -203,7 +206,7 @@ class SystemTtsEngine extends TtsEngine {
       await _tts.setPitch(1.0);
     } catch (_) {}
     try {
-      await _tts.setVolume(1.0);
+      await _tts.setVolume(_lastVolume);
     } catch (_) {}
     notifyListeners();
   }

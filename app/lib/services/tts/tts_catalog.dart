@@ -2,9 +2,12 @@
 ///
 /// Источник моделей: https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
 /// Каждая модель = ~63 МБ (full), внутри tar.bz2:
-///   <voiceName>/model.onnx
+///   <voiceName>/<voice>.onnx        (реальное имя, напр. ru_RU-irina-medium.onnx)
+///   <voiceName>/<voice>.onnx.json   (Piper-конфиг)
 ///   <voiceName>/tokens.txt
-///   <voiceName>/espeak-ng-data/   (фонемный словарь espeak-ng)
+///   <voiceName>/espeak-ng-data/     (фонемный словарь espeak-ng)
+/// При распаковке [TtsModelManager] переименовывает `<voice>.onnx` /
+/// `<voice>.onnx.json` в канонические `model.onnx` / `model.onnx.json`.
 ///
 /// [TtsVoiceInfo.bundled] = true значит модель лежит в `assets/tts/<locale>.tar.bz2`
 /// и распаковывается из ассета при первом включении офлайн-режима. Остальные

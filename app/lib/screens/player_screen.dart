@@ -13,6 +13,7 @@ import '../models/song.dart';
 import '../models/lyric_line.dart';
 import '../models/translation.dart' show Translation;
 import '../models/loop_mode.dart';
+import '../models/playlist.dart';
 import '../services/audio_service.dart';
 import '../services/lyrics_service.dart';
 import '../services/translation_service.dart';
@@ -72,6 +73,13 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isShuffleEnabled = false;
   LoopMode _loopMode = LoopMode.off;
   final Random _random = Random();
+
+  /// Живой список песен АКТИВНОГО плейлиста (того, что сейчас играет).
+  /// Изначально = [widget.playlistSongs], но в режиме `LoopMode.allPlaylists`
+  /// переключается на другой плейлист. Все операции next/prev/queue работают с
+  /// этим списком, а не с устаревшим [widget.playlistSongs] (который фиксируется
+  /// при создании экрана и не обновляется при переходе между плейлистами).
+  List<Song>? _activePlaybackList;
 
   bool _cachedShowTranscription = false;
   int _lastProcessedIndex = -1;
@@ -599,22 +607,11 @@ class _PlayerScreenState extends State<PlayerScreen>
     _showStudyModeSettingsDialog();
   }
 
-  static const List<double> _studySpeechRates = [
-    0.3,
-    0.4,
-    0.5,
-    0.6,
-    0.7,
-    0.8,
-    0.9,
-    1.0,
-    1.1
-  ];
-
   void _showStudyModeSettingsDialog() {
     final l10n = AppLocalizations.of(context)!;
     StudyModeOrder currentOrder = _studyModeService.order;
     double currentRate = _studyModeService.speechRate;
+    double currentVolume = _studyModeService.speechVolume;
     OverlayTiming currentTiming = _studyModeService.overlayTiming;
     double currentDuck = _studyModeService.duckVolume;
     double currentSpeed = widget.audioService.playbackSpeed;
@@ -655,6 +652,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                           perSong = v;
                           currentOrder = _studyModeService.order;
                           currentRate = _studyModeService.speechRate;
+                          currentVolume = _studyModeService.speechVolume;
                           currentTiming = _studyModeService.overlayTiming;
                           currentDuck = _studyModeService.duckVolume;
                           currentSpeed = widget.audioService.playbackSpeed;
@@ -742,22 +740,33 @@ class _PlayerScreenState extends State<PlayerScreen>
                       ),
                     ],
                     const Divider(),
-                    Text(l10n.studyModeSpeechRate,
+                    Text(
+                        '${l10n.studyModeSpeechRate}: ${currentRate.toStringAsFixed(1)}x',
                         style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: _studySpeechRates.map((rate) {
-                        final selected = (currentRate - rate).abs() < 0.001;
-                        return ChoiceChip(
-                          label: Text('${rate}x'),
-                          selected: selected,
-                          onSelected: (_) {
-                            setState(() => currentRate = rate);
-                            _studyModeService.setSpeechRate(rate);
-                          },
-                        );
-                      }).toList(),
+                    Slider(
+                      value: currentRate.clamp(0.3, 2.5),
+                      min: 0.3,
+                      max: 2.5,
+                      divisions: 22,
+                      label: '${currentRate.toStringAsFixed(1)}x',
+                      onChanged: (v) {
+                        setState(() => currentRate = v);
+                        _studyModeService.setSpeechRate(v);
+                      },
+                    ),
+                    Text(
+                        '${l10n.studyModeSpeechVolume}: ${currentVolume.toStringAsFixed(1)}x',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Slider(
+                      value: currentVolume.clamp(0.0, 3.0),
+                      min: 0.0,
+                      max: 3.0,
+                      divisions: 30,
+                      label: '${currentVolume.toStringAsFixed(1)}x',
+                      onChanged: (v) {
+                        setState(() => currentVolume = v);
+                        _studyModeService.setSpeechVolume(v);
+                      },
                     ),
                     const Divider(),
                     Text(
@@ -812,7 +821,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Future<void> _playPreviousSong() async {
     await _playerPlaylistHelper.playPreviousSong(
-      widget.playlistSongs,
+      _activePlaybackList ?? widget.playlistSongs,
       _currentSong.id,
       _isShuffleEnabled,
       _loopMode,
@@ -828,7 +837,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
 
     await _playerPlaylistHelper.playNextSong(
-      widget.playlistSongs,
+      _activePlaybackList ?? widget.playlistSongs,
       _currentSong.id,
       _isShuffleEnabled,
       _loopMode,
@@ -838,58 +847,102 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
+  /// Логика режима `LoopMode.allPlaylists`: играет активный плейлист целиком,
+  /// затем переходит к ДРУГОМУ плейлисту (а не прыгает обратно в начало
+  /// текущего, как было раньше). Источник очереди — ЖИВОЙ [_activePlaybackList]
+  /// (он сам обновляется при смене плейлиста), а НЕ устаревший
+  /// [widget.playlistSongs].
+  ///
+  /// Поведение при завершении текущего плейлиста:
+  ///   - shuffle ВЫКЛ: следующий плейлист по порядку (createdAt), wrap-around,
+  ///     пустые пропускаются;
+  ///   - shuffle ВКЛ: случайный плейлист (отличный от текущего, если есть),
+  ///     пустые пропускаются.
   Future<void> _playNextFromAllPlaylists() async {
-    if (widget.playlistSongs == null || widget.playlistSongs!.isEmpty) {
+    final list = _activePlaybackList ?? widget.playlistSongs;
+    if (list == null || list.isEmpty) {
+      await _switchToNextPlaylist();
       return;
     }
 
-    final currentIndex =
-        widget.playlistSongs!.indexWhere((s) => s.id == _currentSong.id);
+    final currentIndex = list.indexWhere((s) => s.id == _currentSong.id);
 
-    if (currentIndex < widget.playlistSongs!.length - 1) {
-      await _playSong(widget.playlistSongs![currentIndex + 1]);
+    if (currentIndex >= 0 && currentIndex < list.length - 1) {
+      // В текущем плейлисте ещё есть песни → играем следующую.
+      await _playSong(list[currentIndex + 1]);
     } else {
-      try {
-        final db = DatabaseService();
-        final playlists = await db.getAllPlaylists();
+      // Текущий плейлист доиграл до конца → переходим к другому.
+      await _switchToNextPlaylist();
+    }
+  }
 
-        if (playlists.isEmpty) {
-          return;
-        }
+  /// Выбирает следующий плейлист и переключает на него [_activePlaybackList].
+  /// См. [_playNextFromAllPlaylists] про правила выбора (shuffle/по порядку).
+  Future<void> _switchToNextPlaylist() async {
+    try {
+      final db = DatabaseService();
+      final playlists = await db.getAllPlaylists();
+      if (playlists.isEmpty) return;
 
-        String currentPlaylistId = '';
-        if (widget.audioService.currentPlaylist != null &&
-            widget.audioService.currentPlaylist!.isNotEmpty) {
-          final firstSongId = widget.audioService.currentPlaylist!.first.id;
-          for (final p in playlists) {
-            final pSongs = await db.getSongsInPlaylist(p.id!);
-            if (pSongs.any((s) => s.id == firstSongId)) {
-              currentPlaylistId = p.id!;
-              break;
-            }
+      // Грузим песни всех плейлистов один раз, оставляем только непустые.
+      final songsByPlaylist = <Playlist, List<Song>>{};
+      for (final p in playlists) {
+        final songs = await db.getSongsInPlaylist(p.id!);
+        if (songs.isNotEmpty) songsByPlaylist[p] = songs;
+      }
+      if (songsByPlaylist.isEmpty) return;
+
+      final nonEmpty = songsByPlaylist.keys.toList(); // порядок createdAt сохранён
+
+      // Идентифицируем текущий плейлист по первой песне активного списка.
+      String? currentId;
+      final activeList = _activePlaybackList;
+      if (activeList != null && activeList.isNotEmpty) {
+        final firstId = activeList.first.id;
+        for (final entry in songsByPlaylist.entries) {
+          if (entry.value.any((s) => s.id == firstId)) {
+            currentId = entry.key.id;
+            break;
           }
         }
-
-        final currentPlaylistIndex =
-            playlists.indexWhere((p) => p.id == currentPlaylistId);
-        final nextPlaylistIndex = (currentPlaylistIndex + 1) % playlists.length;
-        final nextPlaylist = playlists[nextPlaylistIndex];
-
-        final nextPlaylistSongs = await db.getSongsInPlaylist(nextPlaylist.id!);
-
-        if (nextPlaylistSongs.isNotEmpty) {
-          widget.audioService.setCurrentPlaylist(nextPlaylistSongs);
-          await _playSong(nextPlaylistSongs.first);
-        }
-      } catch (e) {
-        debugPrint('✗ Error playing from next playlist: $e');
       }
+
+      final Playlist chosen;
+      if (_isShuffleEnabled) {
+        // Случайный плейлист, отличный от текущего (если есть из чего выбирать).
+        final others = currentId == null
+            ? nonEmpty
+            : nonEmpty.where((p) => p.id != currentId).toList();
+        final pool = others.isNotEmpty ? others : nonEmpty;
+        chosen = pool[_random.nextInt(pool.length)];
+      } else {
+        // По порядку: следующий за текущим, wrap-around.
+        if (currentId == null) {
+          chosen = nonEmpty.first;
+        } else {
+          final idx = nonEmpty.indexWhere((p) => p.id == currentId);
+          chosen = idx == -1
+              ? nonEmpty.first
+              : nonEmpty[(idx + 1) % nonEmpty.length];
+        }
+      }
+
+      final nextSongs = songsByPlaylist[chosen]!;
+
+      if (!mounted) return;
+      setState(() => _activePlaybackList = nextSongs);
+      widget.audioService.setCurrentPlaylist(nextSongs);
+      debugPrint('🔀 allPlaylists: switched to "${chosen.name}" '
+          '(${nextSongs.length} songs, shuffle=$_isShuffleEnabled)');
+      await _playSong(nextSongs.first);
+    } catch (e, st) {
+      debugPrint('✗ Error switching to next playlist: $e\n$st');
     }
   }
 
   bool _canPlayPrevious() {
     return _playerPlaylistHelper.canPlayPrevious(
-      widget.playlistSongs,
+      _activePlaybackList ?? widget.playlistSongs,
       _currentSong.id,
       _isShuffleEnabled,
       _loopMode,
@@ -901,7 +954,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       return true;
     }
     return _playerPlaylistHelper.canPlayNext(
-      widget.playlistSongs,
+      _activePlaybackList ?? widget.playlistSongs,
       _currentSong.id,
       _isShuffleEnabled,
       _loopMode,
@@ -990,13 +1043,16 @@ class _PlayerScreenState extends State<PlayerScreen>
       if (handler != null) {
         debugPrint('=== Playing via BackgroundHandler: ${song.title} ===');
 
-        if (widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
-          final currentIndex =
-              widget.playlistSongs!.indexWhere((s) => s.id == song.id);
+        // Используем ЖИВОЙ активный список (он обновляется при переходе между
+        // плейлистами в режиме allPlaylists). Падаем на widget.playlistSongs,
+        // только если активный список вдруг не задан.
+        final activeList = _activePlaybackList ?? widget.playlistSongs;
+        if (activeList != null && activeList.isNotEmpty) {
+          final currentIndex = activeList.indexWhere((s) => s.id == song.id);
           final index = currentIndex >= 0 ? currentIndex : 0;
 
-          await handler.setPlaylist(widget.playlistSongs!, index);
-          widget.audioService.setCurrentPlaylist(widget.playlistSongs!);
+          await handler.setPlaylist(activeList, index);
+          widget.audioService.setCurrentPlaylist(activeList);
 
           await handler.playSong(song, index);
         } else {
@@ -1057,6 +1113,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     _isShuffleEnabled = widget.audioService.isShuffleEnabled;
     _loopMode = widget.audioService.loopMode;
     _playbackSpeed = widget.audioService.playbackSpeed;
+    // Активный список воспроизведения = исходный плейлист экрана.
+    _activePlaybackList = widget.playlistSongs;
     _studyModeService = StudyModeService(
         widget.audioService, widget.lyricsService, widget.translationService);
     // When study mode finishes a song naturally, trigger loop/next instead of

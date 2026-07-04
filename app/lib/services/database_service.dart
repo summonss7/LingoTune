@@ -357,7 +357,8 @@ class DatabaseService {
 
   Future<List<Playlist>> getAllPlaylists() async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('playlists');
+    final List<Map<String, dynamic>> maps =
+        await db.query('playlists', orderBy: 'createdAt ASC');
 
     return List.generate(maps.length, (i) {
       return Playlist(

@@ -1922,6 +1922,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get studyModeSpeechRate => 'سرعة الكلام';
 
   @override
+  String get studyModeSpeechVolume => 'مستوى صوت الكلام';
+
+  @override
   String get studyModeLongPressHint => 'اضغط مطولاً للإعدادات';
 
   @override
