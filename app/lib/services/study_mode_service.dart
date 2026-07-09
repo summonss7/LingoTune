@@ -73,7 +73,6 @@ class StudyModeService extends ChangeNotifier {
   // restart, instead of re-enabling it per song.
   bool _enabledPersist = false;
 
-  StreamSubscription<Duration>? _posSub;
   StreamSubscription? _playerStateSub;
   Completer<bool>? _segmentCompleter;
 
@@ -99,6 +98,19 @@ class StudyModeService extends ChangeNotifier {
   // (симптом «несколько секунд каши» в начале воспроизведения).
   int _sessionToken = 0;
 
+  // Токен активного speak-вызова в overlay (_speakOver). Инкрементируется при
+  // каждом новом speak и в stop()/pauseSession(). Это решает два бага:
+  //  1. Потеря перевода строки в overlay: раньше _speakOver skip'ал триггер
+  //     новой строки, пока TTS был занят (if (_isSpeaking) return) → подсветка
+  //     уходила на новую строку, а перевод новой строки вообще не звучал.
+  //     Теперь мы прерываем старый перевод и запускаем новый — координатор сам
+  //     делает _interruptCurrent в speak(). А _speakToken гарантирует, что
+  //     .then-колбэк ПРЕРВАННОГО speak не сбросит _isSpeaking поверх нового.
+  //  2. Защита от race: прерванный speak завершает свой completer сразу, его
+  //     .then мог бы выполниться после того, как новый speak уже поставил
+  //     _isSpeaking=true. Проверка токена отсекает устаревшие колбэки.
+  int _speakToken = 0;
+
   // Polling timers for segment/line boundary detection. We poll
   // _audio.position (kept fresh by AudioService's own reliable positionStream
   // subscription) instead of subscribing to just_audio's positionStream
@@ -107,6 +119,14 @@ class StudyModeService extends ChangeNotifier {
   // callback, which stalled all three study modes.
   Timer? _segmentTimer;
   Timer? _overlayTimer;
+
+  /// Watchdog-таймер сегмента в TF/OF-режимах. Защищает от зависания
+  /// `_segmentCompleter` при zombie-state `just_audio` (processingState !=
+  /// completed, но позиция не двигается): по истечении `(длина сегмента + 10с)`
+  /// форсит `_cancelSegmentAwait(true)`, и study-цикл продолжает переходить
+  /// по строкам вместо вечного await'а. Раньше такое зависание намертво
+  /// останавливало сессию (watchdog был только на TTS speak, не на сегменте).
+  Timer? _segmentWatchdog;
 
   // === DEBUG fields (temporary diagnostic) ===
   double? _currentSegmentEnd;
@@ -772,6 +792,10 @@ class StudyModeService extends ChangeNotifier {
     }
 
     int lastLine = curLine;
+    // Защита от двойных таймеров/подписок при повторном входе (например,
+    // resumeSession после нештатной ситуации).
+    _overlayTimer?.cancel();
+    _playerStateSub?.cancel();
     _overlayTimer = Timer.periodic(const Duration(milliseconds: 150), (_) {
       if (!_isActive || _isUserPaused || _disposed) {
         _cancelSegmentAwait(false);
@@ -817,28 +841,36 @@ class StudyModeService extends ChangeNotifier {
     });
   }
 
-  /// Fire-and-forget speak used by continuous overlay. Skips if already
-  /// speaking (avoids pile-up at line boundaries).
+  /// Fire-and-forget speak used by continuous overlay.
+  ///
+  /// ВАЖНО (фикс v5.6.2): метод НЕ skip'ает, когда TTS уже занят. Раньше здесь
+  /// было `if (_isSpeaking) return` — и при коротких строках / длинных
+  /// переводах перевод НОВОЙ строки терялся: подсветка уходила на новую строку
+  /// (по позиции аудио), а TTS продолжал говорить перевод ПРЕДЫДУЩЕЙ. Теперь
+  /// мы прерываем предыдущий перевод и запускаем новый — `TtsCoordinator.speak`
+  /// сам делает `_interruptCurrent` предыдущего запроса. `_speakToken`
+  /// гарантирует, что `.then`-колбэк прерванного speak не сбросит `_isSpeaking`
+  /// поверх только что запущенного нового speak.
   void _speakOver(String? text) {
     if (text == null || text.trim().isEmpty || !_ttsReady) return;
-    if (_isSpeaking) {
-      debugPrint('⏭ StudyMode overlay: TTS busy, skipping trigger');
-      return;
-    }
-    _isSpeaking = true;
-    _phase = StudyPhase.speaking;
-    notifyListeners();
-    _setDuckVolume();
+    final myToken = ++_speakToken;
     // Захватываем токен сессии, чтобы .then-колбэк мог определить, что
     // study-сессия уже остановлена (и, возможно, перезапущена для новой песни)
     // — в этом случае колбэк должен молча выйти, не вызывая _kickPlayback и
     // не создавая зомби-kick поверх нового цикла.
     final token = _sessionToken;
+    _isSpeaking = true;
+    _phase = StudyPhase.speaking;
+    notifyListeners();
+    _setDuckVolume();
     _speak(text).then((_) async {
+      // Прерванный предыдущий speak не должен трогать состояние нового.
+      if (myToken != _speakToken) return;
       if (token != _sessionToken) return; // сессия сменилась — выходим
       _isSpeaking = false;
       await _restoreVolume();
       if (token != _sessionToken) return; // повторная проверка после await
+      if (myToken != _speakToken) return;
       if (_isActive && !_isUserPaused && !_disposed) {
         _phase = StudyPhase.playingSegment;
         notifyListeners();
@@ -847,6 +879,7 @@ class StudyModeService extends ChangeNotifier {
         final before = _audio.position;
         await Future.delayed(const Duration(milliseconds: 150));
         if (token != _sessionToken) return; // и здесь — после delay
+        if (myToken != _speakToken) return;
         if (_disposed || !_isActive || _isUserPaused) return;
         if (!_audio.player.playing || _audio.position == before) {
           debugPrint('▶ StudyMode overlay: song stalled during TTS, resuming');
@@ -885,6 +918,11 @@ class StudyModeService extends ChangeNotifier {
         '▶ StudyMode segment[$index]: play (start=${startMs}ms end=${endSec}s)');
 
     final completer = Completer<bool>();
+    // На всякий случай отменяем ресурсы предыдущей итерации — защищает от
+    // двойных таймеров/подписок при нештатных перезапусках runner'а.
+    _segmentTimer?.cancel();
+    _segmentWatchdog?.cancel();
+    _playerStateSub?.cancel();
     _segmentCompleter = completer;
     _currentSegmentEnd = endSec;
     _debugSegmentTicks = 0;
@@ -942,6 +980,22 @@ class StudyModeService extends ChangeNotifier {
         }
       });
     }
+
+    // Watchdog: при zombie-state just_audio (processingState != completed, но
+    // позиция не двигается) ни _segmentTimer, ни _playerStateSub не завершат
+    // completer → _playSegmentAndAwait висит вечно, study-сессия намертво
+    // останавливается. Watchdog форсит advance через (длина сегмента + 10с).
+    final double segLenSec = endSec != null
+        ? (endSec - lines[index].startTime).clamp(1.0, 30.0)
+        : 5.0;
+    _segmentWatchdog =
+        Timer(Duration(seconds: (segLenSec + 10).round()), () {
+      if (!completer.isCompleted) {
+        debugPrint(
+            '⏰ StudyMode segment[$index]: WATCHDOG (zombie just_audio?) — forcing advance');
+        _cancelSegmentAwait(true);
+      }
+    });
 
     return completer.future;
   }
@@ -1008,10 +1062,10 @@ class StudyModeService extends ChangeNotifier {
   }
 
   void _cancelSegmentAwait(bool result) {
-    _posSub?.cancel();
-    _posSub = null;
     _segmentTimer?.cancel();
     _segmentTimer = null;
+    _segmentWatchdog?.cancel();
+    _segmentWatchdog = null;
     _overlayTimer?.cancel();
     _overlayTimer = null;
     _playerStateSub?.cancel();
@@ -1028,6 +1082,7 @@ class StudyModeService extends ChangeNotifier {
   Future<void> pauseSession() async {
     if (!_isActive || _isUserPaused) return;
     _isUserPaused = true;
+    _speakToken++; // инвалидировать pending _speakOver().then
     debugPrint('⏸ StudyModeService: session paused at line $_currentIndex');
     // Координатор сам завершит completer текущего speak-запроса и вызовет stop.
     await _ttsCoordinator.stop();
@@ -1077,6 +1132,7 @@ class StudyModeService extends ChangeNotifier {
     // Инвалидируем все висящие _speakOver().then колбэки этой сессии —
     // иначе они доживут до нового start() (смена песни) и создадут зомби-kick.
     _sessionToken++;
+    _speakToken++;
     debugPrint('⏹ StudyModeService: stopped');
     _cancelSegmentAwait(false);
     // Координатор остановит текущий speak и завершит его completer.
@@ -1112,8 +1168,8 @@ class StudyModeService extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    _posSub?.cancel();
     _segmentTimer?.cancel();
+    _segmentWatchdog?.cancel();
     _overlayTimer?.cancel();
     _playerStateSub?.cancel();
     _ttsCoordinator.stop();

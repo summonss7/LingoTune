@@ -15,6 +15,7 @@ import '../models/translation.dart' show Translation;
 import '../models/loop_mode.dart';
 import '../models/playlist.dart';
 import '../services/audio_service.dart';
+import '../services/audio_position_corrector.dart';
 import '../services/lyrics_service.dart';
 import '../services/translation_service.dart';
 import '../services/study_mode_service.dart';
@@ -73,6 +74,15 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isShuffleEnabled = false;
   LoopMode _loopMode = LoopMode.off;
   final Random _random = Random();
+
+  /// Корректор позиции для подсветки строк (wall-clock интерполяция против
+  /// VBR MP3 дрейфа). Применяется только к LyricsService.updatePosition.
+  final AudioPositionCorrector _positionCorrector = AudioPositionCorrector();
+
+  /// Wall-clock момент последнего setState в _positionTimer (throttling до
+  /// ~8/сек вместо 20/сек — снижает нагрузку на UI-изолят, из-за которой
+  /// колбэк positionStream обрабатывался с задержкой → _position устаревал).
+  DateTime _lastSetStateTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Живой список песен АКТИВНОГО плейлиста (того, что сейчас играет).
   /// Изначально = [widget.playlistSongs], но в режиме `LoopMode.allPlaylists`
@@ -996,6 +1006,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     _isSongLoading = true;
     _positionTimer?.cancel();
+    // Смена песни → новая позиция/аудио. Сбрасываем корректор, чтобы он
+    // пересинхронизировался с новой _player.position, а не продолжал
+    // wall-clock траекторию старой песни.
+    _positionCorrector.reset();
     if (_studyModeService.isActive) {
       await _studyModeService.stop();
       _studyEvt('playSong: after stop '
@@ -1449,9 +1463,27 @@ class _PlayerScreenState extends State<PlayerScreen>
     _positionTimer?.cancel();
     _positionTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       if (widget.audioService.isInitialized) {
-        final position =
-            widget.audioService.position.inMilliseconds.toDouble() / 1000;
-        widget.lyricsService.updatePosition(position);
+        // Скорректированная позиция для подсветки строк. Коррекция
+        // нейтрализует линейный дрейф позиции у VBR MP3 без Xing header
+        // (ExoPlayer занижает позицию → подсветка опаздывает). Применяется
+        // только здесь (для LyricsService), slider/индикатор времени
+        // используют честную widget.audioService.position. Отключаемая в
+        // Настройках (timingCorrection, по умолчанию ВКЛ).
+        final rawPos = widget.audioService.position;
+        final player = widget.audioService.player;
+        Duration posForHighlight = rawPos;
+        if (_settingsProvider?.timingCorrection ?? true) {
+          final isReady = player.processingState == ProcessingState.ready;
+          posForHighlight = _positionCorrector.correct(
+            rawPos,
+            playing: player.playing,
+            isReady: isReady,
+            speed: widget.audioService.playbackSpeed,
+          );
+        }
+        final positionSec =
+            posForHighlight.inMilliseconds.toDouble() / 1000;
+        widget.lyricsService.updatePosition(positionSec);
 
         final currentLineIndex = widget.lyricsService.currentIndex;
         final currentLangIndex = widget.translationService.currentLanguageIndex;
@@ -1470,11 +1502,18 @@ class _PlayerScreenState extends State<PlayerScreen>
         }
       }
 
-      // Always rebuild so the AppBar (language indicator), translations and
-      // other UI refresh even when the player hasn't reported isInitialized
-      // yet (e.g. right after switching songs via the background handler).
+      // Rebuild throttling: вместо setState на каждый 50мс-тик (20/сек) —
+      // только если прошло >= 120мс с прошлого rebuild (~8/сек). Подсветка
+      // строк обновляется через AnimatedBuilder над lyricsService независимо
+      // (не зависит от этого setState), а для индикатора времени/AppBar 8/сек
+      // достаточно. Снижение нагрузки на UI-изолят убирает задержки доставки
+      // событий positionStream → _position перестаёт «устаревать».
       if (mounted) {
-        setState(() {});
+        final now = DateTime.now();
+        if (now.difference(_lastSetStateTime).inMilliseconds >= 120) {
+          _lastSetStateTime = now;
+          setState(() {});
+        }
       }
     });
   }
@@ -1488,12 +1527,22 @@ class _PlayerScreenState extends State<PlayerScreen>
             '=== PlayerScreen: resumed from background, restarting updates ===');
         _isInBackground = false;
         _lastScrolledIndex = -1;
+        // После возврата из фона позиция аудио и wall-clock рассинхронизированы
+        // (positionStream мог не тикать в фоне) — сбрасываем корректор, чтобы
+        // он пересинхронизировался с актуальной _player.position при первом
+        // тике после resume.
+        _positionCorrector.reset();
         _startPositionUpdates();
         _syncWithActuallyPlayingSong();
       }
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _isInBackground = true;
+      // Отменяем 50мс-таймер в фоне — там некого rebuild'ить, а лишние тики
+      // будят UI-изолят и мешают doze. positionStream в AudioService продолжит
+      // обновлять _position независимо. При resumed таймер перезапустится.
+      _positionTimer?.cancel();
+      _positionTimer = null;
     }
   }
 
@@ -1562,6 +1611,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     _settingsProvider?.removeListener(_onSettingsChanged);
     _positionTimer?.cancel();
     _scrollController.dispose();
+    // Чистим колбэки, владельцы которых переживают этот screen:
+    // audioService и studyModeService.onStudyCompleted хранят замыкания на this,
+    // и без очистки продолжали бы держать ссылки на disposed screen и дёргать
+    // (guarded) логику после ухода с экрана.
+    widget.audioService.onSongComplete = null;
+    _studyModeService.onStudyCompleted = null;
     _studyModeService.dispose();
 
     _carDetectionService.removeListener(_onCarDetection);

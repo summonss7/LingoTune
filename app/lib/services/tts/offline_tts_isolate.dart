@@ -21,6 +21,10 @@ class OfflineTtsIsolate {
   Isolate? _isolate;
   ReceivePort? _mainPort;
   SendPort? _toWorker;
+  // Подписка на _mainPort. Сохранена в поле, чтобы _cleanup мог её явно
+  // отменить — закрытие ReceivePort само по себе не гарантирует синхронную
+  // отмену стрима, и пара сообщений могла ещё обработаться.
+  StreamSubscription<dynamic>? _mainSub;
   final Map<int, Completer<dynamic>> _pending = {};
   int _nextId = 1;
   bool _starting = false;
@@ -47,15 +51,14 @@ class OfflineTtsIsolate {
       _isolate = iso;
       _mainPort = mainPort;
       final handshake = Completer<SendPort>();
-      late StreamSubscription sub;
-      sub = mainPort.listen((msg) {
+      _mainSub = mainPort.listen((msg) {
         if (msg is SendPort) {
           if (!handshake.isCompleted) handshake.complete(msg);
           return;
         }
         _onMessage(msg);
       });
-      sub.onError((e, st) {
+      _mainSub!.onError((e, st) {
         debugPrint('✗ OfflineTtsIsolate: port stream error: $e');
       });
       _toWorker = await handshake.future
@@ -192,6 +195,8 @@ class OfflineTtsIsolate {
       }
     }
     _pending.clear();
+    _mainSub?.cancel();
+    _mainSub = null;
     _mainPort?.close();
     _mainPort = null;
     _isolate?.kill(priority: Isolate.beforeNextEvent);

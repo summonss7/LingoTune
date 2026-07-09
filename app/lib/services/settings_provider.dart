@@ -39,6 +39,13 @@ class SettingsProvider with ChangeNotifier {
   /// (FlutterTts — поведение версии 5.4.0). См. [TtsSource] в tts_engine.dart.
   String _ttsSource = 'offline';
 
+  /// Коррекция позиции для подсветки строк (wall-clock интерполяция).
+  /// Нейтрализует линейный дрейф позиции у VBR MP3 без Xing header, где
+  /// ExoPlayer занижает позицию → подсветка опаздывает. По умолчанию ВКЛ.
+  /// Применяется только к LyricsService (подсветка), slider/индикатор времени
+  /// используют честную _player.position. См. AudioPositionCorrector.
+  bool _timingCorrection = true;
+
   bool _carDetectionEnabled = false;
   double _carDetectionSensitivity = 0.4;
   bool _carAlertSound = true;
@@ -77,6 +84,7 @@ class SettingsProvider with ChangeNotifier {
   double get lyricsPositionOffset => _lyricsPositionOffset;
   String get ttsEngine => _ttsEngine;
   String get ttsSource => _ttsSource;
+  bool get timingCorrection => _timingCorrection;
   bool get carDetectionEnabled => _carDetectionEnabled;
   double get carDetectionSensitivity => _carDetectionSensitivity;
   bool get carAlertSound => _carAlertSound;
@@ -155,6 +163,7 @@ class SettingsProvider with ChangeNotifier {
       _lyricsPositionOffset = prefs.getDouble('lyricsPositionOffset') ?? 0.15;
       _ttsEngine = prefs.getString('ttsEngine') ?? '';
       _ttsSource = prefs.getString('ttsSource') ?? 'offline';
+      _timingCorrection = prefs.getBool('timingCorrection') ?? true;
       _carDetectionEnabled = prefs.getBool('carDetectionEnabled') ?? false;
       _carDetectionSensitivity = prefs.getDouble('carDetectionSensitivity') ?? 0.4;
       _carAlertSound = prefs.getBool('carAlertSound') ?? true;
@@ -544,6 +553,15 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Включает/выключает коррекцию позиции для подсветки строк (VBR MP3).
+  Future<void> setTimingCorrection(bool value) async {
+    if (_timingCorrection == value) return;
+    debugPrint('🎯 SettingsProvider: timingCorrection $_timingCorrection → $value');
+    _timingCorrection = value;
+    await _save();
+    notifyListeners();
+  }
+
   Future<void> setCarDetectionEnabled(bool value) async {
     debugPrint('=== SettingsProvider: Setting car detection enabled ===');
     debugPrint('Old: $_carDetectionEnabled, New: $value');
@@ -634,6 +652,7 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setDouble('lyricsPositionOffset', _lyricsPositionOffset);
       await prefs.setString('ttsEngine', _ttsEngine);
       await prefs.setString('ttsSource', _ttsSource);
+      await prefs.setBool('timingCorrection', _timingCorrection);
       await prefs.setBool('carDetectionEnabled', _carDetectionEnabled);
       await prefs.setDouble('carDetectionSensitivity', _carDetectionSensitivity);
       await prefs.setBool('carAlertSound', _carAlertSound);

@@ -327,7 +327,13 @@ class SystemTtsEngine extends TtsEngine {
 
   @override
   void dispose() {
+    // Завершаем активный completer, чтобы awaiter (TtsCoordinator.speak /
+    // StudyModeService._speak) не висел вечно. Раньше здесь было
+    // `_speakCompleter = null` без complete — если dispose звался во время
+    // речи, awaiter зависал навсегда.
+    final c = _speakCompleter;
     _speakCompleter = null;
+    if (c != null && !c.isCompleted) c.complete();
     // FlutterTts не имеет явного dispose в API 4.2.0; stop достаточно.
     try {
       _tts.stop();

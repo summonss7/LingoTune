@@ -4,8 +4,8 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.6.1';
-  static const String versionCode = '219';
+  static const String version = '5.6.3';
+  static const String versionCode = '221';
 
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
@@ -44,6 +44,8 @@ class AppInfo {
     '🗣️ Offline neural TTS (sherpa_onnx VITS, stable on Chinese ROMs)',
     '🔊 TTS speech volume boost up to 3.0x (peak-normalized)',
     '📞 Auto-pause on incoming call (song + study TTS, resume after)',
+    '🎯 Overlay translation synced with line highlight (no more lost lines)',
+    '📐 Highlight timing correction for VBR MP3 (wall-clock interpolation)',
   ];
 
   static const List<String> supportedLanguages = [

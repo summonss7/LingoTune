@@ -370,6 +370,10 @@ class OfflineTtsEngine extends TtsEngine {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    // Сначала останавливаем fallback (complete'ит его _speakCompleter
+    // синхронно), иначе _fallback.dispose() оставлял awaiter висеть, если
+    // речь шла через систему в момент dispose.
+    _fallback.stop();
     _stopInternal();
     _maybeUnload();
     _isolate.dispose();
