@@ -504,6 +504,16 @@ class DatabaseService {
     ''', [playlistId]);
   }
 
+  /// Быстрая проверка вхождения песни в плейлист (без загрузки всего списка).
+  Future<bool> isSongInPlaylist(String playlistId, String songId) async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      'SELECT 1 FROM playlist_songs WHERE playlistId = ? AND songId = ? LIMIT 1',
+      [playlistId, songId],
+    );
+    return rows.isNotEmpty;
+  }
+
   Future<void> clearPlaylistSongs(String playlistId) async {
     final db = await database;
     await db.delete(

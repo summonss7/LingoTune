@@ -1859,6 +1859,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get repeatAllPlaylists => 'Ripeti tutte le playlist';
 
   @override
+  String get playFavoritesOnly => 'Riproduci solo i preferiti';
+
+  @override
+  String get noFavoriteSongs => 'Nessuna canzone preferita ancora';
+
+  @override
   String get playbackSpeed => 'Velocità di riproduzione';
 
   @override

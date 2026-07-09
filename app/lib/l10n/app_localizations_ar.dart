@@ -1859,6 +1859,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get repeatAllPlaylists => 'تكرار جميع قوائم التشغيل';
 
   @override
+  String get playFavoritesOnly => 'تشغيل المفضلة فقط';
+
+  @override
+  String get noFavoriteSongs => 'لا توجد أغاني مفضلة بعد';
+
+  @override
   String get playbackSpeed => 'سرعة التشغيل';
 
   @override

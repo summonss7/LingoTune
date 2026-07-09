@@ -518,6 +518,9 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         _loopMode = LoopMode.allPlaylists;
         break;
       case LoopMode.allPlaylists:
+        _loopMode = LoopMode.favorites;
+        break;
+      case LoopMode.favorites:
         _loopMode = LoopMode.off;
         break;
     }

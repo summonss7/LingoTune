@@ -1859,6 +1859,12 @@ class AppLocalizationsRo extends AppLocalizations {
   String get repeatAllPlaylists => 'Repetă toate listele';
 
   @override
+  String get playFavoritesOnly => 'Redă doar favoritele';
+
+  @override
+  String get noFavoriteSongs => 'Nu există încă melodii favorite';
+
+  @override
   String get playbackSpeed => 'Viteză de redare';
 
   @override

@@ -587,6 +587,8 @@
       "repeatAll": "تكرار الكل",
       "repeatOne": "تكرار واحد",
       "repeatAllPlaylists": "تكرار جميع قوائم التشغيل",
+      "playFavoritesOnly": "تشغيل المفضلة فقط",
+      "noFavoriteSongs": "لا توجد أغاني مفضلة بعد",
       "playbackSpeed": "سرعة التشغيل",
       "speedNormal": "عادي",
       "lyricsPositionOffset": "تأخير مزامنة الكلمات",

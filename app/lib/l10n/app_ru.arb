@@ -587,6 +587,8 @@
       "repeatAll": "Повтор всех",
       "repeatOne": "Повтор одной",
       "repeatAllPlaylists": "Повтор всех плейлистов",
+      "playFavoritesOnly": "Играть только избранное",
+      "noFavoriteSongs": "Пока нет избранных песен",
       "playbackSpeed": "Скорость воспроизведения",
       "speedNormal": "Обычная",
       "lyricsPositionOffset": "Задержка синхронизации текста",

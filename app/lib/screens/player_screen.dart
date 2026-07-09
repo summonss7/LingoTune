@@ -111,9 +111,13 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isSongLoading = false;
 
   /// Была ли study-сессия паузнута ради входящего звонка/прерывания. Ставится
-  /// в onPlaybackInterrupted (BackgroundAudioHandler) и снимается в
-  /// onPlaybackResumed, чтобы после звонка корректно возобновить озвучку.
+  /// в [onPlaybackInterrupted] (BackgroundAudioHandler) и снимается в
+  /// [onPlaybackResumed], чтобы после звонка корректно возобновить озвучку.
   bool _studyPausedForCall = false;
+
+  /// Находится ли текущая песня в системном плейлисте `favorites`. Обновляется
+  /// при смене песни ([_playSong]) и по тапу на кнопку-сердечко.
+  bool _isCurrentSongFavorite = false;
 
   // === DIAGNOSTIC (5.0.7): last study-mode lifecycle event, shown in the
   // service-data overlay so we can trace why study fails to restart after a
@@ -409,10 +413,23 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   void _toggleLoop() {
+    final previousMode = _loopMode;
     setState(() {
       widget.audioService.toggleLoop();
       _loopMode = widget.audioService.loopMode;
     });
+
+    if (_loopMode == LoopMode.favorites) {
+      // Переход в режим избранного — загрузить список избранных песен.
+      _switchToFavoritesMode();
+    } else if (previousMode == LoopMode.favorites) {
+      // Выход из режима избранного — вернуть исходный плейлист экрана как
+      // активный список воспроизведения.
+      setState(() => _activePlaybackList = widget.playlistSongs);
+      if (widget.playlistSongs != null) {
+        widget.audioService.setCurrentPlaylist(widget.playlistSongs!);
+      }
+    }
   }
 
   /// Pre-flight TTS check before starting study mode. If the current
@@ -955,6 +972,118 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
+  /// Активирует режим [LoopMode.favorites]: загружает песни из системного
+  /// плейлиста `favorites` и делает их активным списком воспроизведения.
+  /// Если избранное пусто — показывает SnackBar и откатывает режим в `off`.
+  Future<void> _switchToFavoritesMode() async {
+    try {
+      final db = DatabaseService();
+      final favSongs = await db.getSongsInPlaylist('favorites');
+
+      if (favSongs.isEmpty) {
+        if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.noFavoriteSongs),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        // Откатываем режим в off (favorites пуст).
+        if (mounted) {
+          setState(() => _loopMode = LoopMode.off);
+        }
+        widget.audioService.setLoopMode(LoopMode.off);
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() => _activePlaybackList = favSongs);
+      widget.audioService.setCurrentPlaylist(favSongs);
+      debugPrint('❤ favorites: activated with ${favSongs.length} songs');
+
+      // Если текущая песня уже в избранном — продолжаем с неё (обновляем
+      // очередь в handler, но НЕ перезапускаем воспроизведение). Иначе —
+      // переключаемся на первую песню из избранного.
+      final currentIndex = favSongs.indexWhere((s) => s.id == _currentSong.id);
+      if (currentIndex >= 0) {
+        final handler = widget.audioService.backgroundHandler;
+        if (handler != null) {
+          await handler.setPlaylist(favSongs, currentIndex);
+        }
+      } else {
+        await _playSong(favSongs.first);
+      }
+    } catch (e, st) {
+      debugPrint('✗ Error switching to favorites mode: $e\n$st');
+      if (mounted) {
+        setState(() => _loopMode = LoopMode.off);
+        widget.audioService.setLoopMode(LoopMode.off);
+      }
+    }
+  }
+
+  /// Перезагружает [_isCurrentSongFavorite] для [_currentSong]. Вызывается при
+  /// смене песни ([_playSong]) и при открытии экрана.
+  Future<void> _refreshCurrentSongFavoriteStatus() async {
+    try {
+      final db = DatabaseService();
+      final isFav = await db.isSongInPlaylist('favorites', _currentSong.id);
+      if (mounted) {
+        setState(() => _isCurrentSongFavorite = isFav);
+      }
+    } catch (e) {
+      debugPrint('✗ Error checking favorite status: $e');
+    }
+  }
+
+  /// Добавляет/убирает текущую песню из системного плейлиста `favorites`.
+  /// Если удаляем во время игры в режиме favorites — синхронно обновляем
+  /// [_activePlaybackList], чтобы next не ушёл в удалённую песню.
+  Future<void> _toggleCurrentSongFavorite() async {
+    try {
+      final db = DatabaseService();
+      if (_isCurrentSongFavorite) {
+        await db.removeSongFromPlaylist('favorites', _currentSong.id);
+        debugPrint('💔 Removed from favorites: ${_currentSong.title}');
+      } else {
+        await db.addSongToPlaylist('favorites', _currentSong.id);
+        debugPrint('❤ Added to favorites: ${_currentSong.title}');
+      }
+      if (mounted) {
+        setState(() => _isCurrentSongFavorite = !_isCurrentSongFavorite);
+      }
+
+      // Синхронизация активного списка, если играем в режиме favorites.
+      if (_loopMode == LoopMode.favorites && _activePlaybackList != null) {
+        final updated = _activePlaybackList!
+            .where((s) => s.id != _currentSong.id)
+            .toList();
+        if (updated.isEmpty) {
+          // Избранное опустело — откатываем режим.
+          if (mounted) {
+            setState(() {
+              _loopMode = LoopMode.off;
+              _activePlaybackList = widget.playlistSongs;
+            });
+          }
+          widget.audioService.setLoopMode(LoopMode.off);
+          if (widget.playlistSongs != null) {
+            widget.audioService.setCurrentPlaylist(widget.playlistSongs!);
+          }
+        } else {
+          if (mounted) {
+            setState(() => _activePlaybackList = updated);
+          }
+          widget.audioService.setCurrentPlaylist(updated);
+        }
+      }
+    } catch (e) {
+      debugPrint('✗ Error toggling favorite: $e');
+    }
+  }
+
   bool _canPlayPrevious() {
     return _playerPlaylistHelper.canPlayPrevious(
       _activePlaybackList ?? widget.playlistSongs,
@@ -965,7 +1094,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   bool _canPlayNext() {
-    if (_loopMode == LoopMode.allPlaylists) {
+    if (_loopMode == LoopMode.allPlaylists || _loopMode == LoopMode.favorites) {
       return true;
     }
     return _playerPlaylistHelper.canPlayNext(
@@ -1031,6 +1160,8 @@ class _PlayerScreenState extends State<PlayerScreen>
         _lastProcessedIndex = -1;
         _lastProcessedLanguageIndex = -1;
       });
+      // Сменили песню → обновляем флаг избранного для кнопки-сердечка.
+      _refreshCurrentSongFavoriteStatus();
       // Reset the lyrics scroll to the top for the new song — otherwise the
       // previous song's scroll offset leaves the new lyrics outside the
       // viewport ("текст за зоной видимости" after switching songs).
@@ -1131,6 +1262,13 @@ class _PlayerScreenState extends State<PlayerScreen>
     _currentSong = widget.song;
     _isShuffleEnabled = widget.audioService.isShuffleEnabled;
     _loopMode = widget.audioService.loopMode;
+    // favorites — transient-режим, не должен восстанавливаться при открытии
+    // экрана (требует динамической загрузки списка из БД, что делается только
+    // через явный тап на кнопку loop). На всякий случай сбрасываем в off.
+    if (_loopMode == LoopMode.favorites) {
+      _loopMode = LoopMode.off;
+      widget.audioService.setLoopMode(LoopMode.off);
+    }
     _playbackSpeed = widget.audioService.playbackSpeed;
     // Активный список воспроизведения = исходный плейлист экрана.
     _activePlaybackList = widget.playlistSongs;
@@ -1155,6 +1293,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     _startPositionUpdates();
 
     _initSongData();
+    // Загружаем флаг избранного для стартовой песни (кнопка-сердечко).
+    _refreshCurrentSongFavoriteStatus();
 
     widget.audioService.onSongComplete = () {
       if (!mounted) return;
@@ -2066,6 +2206,10 @@ class _PlayerScreenState extends State<PlayerScreen>
         icon = Icons.repeat;
         color = Theme.of(context).colorScheme.primary;
         break;
+      case LoopMode.favorites:
+        icon = Icons.favorite;
+        color = Colors.red;
+        break;
     }
 
     final localizations = AppLocalizations.of(context)!;
@@ -2100,7 +2244,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                     ? localizations.repeatAll
                     : _loopMode == LoopMode.one
                         ? localizations.repeatOne
-                        : localizations.repeatAllPlaylists,
+                        : _loopMode == LoopMode.allPlaylists
+                            ? localizations.repeatAllPlaylists
+                            : localizations.playFavoritesOnly,
             iconSize: iconSize,
           ),
           if (_loopMode == LoopMode.allPlaylists)
@@ -2996,6 +3142,34 @@ class _PlayerScreenState extends State<PlayerScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Кнопка-сердечко: добавить/убрать текущую песню из избранного.
+                    SizedBox(
+                      width: isLandscape ? 24.0 : 28.0,
+                      height: isLandscape ? 24.0 : 28.0,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints.tightFor(
+                          width: isLandscape ? 24.0 : 28.0,
+                          height: isLandscape ? 24.0 : 28.0,
+                        ),
+                        iconSize: isLandscape ? 16.0 : 20.0,
+                        icon: Icon(
+                          _isCurrentSongFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: _isCurrentSongFavorite
+                              ? Colors.red
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.7),
+                        ),
+                        onPressed: _toggleCurrentSongFavorite,
+                        tooltip: _isCurrentSongFavorite
+                            ? AppLocalizations.of(context)!.removeFromFavorites
+                            : AppLocalizations.of(context)!.addToFavorites,
+                      ),
+                    ),
                     StreamBuilder<Duration>(
                       stream: widget.audioService.player.positionStream,
                       initialData: Duration.zero,
@@ -3036,6 +3210,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                                 TextStyle(fontSize: isLandscape ? 12 : null));
                       },
                     ),
+                    // Spacer для симметрии с кнопкой-сердечком слева.
+                    SizedBox(width: isLandscape ? 24.0 : 28.0),
                   ],
                 ),
                 SizedBox(height: isLandscape ? 4.0 : 8.0),

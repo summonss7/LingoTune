@@ -1859,6 +1859,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get repeatAllPlaylists => '重复所有播放列表';
 
   @override
+  String get playFavoritesOnly => '仅播放收藏';
+
+  @override
+  String get noFavoriteSongs => '还没有收藏的歌曲';
+
+  @override
   String get playbackSpeed => '播放速度';
 
   @override

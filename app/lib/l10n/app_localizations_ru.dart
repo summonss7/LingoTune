@@ -1859,6 +1859,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get repeatAllPlaylists => 'Повтор всех плейлистов';
 
   @override
+  String get playFavoritesOnly => 'Играть только избранное';
+
+  @override
+  String get noFavoriteSongs => 'Пока нет избранных песен';
+
+  @override
   String get playbackSpeed => 'Скорость воспроизведения';
 
   @override

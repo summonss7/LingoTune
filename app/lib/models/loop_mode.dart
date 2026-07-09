@@ -1,1 +1,1 @@
-enum LoopMode { off, all, one, allPlaylists }
+enum LoopMode { off, all, one, allPlaylists, favorites }

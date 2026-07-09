@@ -587,6 +587,8 @@
       "repeatAll": "重复全部",
       "repeatOne": "单曲循环",
       "repeatAllPlaylists": "重复所有播放列表",
+      "playFavoritesOnly": "仅播放收藏",
+      "noFavoriteSongs": "还没有收藏的歌曲",
       "playbackSpeed": "播放速度",
       "speedNormal": "正常",
       "lyricsPositionOffset": "歌词同步延迟",

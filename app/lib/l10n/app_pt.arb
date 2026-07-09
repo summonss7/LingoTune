@@ -587,6 +587,8 @@
       "repeatAll": "Repetir tudo",
       "repeatOne": "Repetir uma",
       "repeatAllPlaylists": "Repetir todas as listas",
+      "playFavoritesOnly": "Reproduzir apenas favoritos",
+      "noFavoriteSongs": "Ainda não há músicas favoritas",
       "playbackSpeed": "Velocidade de reprodução",
       "speedNormal": "Normal",
       "lyricsPositionOffset": "Atraso de sincronização da letra",

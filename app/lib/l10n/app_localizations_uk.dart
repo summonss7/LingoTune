@@ -1859,6 +1859,12 @@ class AppLocalizationsUk extends AppLocalizations {
   String get repeatAllPlaylists => 'Повторювати всі плейлисти';
 
   @override
+  String get playFavoritesOnly => 'Грати лише обране';
+
+  @override
+  String get noFavoriteSongs => 'Поки немає обраних пісень';
+
+  @override
   String get playbackSpeed => 'Швидкість відтворення';
 
   @override

@@ -587,6 +587,8 @@
       "repeatAll": "Повторювати всі",
       "repeatOne": "Повторювати одну",
       "repeatAllPlaylists": "Повторювати всі плейлисти",
+      "playFavoritesOnly": "Грати лише обране",
+      "noFavoriteSongs": "Поки немає обраних пісень",
       "playbackSpeed": "Швидкість відтворення",
       "speedNormal": "Звичайна",
       "lyricsPositionOffset": "Затримка синхронізації тексту",

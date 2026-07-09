@@ -69,6 +69,10 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
   String _sortBy = 'default';
   final Map<String, Color> _buttonColorsCache = {};
 
+  /// Множество id песен, входящих в системный плейлист `favorites`. Нужно,
+  /// чтобы рисовать заполненное/пустое сердечко на каждой строке списка.
+  Set<String> _favoriteSongIds = {};
+
   final ScrollController _scrollController = ScrollController();
   bool _didInitialScroll = false;
 
@@ -119,8 +123,21 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
     try {
       final songs = await _playlistService.getSongsInPlaylist(widget.playlist.id);
 
+      // Грузим множество id избранных (один запрос), чтобы рисовать сердечко.
+      Set<String> favIds = {};
+      if (widget.playlist.id != 'favorites') {
+        try {
+          final favSongs =
+              await _playlistService.getSongsInPlaylist('favorites');
+          favIds = favSongs.map((s) => s.id).toSet();
+        } catch (e) {
+          debugPrint('⚠ Could not load favorites ids: $e');
+        }
+      }
+
       setState(() {
         _songs = songs;
+        _favoriteSongIds = favIds;
         _isLoading = false;
       });
 
@@ -213,6 +230,45 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
         );
       }
     }
+  }
+
+  /// Добавляет/убирает песню из системного плейлиста `favorites` и обновляет
+  /// локальное множество [_favoriteSongIds] (без полной перезагрузки списка).
+  Future<void> _toggleFavorite(Song song) async {
+    try {
+      final isFav = _favoriteSongIds.contains(song.id);
+      if (isFav) {
+        await _playlistService.removeSongFromPlaylist('favorites', song.id);
+        debugPrint('💔 Removed from favorites: ${song.title}');
+      } else {
+        await _playlistService.addSongToPlaylist('favorites', song.id);
+        debugPrint('❤ Added to favorites: ${song.title}');
+      }
+      setState(() {
+        if (isFav) {
+          _favoriteSongIds.remove(song.id);
+        } else {
+          _favoriteSongIds.add(song.id);
+        }
+      });
+    } catch (e) {
+      debugPrint('✗ Error toggling favorite: $e');
+    }
+  }
+
+  /// Кнопка-сердечко для строки песни. Не показывается, если текущий
+  /// плейлист сам является `favorites` (там сердечко избыточно — там есть
+  /// кнопка удаления).
+  Widget _buildFavoriteButton(Song song, AppLocalizations l10n) {
+    final isFav = _favoriteSongIds.contains(song.id);
+    return IconButton(
+      icon: Icon(
+        isFav ? Icons.favorite : Icons.favorite_border,
+        color: isFav ? Colors.red : null,
+      ),
+      onPressed: () => _toggleFavorite(song),
+      tooltip: isFav ? l10n.removeFromFavorites : l10n.addToFavorites,
+    );
   }
 
   void _onReorder(int oldIndex, int newIndex) {
@@ -687,12 +743,20 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
                     ? null
                     : _isReorderMode
                         ? const Icon(Icons.drag_handle)
-                        : !widget.playlist.isSystem
+                        // Плейлист `favorites` ведёт себя как редактируемый
+                        // (remove вместо play_arrow — удалить из избранного =
+                        // убрать из этого плейлиста). Сердечко в нём не
+                        // показываем, т.к. оно там избыточно.
+                        : (!widget.playlist.isSystem ||
+                                widget.playlist.id == 'favorites')
                             ? Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  if (widget.playlist.id != 'favorites')
+                                    _buildFavoriteButton(song, l10n),
                                   IconButton(
-                                    icon: Icon(Icons.auto_awesome, color: _getGeneratorButtonColor(song)),
+                                    icon: Icon(Icons.auto_awesome,
+                                        color: _getGeneratorButtonColor(song)),
                                     onPressed: () => _showGenerateDialog(song),
                                     tooltip: l10n.generateLyrics,
                                   ),
@@ -706,8 +770,10 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
                             : Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  _buildFavoriteButton(song, l10n),
                                   IconButton(
-                                    icon: Icon(Icons.auto_awesome, color: _getGeneratorButtonColor(song)),
+                                    icon: Icon(Icons.auto_awesome,
+                                        color: _getGeneratorButtonColor(song)),
                                     onPressed: () => _showGenerateDialog(song),
                                     tooltip: l10n.generateLyrics,
                                   ),

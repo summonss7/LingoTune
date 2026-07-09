@@ -587,6 +587,8 @@
       "repeatAll": "Repeat all",
       "repeatOne": "Repeat one",
       "repeatAllPlaylists": "Repeat all playlists",
+      "playFavoritesOnly": "Play favorites only",
+      "noFavoriteSongs": "No favorite songs yet",
       "playbackSpeed": "Playback Speed",
       "speedNormal": "Normal",
       "lyricsPositionOffset": "Lyrics Sync Delay",

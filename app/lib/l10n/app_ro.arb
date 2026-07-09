@@ -587,6 +587,8 @@
       "repeatAll": "Repetă tot",
       "repeatOne": "Repetă unul",
       "repeatAllPlaylists": "Repetă toate listele",
+      "playFavoritesOnly": "Redă doar favoritele",
+      "noFavoriteSongs": "Nu există încă melodii favorite",
       "playbackSpeed": "Viteză de redare",
       "speedNormal": "Normală",
       "lyricsPositionOffset": "Întârziere sincronizare versuri",

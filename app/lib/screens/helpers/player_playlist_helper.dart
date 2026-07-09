@@ -87,14 +87,14 @@ class PlayerPlaylistHelper {
       final nextIndex = audioService.getNextShuffledIndex(currentIndex, totalSongs);
       if (nextIndex != null && nextIndex >= 0 && nextIndex < playlistSongs!.length) {
         await playSong(playlistSongs![nextIndex]);
-      } else if (loopMode == LoopMode.all && audioService.shuffledPlaylist != null && audioService.shuffledPlaylist!.isNotEmpty) {
+      } else if ((loopMode == LoopMode.all || loopMode == LoopMode.favorites) && audioService.shuffledPlaylist != null && audioService.shuffledPlaylist!.isNotEmpty) {
         await playSong(playlistSongs![audioService.shuffledPlaylist!.first]);
       }
     } else {
       if (currentIndex < playlistSongs!.length - 1) {
         final nextSong = playlistSongs![currentIndex + 1];
         await playSong(nextSong);
-      } else if (loopMode == LoopMode.all && playlistSongs!.isNotEmpty) {
+      } else if ((loopMode == LoopMode.all || loopMode == LoopMode.favorites) && playlistSongs!.isNotEmpty) {
         await playSong(playlistSongs!.first);
       } else if (loopMode == LoopMode.allPlaylists && playNextPlaylist != null) {
         await playNextPlaylist();
@@ -112,7 +112,7 @@ class PlayerPlaylistHelper {
       return false;
     }
     final currentIndex = playlistSongs!.indexWhere((s) => s.id == currentSongId);
-    if (isShuffleEnabled || loopMode == LoopMode.all) {
+    if (isShuffleEnabled || loopMode == LoopMode.all || loopMode == LoopMode.favorites) {
       return true;
     }
     return currentIndex > 0;
@@ -127,7 +127,7 @@ class PlayerPlaylistHelper {
     if (playlistSongs == null || playlistSongs!.isEmpty) {
       return false;
     }
-    if (loopMode == LoopMode.one || loopMode == LoopMode.all || loopMode == LoopMode.allPlaylists) {
+    if (loopMode == LoopMode.one || loopMode == LoopMode.all || loopMode == LoopMode.allPlaylists || loopMode == LoopMode.favorites) {
       return true;
     }
     if (isShuffleEnabled) {

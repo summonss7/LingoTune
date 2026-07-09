@@ -1,6 +1,6 @@
 ﻿# LingoTune - Изучение языков через музыку
 
-**Версия:** 5.6.3
+**Версия:** 5.7.0
 **Разработчики:** Z.AI GLM & Цимбалов Артем
 **Платформа:** Android (Flutter)
 **Языки интерфейса:** Русский, Английский, Румынский, Французский, Немецкий, Испанский, Итальянский, Португальский, Китайский, Арабский, Украинский
@@ -111,6 +111,57 @@ cp build/app/outputs/flutter-apk/app-release.apk builds/LingoTune-v{версия
 - [Решение проблем](TROUBLESHOOTING.md) - FAQ и решение проблем
 - [Калибровка детекции машин](PLAN_CAR_DETECTION_CALIBRATION.md) - реализация v5.5.0 (эталоны + Mahalanobis)
 - [Офлайн-TTS (sherpa_onnx VITS)](PLAN_v5.3.0_offline_tts.md) - реализация v5.5.0 (стабильная озвучка перевода без системного TTS)
+- [Избранное по плейлистам](PLAN_v5.7.0_favorites.md) - реализация v5.7.0 (глобальная корзина favorites + режим LoopMode.favorites)
+
+## 🎯 Новое в версии 5.7.0
+
+### ❤ Новая фича: Избранное по плейлистам (глобальная корзина + режим «играть только избранное»)
+- **Задача:** пользователь хотел отмечать любимые песни и слушать их отдельно от текущего плейлиста, не собирая вручную отдельный плейлист.
+- **Архитектурное решение (без миграции БД):** в БД уже существовал автоматически создаваемый системный плейлист `favorites` (`isSystem=1`, `database_service.dart`), но он нигде не использовался. Переиспользовали его: избранное = обычные строки в существующей junction table `playlist_songs` с `playlistId='favorites'`. Никакой миграции БД не потребовалось. Локализационные ключи `addToFavorites`/`removeFromFavorites`/`favorites` тоже уже были определены на всех 11 языках, но не вызывались.
+- **Что может пользователь:**
+  - **Кнопка-сердечко в плеере** на текущей песне (слева от индикатора позиции) — добавляет/убирает песню из избранного одним тапом.
+  - **Кнопка-сердечко в списке песен плейлиста** (`PlaylistSongsScreen`) — массово отмечать песни прямо в списке.
+  - **Новый режим петли `LoopMode.favorites`** — 5-е состояние в цикле кнопки loop (`off → all → one → allPlaylists → favorites → off`). При активации грузит все избранные песни и делает их активным списком воспроизведения. Если текущая песня уже в избранном — продолжает с неё; иначе переключается на первую.
+- **Особенности:**
+  - **Глобальная корзина:** одна коллекция избранного на всё приложение независимо от того, из какого плейлиста отметили песню (т.к. это единый системный плейлист `favorites`).
+  - **Wrap-around:** в режиме `favorites` следующая/предыдущая песни зацикливаются по списку избранных (как `LoopMode.all`), включая при включённом shuffle.
+  - **Transient-режим:** `favorites` НЕ персистится в `SharedPreferences` (т.к. требует динамической загрузки списка из БД, что делается только через явный тап на кнопку loop). При холодном старте режим всегда сбрасывается в `off`.
+  - **Плейлист `favorites` редактируемый:** в `PlaylistSongsScreen` он показывается с кнопкой удаления (а не `play_arrow`, как прочие системные), т.к. удалить из избранного = убрать из этого плейлиста.
+  - **Удаление текущей песни из избранного во время игры в режиме `favorites`** синхронно обновляет активный список, чтобы next не ушёл в удалённую песню; если список опустел — режим автоматически откатывается в `off`.
+
+### 🔧 Технические изменения
+- **`lib/models/loop_mode.dart`**: `enum LoopMode { off, all, one, allPlaylists, favorites }` (новое значение в конце, чтобы сохранить `.index` существующих режимов).
+- **`lib/services/audio_service.dart`**:
+  - `toggleLoop()`: цикл продлён `allPlaylists → favorites → off`. `_savePlaybackSettings()` вызывается только для non-favorites режимов (transient).
+  - `_loadPlaybackSettings()`: если из prefs загрузился `favorites` (устаревшее значение) — сброс в `off`.
+  - `getNextShuffledIndex`/`getPreviousShuffledIndex`: wrap-around при `loopMode == all || favorites`.
+  - `playNextSong`/`playPreviousSong` (fallback-путь): wrap-around при `all || favorites`.
+- **`lib/services/background_audio_handler.dart`**: `setRepeatMode` зеркально продлён `allPlaylists → favorites → off`.
+- **`lib/services/database_service.dart`**: новый метод `isSongInPlaylist(playlistId, songId)` — быстрый `SELECT 1 ... LIMIT 1` (без загрузки всего списка песен).
+- **`lib/screens/helpers/player_playlist_helper.dart`**: `playNextSong`/`canPlayPrevious`/`canPlayNext` — `favorites` обрабатывается как `all` (wrap-around по единому плоскому списку).
+- **`lib/screens/player_screen.dart`**:
+  - Новое state-поле `bool _isCurrentSongFavorite`.
+  - `_switchToFavoritesMode()`: грузит `getSongsInPlaylist('favorites')`; пусто → SnackBar `noFavoriteSongs` + откат в `off`; иначе `_activePlaybackList = favSongs` + `setCurrentPlaylist` + найти текущую или играть первую.
+  - `_refreshCurrentSongFavoriteStatus()`: обновляет флаг при смене песни.
+  - `_toggleCurrentSongFavorite()`: add/remove + sync `_activePlaybackList` если играем в режиме favorites (+ авто-откат если опустел).
+  - `_toggleLoop()`: при переходе в `favorites` → `_switchToFavoritesMode()`; при выходе из `favorites` → восстановление `widget.playlistSongs` как активного списка.
+  - `_canPlayNext()`: `true` для `favorites`.
+  - `_buildLoopButton()`: кейс `favorites` — иконка `Icons.favorite`, красный цвет, tooltip `playFavoritesOnly`.
+  - В transport-Row (position | title | duration) добавлена компактная кнопка-сердечко слева + симметричный spacer справа.
+  - `initState`: защита — если persisted loopMode = favorites → сброс в off.
+- **`lib/screens/playlist_songs_screen.dart`**:
+  - Новое state-поле `Set<String> _favoriteSongIds` + загрузка в `_loadSongs` (один запрос `getSongsInPlaylist('favorites')`).
+  - `_toggleFavorite(Song)` / `_buildFavoriteButton(Song, l10n)`.
+  - В trailing каждой строки: сердечко показывается всегда, КРОМЕ случая когда сам плейлист = `favorites` (там оно избыточно — там есть remove_circle). Плейлист `favorites` теперь ведёт себя как редактируемый (remove вместо play_arrow).
+- **`lib/l10n/app_*.arb`** (11) + `app_localizations*.dart` (реген через `flutter gen-l10n`): 2 новых ключа `playFavoritesOnly`, `noFavoriteSongs` × 11 языков (`addToFavorites`/`removeFromFavorites`/`favorites` уже были).
+- **`pubspec.yaml`/`app_info.dart`/`build.gradle`/`local.properties`** — 5.7.0 (versionCode 222); features += «❤ Favorites playlist + play-favorites-only loop mode».
+
+### ⚠️ Известные ограничения
+- **Глобальная, не per-playlist:** модель — одна корзина избранного на всё приложение (по решению разработки). Если нужна отдельная отметка внутри каждого плейлиста — потребовалось бы новое поле в БД (миграция v12).
+- **`favorites` не персистится:** после холодного старта приложения режим всегда `off` (сознательное решение — transient-режим).
+- **Системный плейлист `favorites` виден** в списке плейлистов `PlaylistScreen` (если системные показываются) — это ожидаемо и даже полезно (можно открыть и посмотреть весь список избранных).
+
+---
 
 ## 🎯 Новое в версии 5.6.3
 

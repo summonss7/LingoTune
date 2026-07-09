@@ -200,7 +200,7 @@ class Playlist {
 - Воспроизведение/пауза/стоп
 - Перемотка
 - Переключение песен
-- Режимы повтора (off, all, one, allPlaylists)
+- Режимы повтора (off, all, one, allPlaylists, favorites)
 - Перемешивание (shuffle)
 - Управление скоростью
 - Фоновое воспроизведение с уведомлением
@@ -231,12 +231,15 @@ class Playlist {
 - Управление переводами
 - Поиск и фильтрация
 - Транзакции
+- `isSongInPlaylist(playlistId, songId)` — быстрая проверка вхождения (для избранного)
 
 **Таблицы базы данных:**
 - `songs` - песни
-- `playlists` - плейлисты
+- `playlists` - плейлисты (включая системные `all_songs` и `favorites`)
 - `song_translations` - переводы песен
-- `playlist_songs` - песни в плейлистах
+- `playlist_songs` - песни в плейлистах (junction table, в т.ч. для избранного)
+
+> **Системный плейлист `favorites`** создаётся автоматически при первом запуске (`isSystem=1`). Используется как единая глобальная корзина избранного. Добавление/удаление песни = строка в `playlist_songs` с `playlistId='favorites'`. Режим воспроизведения «только избранное» — `LoopMode.favorites` (см. [PLAN_v5.7.0_favorites.md](PLAN_v5.7.0_favorites.md)).
 
 #### LyricsService
 **Ответственность:** Работа с LRC файлами

@@ -66,6 +66,11 @@ class AudioService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final loopIndex = prefs.getInt('loopMode') ?? 0;
       _loopMode = LoopMode.values[loopIndex.clamp(0, LoopMode.values.length - 1)];
+      // favorites не персистится (transient-режим). На всякий случай
+      // сбрасываем, если в prefs осталось устаревшее значение.
+      if (_loopMode == LoopMode.favorites) {
+        _loopMode = LoopMode.off;
+      }
       _isShuffleEnabled = prefs.getBool('isShuffleEnabled') ?? false;
       _globalPlaybackSpeed = prefs.getDouble('playbackSpeed') ?? 1.0;
       // На старте (песня ещё не установлена) активная скорость = глобальная.
@@ -371,12 +376,20 @@ class AudioService extends ChangeNotifier {
         _loopMode = LoopMode.allPlaylists;
         break;
       case LoopMode.allPlaylists:
+        _loopMode = LoopMode.favorites;
+        break;
+      case LoopMode.favorites:
         _loopMode = LoopMode.off;
         break;
     }
     _backgroundHandler?.setLoopMode(_loopMode);
     _backgroundHandler?.updateNotificationControls();
-    _savePlaybackSettings();
+    // favorites — transient-режим: требует динамической загрузки списка из БД
+    // в PlayerScreen, поэтому не персистим его (иначе при холодном старте
+    // активный список не будет соответствовать сохранённому режиму).
+    if (_loopMode != LoopMode.favorites) {
+      _savePlaybackSettings();
+    }
     notifyListeners();
   }
 
@@ -410,7 +423,7 @@ class AudioService extends ChangeNotifier {
 
     final nextIndexInShuffle = currentIndexInShuffle + 1;
     if (nextIndexInShuffle >= _shuffledIndices!.length) {
-      if (_loopMode == LoopMode.all) {
+      if (_loopMode == LoopMode.all || _loopMode == LoopMode.favorites) {
         return _shuffledIndices!.first;
       }
       return null;
@@ -431,7 +444,7 @@ class AudioService extends ChangeNotifier {
 
     final previousIndexInShuffle = currentIndexInShuffle - 1;
     if (previousIndexInShuffle < 0) {
-      if (_loopMode == LoopMode.all) {
+      if (_loopMode == LoopMode.all || _loopMode == LoopMode.favorites) {
         return _shuffledIndices!.last;
       }
       return null;
@@ -522,7 +535,7 @@ class AudioService extends ChangeNotifier {
       }
       if (currentIndex < _currentPlaylist!.length - 1) {
         nextIndex = currentIndex + 1;
-      } else if (_loopMode == LoopMode.all) {
+      } else if (_loopMode == LoopMode.all || _loopMode == LoopMode.favorites) {
         nextIndex = 0;
       } else {
         debugPrint('⚠ AudioService: No next song available');
@@ -546,7 +559,7 @@ class AudioService extends ChangeNotifier {
     } else {
       if (currentIndex > 0) {
         previousIndex = currentIndex - 1;
-      } else if (_loopMode == LoopMode.all) {
+      } else if (_loopMode == LoopMode.all || _loopMode == LoopMode.favorites) {
         previousIndex = _currentPlaylist!.length - 1;
       } else {
         debugPrint('⚠ AudioService: No previous song available');

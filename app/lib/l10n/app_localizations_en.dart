@@ -1859,6 +1859,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get repeatAllPlaylists => 'Repeat all playlists';
 
   @override
+  String get playFavoritesOnly => 'Play favorites only';
+
+  @override
+  String get noFavoriteSongs => 'No favorite songs yet';
+
+  @override
   String get playbackSpeed => 'Playback Speed';
 
   @override

@@ -3497,6 +3497,18 @@ abstract class AppLocalizations {
   /// **'Repeat all playlists'**
   String get repeatAllPlaylists;
 
+  /// No description provided for @playFavoritesOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Play favorites only'**
+  String get playFavoritesOnly;
+
+  /// No description provided for @noFavoriteSongs.
+  ///
+  /// In en, this message translates to:
+  /// **'No favorite songs yet'**
+  String get noFavoriteSongs;
+
   /// No description provided for @playbackSpeed.
   ///
   /// In en, this message translates to:
