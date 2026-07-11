@@ -1,6 +1,6 @@
 ﻿# LingoTune - Изучение языков через музыку
 
-**Версия:** 5.7.0
+**Версия:** 5.7.1
 **Разработчики:** Z.AI GLM & Цимбалов Артем
 **Платформа:** Android (Flutter)
 **Языки интерфейса:** Русский, Английский, Румынский, Французский, Немецкий, Испанский, Итальянский, Португальский, Китайский, Арабский, Украинский
@@ -112,6 +112,39 @@ cp build/app/outputs/flutter-apk/app-release.apk builds/LingoTune-v{версия
 - [Калибровка детекции машин](PLAN_CAR_DETECTION_CALIBRATION.md) - реализация v5.5.0 (эталоны + Mahalanobis)
 - [Офлайн-TTS (sherpa_onnx VITS)](PLAN_v5.3.0_offline_tts.md) - реализация v5.5.0 (стабильная озвучка перевода без системного TTS)
 - [Избранное по плейлистам](PLAN_v5.7.0_favorites.md) - реализация v5.7.0 (глобальная корзина favorites + режим LoopMode.favorites)
+
+## 🎯 Новое в версии 5.7.1
+
+### 📞 Фикс: настоящая пауза при звонке на ROM с агрессивным системным дакингом (ColorOS/Realme, MIUI)
+- **Симптом:** при входящем звонке песня не паузилась, а «тихо играла» весь разговор (ОС приглушала медиапоток), а после отбоя становилась громче. Логично ожидать честную паузу. Особенно воспроизводимо на Realme GT5 (ColorOS/Realme UI).
+- **Корень:** в 5.6.1 для паузы при звонке полагались исключительно на `audio_session.interruptionEventStream` + флаг `androidWillPauseWhenDucked: true`. Но звонок на ряде ROM запускает дакинг медиапотока на уровне **AudioPolicyManager/AudioFlinger** (ниже audio-focus framework), который **игнорирует** `willPauseWhenDucked`. В итоге `interruptionEvent` либо приходит с большой задержкой, либо не приходит вовсе → `pause()` не вызывается → системный дакинг слышен как «тихая музыка». Флаг работает только для «обычных» прерываний (другой плеер, будильник), но не для телефонии.
+- **Решение:** добавлен **прямой нативный детектор состояния звонка** через `TelephonyManager` (срабатывает в момент `RINGING` — гарантированно раньше системного дакинга) **поверх** существующей audio-focus схемы (та остаётся как фолбэк для не-телефонных прерываний). Дедупликация по флагу `_pausedForCall` гарантирует, что при двойном срабатывании (phone-state + audio-focus по одному звонку) пауза и resume отрабатывают ровно по одному разу.
+- **Что делает пользователь:** ничего — при первом входе в плеер один раз запрашивается `READ_PHONE_STATE`; при отказе грациозно остаётся старая audio-focus схема (не хуже, чем было).
+
+### 🔧 Технические изменения
+- **`app/android/app/src/main/kotlin/com/lingotune/app/PhoneCallPlugin.kt`** (новый, ~170 строк): `FlutterPlugin` + `EventChannel.StreamHandler` на канале `lingotune/phone_state`. API 31+ — современный `TelephonyCallback.CallStateListener` (основной путь, Realme GT5 = API 33); API < 31 — фолбэк на устаревший `PhoneStateListener.LISTEN_CALL_STATE`. Шлёт строки `ringing` / `offhook` / `idle`. `SecurityException` (нет permission) → ошибка в sink (Dart-сторона откатывается на фолбэк). Listener регистрируется на `onListen`, снимается на `onCancel`/`onDetachedFromEngine`.
+- **`app/android/app/src/main/kotlin/com/lingotune/app/MainActivity.kt`**: в `configureFlutterEngine` регистрируется `PhoneCallPlugin` (раньше класс был пустым — только `AudioServiceActivity`).
+- **`app/android/app/src/main/AndroidManifest.xml`**: добавлен `<uses-permission android:name="android.permission.READ_PHONE_STATE"/>` (с комментарием зачем).
+- **`app/lib/services/phone_call_service.dart`** (новый, ~110 строк): Dart-обёртка над EventChannel; `enum CallState { idle, ringing, offhook }`; синглтон `PhoneCallService.instance` с `start()`/`stop()` и broadcast-стримом `callStates`. На не-Android / недоступности канала `start()` возвращает `false` (грациозный фолбэк).
+- **`app/lib/services/background_audio_handler.dart`**:
+  - Новое поле `bool _pausedForCall` (дедупликация звонка).
+  - Вынесены приватные `_handleCallPause()`/`_handleCallResume()` — единый путь паузы/resume (study-handoff через `onPlaybackInterrupted`, захват `_wasPlayingBeforeInterruption`, `pause()`/`play()` + `onPlaybackResumed`).
+  - Новые публичные методы `pauseForCall()`/`resumeAfterCall()` для триггера из `PhoneCallService`.
+  - `interruptionEventStream` listener упрощён и теперь зовёт те же `_handleCallPause()`/`_handleCallResume()` → двойное срабатывание (phone-state + audio-focus) безопасно: первый выставляет `_pausedForCall=true`, второй — no-op.
+- **`app/lib/screens/player_screen.dart`**:
+  - Новое поле `StreamSubscription<CallState>? _phoneCallSub` + импорты `permission_handler`, `phone_call_service.dart`.
+  - `_initBackgroundAudio`: после подключения interruption-колбэков зовёт (fire-and-forget через `unawaited`) новый `_initPhoneCallDetection()`.
+  - `_initPhoneCallDetection()`: проверка `Platform.isAndroid`; запрос `Permission.phone` (READ_PHONE_STATE); при гранте — `PhoneCallService.instance.start()` + подписка: `ringing`/`offhook` → `handler.pauseForCall()`, `idle` → `handler.resumeAfterCall()` (study-handoff идёт через те же колбэки handler'а).
+  - `dispose()`: отмена `_phoneCallSub` + `PhoneCallService.instance.stop()` (снимает нативный listener — иначе утечка + phantom pause/resume).
+- **`pubspec.yaml`/`app_info.dart`/`build.gradle`/`local.properties`** — 5.7.1 (versionCode 223).
+
+### ⚠️ Известные ограничения
+- **Покрытие = lifecycle PlayerScreen:** нативный детектор живёт, пока жив `PlayerScreen` (как и колбэки study-mode). При активном прослушивании и в фоне (app backgrounded, экран не disposing) — работает. При возврате в библиотеку (pop экрана) PhoneCallService останавливается, но остаётся audio-focus фолбэк handler'а (базовая пауза песни без study-TTS-handoff — но study mode и так неактивен без экрана).
+- **Только Android:** нативный детектор через `TelephonyManager` доступен только на Android (целевая платформа проекта). На других платформах `PhoneCallService.start()` возвращает `false`, используется audio-focus схема.
+- **READ_PHONE_STATE permission:** при отказе приложение работает на старой audio-focus схеме (т.е. на проблемных ROM баг может остаться — но это осознанный выбор пользователя, без принуждения).
+- **Двойной триггер на стоках:** на «чистом» Android звонок может породить и phone-state, и audio-focus события — дедуп по `_pausedForCall` корректно отрабатывает (пауза/resume по разу).
+
+---
 
 ## 🎯 Новое в версии 5.7.0
 

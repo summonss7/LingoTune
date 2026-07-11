@@ -14,6 +14,13 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   bool _isHandlingCompletion = false;
   bool _wasPlayingBeforeInterruption = false;
 
+  /// Дедупликация двойного срабатывания паузы при звонке. Прямой детектор
+  /// [PhoneCallService] (TelephonyManager) и `audio_session.interruptionEvent`
+  /// могут оба прислать событие по одному звонку. Этот флаг гарантирует, что
+  /// пауза (и захват «играло ли до звонка») выполняется ровно один раз, и resume
+  /// тоже сработает один раз. Управляется из [pauseForCall]/[resumeAfterCall].
+  bool _pausedForCall = false;
+
   Function(bool)? onShuffleToggled;
   Function(LoopMode)? onLoopToggled;
   Function()? onSkipToNextRequested;
@@ -84,24 +91,13 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         debugPrint(
             '📞 BackgroundAudioHandler: interruption begin=${event.begin} type=${event.type}');
         if (event.begin) {
-          // Даём study mode корректно поставить сессию на паузу (стоп TTS +
-          // drain kick-цикла). Если колбэк взял управление на себя — НЕ
-          // захватываем wasPlaying и не делаем авто-resume после звонка, этим
-          // займётся onPlaybackResumed (resumeSession).
-          final studyHandled = onPlaybackInterrupted?.call() ?? false;
-          if (studyHandled) {
-            _wasPlayingBeforeInterruption = false;
-          } else {
-            _wasPlayingBeforeInterruption = _player.playing;
-          }
-          pause();
+          // audio-focus interruption (будильник, другой плеер, звонок на
+          // устройствах где дакинг всё-таки доставляет событие). Идёт через тот
+          // же путь дедупликации, что и прямой детектор PhoneCallService:
+          // whichever сработал первым ставит _pausedForCall=true, второй no-op.
+          _handleCallPause();
         } else {
-          final wasPlaying = _wasPlayingBeforeInterruption;
-          _wasPlayingBeforeInterruption = false;
-          if (wasPlaying) {
-            play();
-          }
-          onPlaybackResumed?.call();
+          _handleCallResume();
         }
       });
       
@@ -114,6 +110,51 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       debugPrint('✗ BackgroundAudioHandler: Error configuring AudioSession: $e');
     }
   }
+
+  /// Общий путь паузы для звонка/прерывания с дедупликацией. Вызывается как из
+  /// `audio_session.interruptionEventStream` (begin), так и из нативного
+  /// детектора [PhoneCallService] (ringing/offhook). Дедуп по [_pausedForCall]
+  /// гарантирует, что по одному звонку пауза сработает ровно один раз — даже
+  /// если оба источника прислали событие.
+  void _handleCallPause() {
+    if (_pausedForCall) {
+      debugPrint('📞 BackgroundAudioHandler: pause already handled (dedupe)');
+      return;
+    }
+    _pausedForCall = true;
+    // Даём study mode корректно поставить сессию на паузу (стоп TTS +
+    // drain kick-цикла). Если колбэк взял управление на себя — НЕ захватываем
+    // wasPlaying и не делаем авто-resume песни, этим займётся resumeSession
+    // через onPlaybackResumed.
+    final studyHandled = onPlaybackInterrupted?.call() ?? false;
+    _wasPlayingBeforeInterruption = studyHandled ? false : _player.playing;
+    pause();
+  }
+
+  /// Общий путь возобновления после звонка/прерывания с дедупликацией. См.
+  /// [_handleCallPause]. Если до этого не было паузы по звонку — no-op
+  /// (защита от ложного resume, если interruption-end пришёл без begin).
+  void _handleCallResume() {
+    if (!_pausedForCall) {
+      debugPrint('📞 BackgroundAudioHandler: resume skipped (no prior pause)');
+      return;
+    }
+    _pausedForCall = false;
+    final wasPlaying = _wasPlayingBeforeInterruption;
+    _wasPlayingBeforeInterruption = false;
+    if (wasPlaying) {
+      play();
+    }
+    onPlaybackResumed?.call();
+  }
+
+  /// Публичный триггер паузы от нативного детектора звонка
+  /// ([PhoneCallService], состояние ringing/offhook). См. [_handleCallPause].
+  void pauseForCall() => _handleCallPause();
+
+  /// Публичный триггер возобновления от нативного детектора звонка
+  /// ([PhoneCallService], состояние idle). См. [_handleCallResume].
+  void resumeAfterCall() => _handleCallResume();
 
   void _initializeState() {
     playbackState.add(PlaybackState(

@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:path/path.dart' as path_pkg;
 import 'package:just_audio/just_audio.dart' show ProcessingState;
 import 'package:audio_service/audio_service.dart' as audio_pkg;
+import 'package:permission_handler/permission_handler.dart';
 import '../models/song.dart';
 import '../models/lyric_line.dart';
 import '../models/translation.dart' show Translation;
@@ -25,6 +26,7 @@ import '../services/car_alert_service.dart';
 import '../services/export_import_service.dart';
 import '../services/database_service.dart';
 import '../services/folder_config_service.dart';
+import '../services/phone_call_service.dart';
 import '../services/tts_coordinator.dart';
 import '../services/tts/tts_engine.dart' show TtsSource;
 import '../widgets/lyric_line_widget.dart';
@@ -114,6 +116,13 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// в [onPlaybackInterrupted] (BackgroundAudioHandler) и снимается в
   /// [onPlaybackResumed], чтобы после звонка корректно возобновить озвучку.
   bool _studyPausedForCall = false;
+
+  /// Подписка на нативный детектор звонка ([PhoneCallService]). На ряде ROM
+  /// (ColorOS/Realme UI, MIUI/HyperOS) системный дакинг медиапотока при звонке
+  /// игнорирует `willPauseWhenDucked`, и audio-focus interruption либо
+  /// опаздывает, либо не приходит. Прямой слушатель TelephonyManager
+  /// срабатывает в момент начала звонка — гарантированно раньше дакинга.
+  StreamSubscription<CallState>? _phoneCallSub;
 
   /// Находится ли текущая песня в системном плейлисте `favorites`. Обновляется
   /// при смене песни ([_playSong]) и по тапу на кнопку-сердечко.
@@ -1424,6 +1433,15 @@ class _PlayerScreenState extends State<PlayerScreen>
         }
       };
 
+      // Прямой детектор звонка (TelephonyManager) — надёжнее audio-focus на
+      // ROM с агрессивным системным дакингом (ColorOS/Realme, MIUI). Запрос
+      // READ_PHONE_STATE выполняется асинхронно; при отказе грациозно
+      // откатываемся на interruption-схему (она остаётся подключённой выше).
+      // Колбэки звонка идут через те же pauseForCall/resumeAfterCall handler'а
+      // с дедупликацией — двойное срабатывание (phone-state + audio-focus)
+      // безопасно.
+      unawaited(_initPhoneCallDetection());
+
       if (widget.playlistSongs != null && widget.playlistSongs!.isNotEmpty) {
         final currentIndex =
             widget.playlistSongs!.indexWhere((s) => s.id == widget.song.id);
@@ -1438,6 +1456,54 @@ class _PlayerScreenState extends State<PlayerScreen>
         );
       }
     }
+  }
+
+  /// Запрашивает `READ_PHONE_STATE` и подключает нативный детектор звонка
+  /// ([PhoneCallService]). При отказе в permission / недоступности платформы
+  /// тихо остаётся на audio-focus схеме (interruption-listener handler'а).
+  /// Колбэки звонка дёргают те же [_studyPausedForCall]/`resumeSession`, что и
+  /// interruption-путь — дедупликация в handler'е ([_pausedForCall]) защищает
+  /// от двойного срабатывания.
+  Future<void> _initPhoneCallDetection() async {
+    final handler = widget.audioService.backgroundHandler;
+    if (handler == null) return;
+
+    if (!Platform.isAndroid) return;
+
+    PermissionStatus status = await Permission.phone.status;
+    if (!status.isGranted) {
+      status = await Permission.phone.request();
+      debugPrint('📞 PlayerScreen: READ_PHONE_STATE request -> ${status.name}');
+    }
+    if (!status.isGranted) {
+      debugPrint('📞 PlayerScreen: phone permission denied, '
+          'falling back to audio-focus interruption scheme');
+      return;
+    }
+
+    final ok = PhoneCallService.instance.start();
+    if (!ok) {
+      debugPrint('📞 PlayerScreen: PhoneCallService unavailable, '
+          'falling back to audio-focus interruption scheme');
+      return;
+    }
+
+    _phoneCallSub = PhoneCallService.instance.callStates.listen((state) {
+      if (!mounted) return;
+      switch (state) {
+        case CallState.ringing:
+        case CallState.offhook:
+          debugPrint('📞 PlayerScreen: call ${state.name} → pauseForCall');
+          // Study-handoff (стоп TTS + drain kick-цикла) выполняется в
+          // onPlaybackInterrupted handler'а; pauseForCall — единый путь паузы.
+          handler.pauseForCall();
+          break;
+        case CallState.idle:
+          debugPrint('📞 PlayerScreen: call ended → resumeAfterCall');
+          handler.resumeAfterCall();
+          break;
+      }
+    });
   }
 
   Future<void> _loadSettings() async {
@@ -1770,6 +1836,13 @@ class _PlayerScreenState extends State<PlayerScreen>
       handler.onPlaybackInterrupted = null;
       handler.onPlaybackResumed = null;
     }
+
+    // Отписываемся от детектора звонка и глушим нативный слушатель — иначе
+    // TelephonyCallback/PhoneStateListener переживёт экран и продолжил бы
+    // дёргать disposed handler (memory leak + phantom pause/resume).
+    _phoneCallSub?.cancel();
+    _phoneCallSub = null;
+    PhoneCallService.instance.stop();
 
     super.dispose();
   }

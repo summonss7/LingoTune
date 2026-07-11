@@ -54,6 +54,7 @@ app/lib/
 ├── services/                    # Сервисы (бизнес-логика)
 │   ├── audio_service.dart      # Аудио плеер
 │   ├── background_audio_handler.dart  # Фоновое воспроизведение
+│   ├── phone_call_service.dart # Нативный детектор звонка (TelephonyManager → EventChannel)
 │   ├── database_service.dart    # База данных SQLite
 │   ├── lyrics_service.dart     # Работа с LRC файлами
 │   ├── translation_service.dart # Управление переводами
@@ -208,7 +209,33 @@ class Playlist {
 
 **Зависимости:** just_audio, audio_service, audio_session
 
-#### StudyModeService
+#### BackgroundAudioHandler
+**Ответственность:** Фоновое воспроизведение (notification-контролы), интеграция с `audio_service`
+
+- `play()`/`pause()`/`seek()`/`skipToNext()`/`skipToPrevious()` через `BaseAudioHandler`
+- Цикл loop-режимов (`off → all → one → allPlaylists → favorites → off`)
+- Колбэки для делегирования next/prev на `PlayerScreen` (`onSkipToNextRequested`/`onSkipToPreviousRequested`)
+- **Пауза при прерывании (звонок/будильник/другой плеер):**
+  - `interruptionEventStream` (audio_session, флаг `androidWillPauseWhenDucked: true`) — базовый путь.
+  - Прямой детектор звонка через `PhoneCallService` (см. ниже) — надёжный путь на ROM с агрессивным системным дакингом (ColorOS/Realme UI, MIUI/HyperOS).
+  - Единый путь паузы/resume через `_handleCallPause()`/`_handleCallResume()` с **дедупликацией** по флагу `_pausedForCall`: двойное срабатывание (phone-state + audio-focus) безопасно.
+  - Study-handoff: `onPlaybackInterrupted` (возвращает `bool` — взял ли study паузу на себя) / `onPlaybackResumed` — корректно стопают TTS + дренируют kick-цикл study mode.
+
+**Зависимости:** just_audio, audio_service, audio_session
+
+#### PhoneCallService
+**Ответственность:** Нативный детектор состояния телефонного звонка для надёжной паузы при входящем звонке
+
+- Dart-обёртка над нативным EventChannel `lingotune/phone_state` (плагин `PhoneCallPlugin.kt`).
+- `enum CallState { idle, ringing, offhook }` + broadcast-стрим `callStates`.
+- Синглтон `PhoneCallService.instance` с `start()`/`stop()`.
+- **Зачем нужен:** на ряде ROM (ColorOS/Realme UI, MIUI/HyperOS, EMUI) системный дакинг медиапотока при звонке выполняется на уровне `AudioPolicyManager` и игнорирует флаг `willPauseWhenDucked` плагина `audio_session`. В результате `interruptionEventStream` либо опаздывает, либо не приходит → песня «тихо играет» весь разговор. Прямой слушатель `TelephonyManager` срабатывает на `RINGING` гарантированно раньше системного дакинга.
+- **Фолбэк:** при отказе в `READ_PHONE_STATE` / недоступности платформы `start()` возвращает `false` → `PlayerScreen` грациозно остаётся на audio-focus схеме.
+- Требует `READ_PHONE_STATE` permission (запрос в рантайме через `permission_handler`, `Permission.phone`).
+
+**Зависимости:** нативный Kotlin `PhoneCallPlugin.kt` (TelephonyManager), permission_handler
+
+
 **Ответственность:** Режим изучения — озвучивание перевода (TTS) и воспроизведение песни по строкам
 
 - Три режима порядка (`StudyModeOrder`):

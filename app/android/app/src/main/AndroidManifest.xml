@@ -16,6 +16,13 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- READ_PHONE_STATE: детектор входящего звонка (TelephonyManager) для
+         надёжной паузы песни/озвучки перевода. На ряде ROM (ColorOS/Realme UI,
+         MIUI/HyperOS) системный дакинг медиапотока при звонке игнорирует флаг
+         willPauseWhenDucked плагина audio_session — прямой слушатель
+         TelephonyManager срабатывает гарантированно раньше. Запрашивается в
+         рантайме через permission_handler (Permission.phone). -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
 
     <!-- Микрофон опционален: приложение работает и без него (фича детекции
          машин просто будет недоступна). required=false позволяет ставить APK
