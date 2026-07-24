@@ -14,12 +14,36 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   bool _isHandlingCompletion = false;
   bool _wasPlayingBeforeInterruption = false;
 
+  /// Время последнего перехода плеера в состояние playing (обновляется из
+  /// [_player.playingStream]). Используется [wasPlayingRecently] как надёжный
+  /// сигнал «слушатель активно слушает прямо сейчас» — в отличие от сырого
+  /// `_player.playing`, не ломается в кратковременных паузах study (kick-фаза,
+  /// когда [_kickPlayback] ретраит play() но плеер ещё не стартовал; TTS-пауза
+  /// сегмента). Решает регрессию v5.7.3, когда `wasAudible = player.playing`
+  /// ложно давал false в kick-фазе → после звонка study не возобновлялся.
+  DateTime? _lastPlayingAt;
+
   /// Дедупликация двойного срабатывания паузы при звонке. Прямой детектор
   /// [PhoneCallService] (TelephonyManager) и `audio_session.interruptionEvent`
   /// могут оба прислать событие по одному звонку. Этот флаг гарантирует, что
   /// пауза (и захват «играло ли до звонка») выполняется ровно один раз, и resume
   /// тоже сработает один раз. Управляется из [pauseForCall]/[resumeAfterCall].
   bool _pausedForCall = false;
+
+  /// Пользователь явно поставил паузу (кнопка экрана блокировки / FAB / media
+  /// button) ПОКА шло прерывание звонка ([_pausedForCall]==true). В таком случае
+  /// авто-resume по окончании звонка [_handleCallResume] НЕ должен запускать
+  /// воспроизведение и study-сессию — последнее намерение пользователя
+  /// «перекрывает» захваченное ранее `_wasPlayingBeforeInterruption`.
+  ///
+  /// Почему нужен отдельный флаг, а не просто проверка `_player.playing`: во
+  /// время прерывания плеер уже остановлен (либо паузой звонка, либо самим
+  /// пользователем) → `_player.playing` всегда false в момент resume, им нельзя
+  /// отличить «паузил звонок» от «паузил пользователь». Флаг выставляется только
+  /// в публичном [pause] (внешний триггер при активном прерывании), а внутренняя
+  /// системная пауза [_systemPause] и study-сегменты его НЕ трогают. Сбрасывается
+  /// в [play] (пользователь нажал play — хочет слушать) и в [_handleCallResume].
+  bool _userPausedDuringCall = false;
 
   Function(bool)? onShuffleToggled;
   Function(LoopMode)? onLoopToggled;
@@ -39,7 +63,10 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   /// Вызывается по завершении прерывания (конец звонка). PlayerScreen
   /// возобновляет study-сессию, если она была паузнута ради звонка.
-  Function()? onPlaybackResumed;
+  /// `userPaused == true` означает, что пользователь вручную нажал паузу
+  /// (экран блокировки / FAB) во время прерывания — в этом случае study НЕ
+  /// возобновляется (уважаем последнее намерение пользователя).
+  void Function(bool userPaused)? onPlaybackResumed;
 
   StreamSubscription? _playbackEventSubscription;
   StreamSubscription? _positionSubscription;
@@ -58,6 +85,18 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   LoopMode get loopMode => _loopMode;
   bool get isShuffleEnabled => _isShuffleEnabled;
+
+  /// Играло ли воспроизведение за последние [_recentPlayWindow]. Надёжный сигнал
+  /// «слушатель активен», используемый [PlayerScreen.onPlaybackInterrupted] для
+  /// решения, возобновлять ли study после звонка. Окно выбрано с запасом больше
+  /// любой паузы study (TTS-сегмент, kick-фаза — секунды), но много меньше
+  /// «часов простоя» (когда пользователь lock-screen-paused и забыл).
+  static const _recentPlayWindow = Duration(minutes: 2);
+  bool get wasPlayingRecently {
+    final t = _lastPlayingAt;
+    if (t == null) return false;
+    return DateTime.now().difference(t) < _recentPlayWindow;
+  }
 
   void setLoopMode(LoopMode mode) {
     _loopMode = mode;
@@ -128,7 +167,9 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     // через onPlaybackResumed.
     final studyHandled = onPlaybackInterrupted?.call() ?? false;
     _wasPlayingBeforeInterruption = studyHandled ? false : _player.playing;
-    pause();
+    // Системная пауза (НЕ через публичный [pause]) — чтобы не выставить
+    // _userPausedDuringCall: это ведь мы сами ставим паузу, а не пользователь.
+    _systemPause();
   }
 
   /// Общий путь возобновления после звонка/прерывания с дедупликацией. См.
@@ -142,10 +183,22 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     _pausedForCall = false;
     final wasPlaying = _wasPlayingBeforeInterruption;
     _wasPlayingBeforeInterruption = false;
+    // Пользователь вручную нажал паузу во время прерывания (lock-screen / FAB)
+    // → НЕ авто-resumeим: его последнее намерение важнее захваченного wasPlaying.
+    final userPaused = _userPausedDuringCall;
+    _userPausedDuringCall = false;
+    if (userPaused) {
+      debugPrint('📞 BackgroundAudioHandler: resume skipped '
+          '(user paused during interruption)');
+      // Всё равно сообщаем экрану (чтобы сбросить _studyPausedForCall), но без
+      // запуска воспроизведения/study.
+      onPlaybackResumed?.call(true);
+      return;
+    }
     if (wasPlaying) {
       play();
     }
-    onPlaybackResumed?.call();
+    onPlaybackResumed?.call(false);
   }
 
   /// Публичный триггер паузы от нативного детектора звонка
@@ -196,6 +249,9 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     });
 
     _playingSubscription = _player.playingStream.listen((playing) {
+      if (playing) {
+        _lastPlayingAt = DateTime.now();
+      }
       _syncPlaybackState();
     });
 
@@ -394,6 +450,12 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   @override
   Future<void> play() async {
+    // Пользователь (lock-screen / FAB / media button) явно нажал play. Если это
+    // произошло во время прерывания звонка — отменяем «хочу паузу», чтобы по
+    // окончании звонка корректно возобновиться.
+    if (_pausedForCall) {
+      _userPausedDuringCall = false;
+    }
     try {
       final session = await AudioSession.instance;
       await session.setActive(true);
@@ -413,6 +475,22 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   @override
   Future<void> pause() async {
+    // Пользователь (lock-screen / FAB / media button) явно нажал паузу во время
+    // прерывания звонка → фиксируем намерение, чтобы [_handleCallResume] НЕ
+    // авто-resumeил. Если звонка нет — флаг останется false (его сбрасывает
+    // [_handleCallResume] по окончании прерывания).
+    if (_pausedForCall) {
+      _userPausedDuringCall = true;
+      debugPrint('📞 BackgroundAudioHandler: user paused during call');
+    }
+    await _systemPause();
+  }
+
+  /// Системная пауза плеера без выставления [_userPausedDuringCall].
+  /// Используется внутренней паузой звонка [_handleCallPause] (своё управление
+  /// паузой не должно помечаться как «пользовательское») — см. комментарий к
+  /// [_userPausedDuringCall].
+  Future<void> _systemPause() async {
     try {
       playbackState.add(playbackState.value.copyWith(
         playing: false,
@@ -422,7 +500,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       await _player.pause();
       _syncPlaybackState();
     } catch (e) {
-      debugPrint('✗ BackgroundAudioHandler: Error in pause(): $e');
+      debugPrint('✗ BackgroundAudioHandler: Error in _systemPause(): $e');
     }
   }
 

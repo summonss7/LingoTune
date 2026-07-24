@@ -1,6 +1,6 @@
 ﻿# LingoTune - Изучение языков через музыку
 
-**Версия:** 5.7.1
+**Версия:** 5.7.4
 **Разработчики:** Z.AI GLM & Цимбалов Артем
 **Платформа:** Android (Flutter)
 **Языки интерфейса:** Русский, Английский, Румынский, Французский, Немецкий, Испанский, Итальянский, Португальский, Китайский, Арабский, Украинский
@@ -28,7 +28,7 @@ LingoTune - инновационное приложение для изучен�
 - 💾 **Экспорт/импорт настроек** - резервное копирование настроек
 - 📦 **Библиотека песен** - управление плейлистами и песнями
 - 🔄 **Фоновое воспроизведение** - воспроизведение в фоне с уведомлением
-- 📞 **Пауза при звонке** - автоматическая пауза песни и озвучки перевода во время входящего звонка, возобновление после разговора
+- 📞 **Пауза при звонке** - автоматическая пауза песни и озвучки перевода во время входящего звонка, умное возобновление после разговора (не возобновляет, если слушатель поставил паузу во время звонка или давно не слушал)
 - ⏩ **Управление скоростью** - изменение скорости воспроизведения (0.5x - 2.0x)
 - 🎧 **Режим изучения** - озвучка перевода (TTS) + фрагмент песни для каждой строки
 - 🚗 **Детекция машин** - анализ звука с микрофона (FFT, on-device) и предупреждение бегуна о приближающемся транспорте (звук/вибрация/голос)
@@ -112,6 +112,92 @@ cp build/app/outputs/flutter-apk/app-release.apk builds/LingoTune-v{версия
 - [Калибровка детекции машин](PLAN_CAR_DETECTION_CALIBRATION.md) - реализация v5.5.0 (эталоны + Mahalanobis)
 - [Офлайн-TTS (sherpa_onnx VITS)](PLAN_v5.3.0_offline_tts.md) - реализация v5.5.0 (стабильная озвучка перевода без системного TTS)
 - [Избранное по плейлистам](PLAN_v5.7.0_favorites.md) - реализация v5.7.0 (глобальная корзина favorites + режим LoopMode.favorites)
+
+## 🎯 Новое в версии 5.7.4
+
+### 🐛 Фикс-регрессия: после звонка при активном прослушивании песня играла, но пропадала озвучка перевода (TTS) и не переключалась следующая песня
+- **Симптом (регрессия v5.7.3):** пользователь активно слушал (study включён) → входящий звонок → после отбоя песня возобновлялась, **но без русской озвучки перевода**, и доигрывала до конца **без переключения на следующую**. До правок v5.7.2/v5.7.3 такого не было.
+- **Корень:** в v5.7.3 вводился флаг `_studyWasAudibleBeforeCall`, решавший «музыка заигрывала после звонка, хотя давно не слушал». Он проверял `_studyModeService.isSpeaking || player.playing`. Но у study есть **kick-фаза** — окно в несколько секунд после старта сегмента, когда `_kickPlaybackAsync` ретраит `_audio.play()` (на случай зомби-состояния just_audio), а плеер ещё **фактически не играет** (`player.playing=false`) и TTS ещё не говорит (`isSpeaking=false`). Если звонок приходился на это окно → `wasAudible=false` → после отбоя `resumeSession()` **пропускался** → study оставался «активным, но паузнутым» (`isActive=true, isUserPaused=true`) → нет TTS, нетadvance (т.к. `onSongComplete` охраняется `isActive`, а `onStudyCompleted` не стреляет из остановленного раннера). Песня при этом играла из-за того, что lingering kick успел вызвать `handler.play()`.
+- **Доп. фактор:** `pauseSession(forCall:true)` в v5.7.3 **пропускал** финальный `_audio.pause()` — это убрало safety-net re-pause после дренирования kick-цикла, и kick мог оставить песню играющей прямо во время звонка.
+- **Решение:**
+  - **Надёжный сигнал «активно слушает»** — новый `BackgroundAudioHandler.wasPlayingRecently`: запоминает время последнего перехода плеера в `playing` (из `playingStream`) и сообщает, играло ли за последние ~2 минуты. Окно 2 мин с запасом больше любой паузы study (TTS-сегмент/kick — секунды), но много меньше «часов простоя». Теперь `wasAudible = isSpeaking || player.playing || wasPlayingRecently` → в kick-фазе `wasPlayingRecently=true` (предыдущий сегмент играл недавно) → study честно возобновляется; при «часах простоя» `wasPlayingRecently=false` → корректно не возобновляется (фикс v5.7.3 сохранён).
+  - **Safety-net re-pause восстановлен** — `pauseSession(forCall:true)` теперь делает `_audio.player.pause()` **сырым** (в обход `handler.pause()`): и re-pause после дрена kick (фикс kick-race), и без ложного `_userPausedDuringCall` (мимо публичного `pause`). Уведомление всё равно синхронизируется `playbackEventStream`-листенером handler'а.
+- **Что делает пользователь:** ничего. При активном прослушивании после звонка честно возобновляются и песня, и озвучка, и переход; «часы простоя» по-прежнему не «оживают» музыку.
+
+### 🔧 Технические изменения
+- **`app/lib/services/background_audio_handler.dart`**:
+  - Новое поле `DateTime? _lastPlayingAt` (обновляется в `_playingSubscription` при `playing=true`).
+  - Новый геттер `bool get wasPlayingRecently` (окно `_recentPlayWindow = 2 минуты`).
+- **`app/lib/services/study_mode_service.dart`**: `pauseSession(forCall:true)` — вместо пропуска паузы делает сырой `_audio.player.pause()` (safety-net re-pause после дрена kick + обход `handler.pause` → нет ложного `_userPausedDuringCall`); docstring обновлён.
+- **`app/lib/screens/player_screen.dart`**: `_studyWasAudibleBeforeCall` теперь `isSpeaking || player.playing || backgroundHandler.wasPlayingRecently`.
+- **`pubspec.yaml`/`app_info.dart`/`build.gradle`/`local.properties`** — 5.7.4 (versionCode 226).
+
+### ⚠️ Известные ограничения
+- **Окно 2 мин — эвристика.** Если пользователь поставил паузу >2 мин назад и пришёл звонок → после отбоя study не возобновится (считается, что давно не слушал). Это разумно. Если паузнул <2 мин назад — возобновится (считается «только что слушал»). Граница условна, но покрывает оба реальных сценария.
+- **Корневой рассинхрон не вылечен** (lock-screen pause не доходит до `StudyModeService.pauseSession` → study не знает, что паузнут). Текущий фикс — надёжная эвристика поверх симптома; полноценный корневой фикс (проброс external pause в study) отложен как более рискованный.
+
+---
+
+## 🎯 Новое в версии 5.7.3
+
+### 📞 Фикс: песня заигрывала сама после звонка, хотя давно не слушал (study был активен в фоне)
+- **Симптом:** приложение висело в памяти, но пользователь уже несколько часов ничего не слушал (поставил паузу с экрана блокировки и забыл). Приходит звонок → после отбоя песня/study **внезапно начинали играть сами**.
+- **Корень:** колбэк `BackgroundAudioHandler.onPlaybackInterrupted` в `PlayerScreen._initBackgroundAudio` решал «паузить ли study ради звонка и возобновлять ли после» по условию `_studyModeService.isActive && !_studyModeService.isUserPaused`. Но пауза с экрана блокировки (медиа-нотификация) идёт через `BackgroundAudioHandler.pause()` и **не доходит** до `StudyModeService.pauseSession()` → study об этом не знает. Его `_isUserPaused` остаётся `false`, а `_isActive` — `true` (раннер просто «завис» на await сегмента, т.к. позиция плеера не двигается). В итоге study числится «активным и не паузнутым» даже через часы тишины. Тогда по звонку: `onPlaybackInterrupted` → условие истинно → `_studyPausedForCall=true`, `pauseSession(forCall:true)`; после отбоя → `onPlaybackResumed(false)` → **`resumeSession()`** → `_startRunner()` → музыка заиграла. Для песни без study баг отсутствовал: там `_wasPlayingBeforeInterruption = _player.playing` (=false → `play()` не зовётся); проблема была **только в study-ветке**, чьё возобновление никак не проверяло, был ли реально звук.
+- **Решение:** захватить в момент начала прерывания, **шёл ли реально звук** (TTS говорил `isSpeaking` ИЛИ песня играла `player.playing`), и рулить **только возобновлением** (паузу для звонка оставили как есть — она корректно стопает TTS). Новое поле `bool _studyWasAudibleBeforeCall` в `PlayerScreen`:
+  - в `onPlaybackInterrupted`: `_studyWasAudibleBeforeCall = isSpeaking || player.playing` (перед `pauseSession(forCall:true)`);
+  - в `onPlaybackResumed`: `resumeSession()` зовётся **только если** `!userPaused && _studyWasAudibleBeforeCall`. Если звука не было → study остаётся на паузе (как и должно быть).
+- **Покрытие сценариев:**
+  - Давно не слушал, lock-screen pause → после звонка **тишина**. ✓ (wasAudible=false)
+  - Слушал активно, звонок → после отбоя честный resume. ✓ (играл сегмент или говорил TTS → wasAudible=true)
+  - Ручная пауза во время звонка (фикс 5.7.2) → `userPaused=true` → всё равно не resume. ✓
+- **Что делает пользователь:** ничего. Музыка больше не «оживает» сама после звонка, если он её давно не слушал.
+
+### 🔧 Технические изменения
+- **`app/lib/screens/player_screen.dart`**:
+  - Новое поле `bool _studyWasAudibleBeforeCall = false` (с комментарием про рассинхрон lock-screen pause и study).
+  - `onPlaybackInterrupted`: перед `pauseSession(forCall:true)` захватывает `_studyWasAudibleBeforeCall = _studyModeService.isSpeaking || widget.audioService.player.playing`.
+  - `onPlaybackResumed`: сбрасывает оба флага; `resumeSession()` — только при `!userPaused && wasAudible` (+ debug-логи для обоих skip-случаев).
+- **`pubspec.yaml`/`app_info.dart`/`build.gradle`/`local.properties`** — 5.7.3 (versionCode 225).
+
+### ⚠️ Известные ограничения
+- **Не лечит корневой рассинхрон.** Первопричина — lock-screen pause не доходит до `StudyModeService.pauseSession()` (study думает, что активен, хотя плеер остановлен). Данный фикс — **оборонительный**: он гарантирует, что после звонка возобновляется только то, что реально звучало. Корневой фикс (проброс external pause в study) отложен как более рискованный (сложно отличить паузу пользователя от сегментной паузы study на уровне handler'а).
+- **Узкое окно между сегментом и TTS.** Если звонок придёт ровно в микросекундный промежуток между окончанием сегмента и стартом `_isSpeaking=true`, `wasAudible` захватится false → после отбоя study не возобновится автоматически (нужно нажать play). Окно синхронно/крошечное — на практике недостижимо.
+
+---
+
+## 🎯 Новое в версии 5.7.2
+
+### 📞 Фикс: авто-resume песни/study после звонка игнорировал ручную паузу на экране блокировки
+- **Симптом:** на заблокированном экране пользователь нажал паузу (через медиа-нотификацию) во время входящего звонка/VoIP-прерывания — всё корректно затихло. Но после окончания звонка песня (и study-озвучка) **внезапно начинали играть сами**, хотя пользователь явно ставил паузу. Триггером мог быть сотовый звонок, Viber/WhatsApp-вызов или любое приложение, забирающее audio-focus (уведомления обычно фокус не забирают, VoIP-звонки — да).
+- **Корень:** авто-resume в `BackgroundAudioHandler._handleCallResume()` опирался исключительно на флаг `_wasPlayingBeforeInterruption`, захваченный **в момент начала** прерывания (когда песня ещё играла). Если после этого пользователь вручную ставил паузу (lock-screen), флаг оставался `true`, и по `interruption-end` (или `PhoneCallService.idle`) вызывался `play()` / `resumeSession()` поверх намерения пользователя. Для активного study-режима `play()` не звался (study брал паузу на себя → `_wasPlayingBeforeInterruption=false`), но срабатывал **второй путь**: `onPlaybackResumed` → `StudyModeService.resumeSession()` запускал сегменты заново.
+- **Сложность:** `resumeSession()` и study-раннер сами в цикле зовут `_audio.pause()`/`_audio.play()` (границы сегментов, озвучка TTS), поэтому нельзя было просто ставить «user paused» в публичных `pause()`/`play()` handler'а — study-логика сбрасывала бы флаг. Потребовалось точно отличать паузу пользователя (экран блокировки / FAB) от внутренней системной паузы (звонок) и сегментной паузы study.
+- **Решение:**
+  - Новый флаг `bool _userPausedDuringCall` в `BackgroundAudioHandler`. Выставляется **только** в публичном `pause()` (lock-screen / FAB / media-button) **при активном прерывании** (`_pausedForCall==true`). Сбрасывается в `play()` (пользователь нажал play → хочет слушать) и в `_handleCallResume()`.
+  - Тело `pause()` вынесено в приватный `_systemPause()` (паузит плеер без троганья флага). `_handleCallPause()` использует именно `_systemPause()` — своя пауза звонка не должна помечаться как «пользовательская».
+  - `_handleCallResume()`: если `_userPausedDuringCall==true` → НЕ вызывает `play()` и сообщает экрану через `onPlaybackResumed(userPaused: true)`.
+  - `StudyModeService.pauseSession({bool forCall})`: при `forCall=true` (вызов из `onPlaybackInterrupted`) **пропускает** `await _audio.pause()` — плеер уже остановлен `_systemPause` handler'а, а этот вызов иначе прошёл бы через публичный `pause` и ложно выставил `_userPausedDuringCall`. Обычная пользовательская пауза (FAB) использует `forCall=false` и паузит плеер как раньше.
+  - Сигнатура `onPlaybackResumed` изменена на `void Function(bool userPaused)?`. `PlayerScreen` сбрасывает `_studyPausedForCall` всегда, но `resumeSession()` зовёт **только при** `!userPaused`.
+- **Что делает пользователь:** ничего нового. При ручной паузе во время звонка приложение больше не «оживает» само после отбоя; если паузу не нажимали — честно возобновляется (как и раньше).
+- **Покрытие сценариев:** study ± ручная пауза; non-study ± ручная пауза; пауза до звонка; двойной триггер (phone-state + audio-focus по одному звонку) — дедуп по `_pausedForCall` сохранён.
+
+### 🔧 Технические изменения
+- **`app/lib/services/background_audio_handler.dart`**:
+  - Новое поле `bool _userPausedDuringCall` (с подробным комментарием, почему нельзя проверять `_player.playing`).
+  - `onPlaybackResumed`: `void Function(bool userPaused)?`.
+  - `_handleCallPause()`: вместо `pause()` → `_systemPause()`.
+  - `_handleCallResume()`: читает/сбрасывает `_userPausedDuringCall`; при `true` → skip `play()` + `onPlaybackResumed(true)`; иначе как раньше + `onPlaybackResumed(false)`.
+  - `play()` override: при `_pausedForCall==true` сбрасывает `_userPausedDuringCall=false`.
+  - `pause()` override: при `_pausedForCall==true` выставляет `_userPausedDuringCall=true`, делегирует в `_systemPause()`.
+  - Новый `_systemPause()` (тело прежнего `pause()`).
+- **`app/lib/services/study_mode_service.dart`**: `pauseSession({bool forCall = false})` — при `forCall` пропускает `await _audio.pause()` (+ лог).
+- **`app/lib/screens/player_screen.dart`**: `onPlaybackInterrupted` → `pauseSession(forCall: true)`; `onPlaybackResumed` → `(bool userPaused){...}` — сбрасывает `_studyPausedForCall` всегда, `resumeSession()` только при `!userPaused`.
+- **`pubspec.yaml`/`app_info.dart`/`build.gradle`/`local.properties`** — 5.7.2 (versionCode 224).
+
+### ⚠️ Известные ограничения
+- **Флаг ловит только паузу ВО время прерывания.** Если пользователь поставил паузу ДО звонка — `_wasPlayingBeforeInterruption` захватывается как `false` (песня не играла), и авто-resume не сработает и без нового флага (старый путь корректен). Новый флаг нужен именно для случая «играло → началось прерывание → пользователь нажал паузу → прерывание кончилось».
+- **Только пауза через публичный `pause()` handler'а.** Если в будущем появится другой путь остановки плеера в обход `pause()`/`play()` (например, прямой `_player.pause()`), он не обновит флаг — но таких путей сейчас нет (call-handling использует `_systemPause`, study-сегменты идут через `_audio.play/pause` → handler, но только вне прерывания).
+
+---
 
 ## 🎯 Новое в версии 5.7.1
 

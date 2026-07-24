@@ -117,6 +117,15 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// [onPlaybackResumed], чтобы после звонка корректно возобновить озвучку.
   bool _studyPausedForCall = false;
 
+  /// Производился ли РЕАЛЬНО звук study-сессией в момент начала прерывания
+  /// звонка (TTS говорил ИЛИ песня играла). Захватывается в
+  /// [onPlaybackInterrupted]. Нужно, чтобы не возобновлять study после отбоя,
+  /// если на самом деле давно ничего не звучало: lock-screen pause останавливает
+  /// плеер, но НЕ доходит до [StudyModeService.pauseSession], поэтому study
+  /// числится «активным и не паузнутым» (`isActive && !isUserPaused`) даже через
+  /// часы тишины. Без этого флага после звонка music внезапно заигрывал бы.
+  bool _studyWasAudibleBeforeCall = false;
+
   /// Подписка на нативный детектор звонка ([PhoneCallService]). На ряде ROM
   /// (ColorOS/Realme UI, MIUI/HyperOS) системный дакинг медиапотока при звонке
   /// игнорирует `willPauseWhenDucked`, и audio-focus interruption либо
@@ -1416,19 +1425,57 @@ class _PlayerScreenState extends State<PlayerScreen>
         if (_studyModeService.isActive && !_studyModeService.isUserPaused) {
           debugPrint('📞 PlayerScreen: pausing study for call/interruption');
           _studyPausedForCall = true;
+          // Захватываем, шёл ли РЕАЛЬНО звук / была ли активная сессия в момент
+          // начала прерывания. Без этого флага после отбоя звонка study
+          // возобновился бы даже если слушатель давно поставил паузу через экран
+          // блокировки (плеер остановлен, но study об этом не знает →
+          // isActive && !isUserPaused). Сигналы:
+          //  - isSpeaking: говорит ли сейчас TTS;
+          //  - player.playing: играет ли сегмент песни прямо сейчас;
+          //  - wasPlayingRecently: играло ли за последние ~2 мин. Покрывает
+          //    kick-фазу study (когда _kickPlayback ретраит play(), но плеер ещё
+          //    не стартовал → player.playing=false, isSpeaking=false). Без этого
+          //    сигнала wasAudible ложно = false в kick-фазе → после звонка study
+          //    не возобновлялся (регрессия v5.7.3).
+          // Если ВСЁ false (часы простоя) → тишина → resume не нужен.
+          _studyWasAudibleBeforeCall =
+              _studyModeService.isSpeaking ||
+              widget.audioService.player.playing ||
+              (widget.audioService.backgroundHandler?.wasPlayingRecently ??
+                  false);
           // fire-and-forget: _isUserPaused=true выставится синхронно (runner
           // остановится), TTS и kick дренируются в фоне; песню паузит сам
-          // handler сразу после колбэка.
-          _studyModeService.pauseSession();
+          // handler сразу после колбэка. forCall=true — пропускает внутренний
+          // _audio.pause() (плеер уже остановлен _systemPause handler'а, и
+          // этот вызов иначе ложно выставил бы _userPausedDuringCall).
+          _studyModeService.pauseSession(forCall: true);
           return true;
         }
         return false;
       };
-      widget.audioService.backgroundHandler!.onPlaybackResumed = () {
+      widget.audioService.backgroundHandler!.onPlaybackResumed =
+          (bool userPaused) {
         if (!mounted) return;
         if (_studyPausedForCall) {
-          debugPrint('📞 PlayerScreen: resuming study after call/interruption');
+          final wasAudible = _studyWasAudibleBeforeCall;
           _studyPausedForCall = false;
+          _studyWasAudibleBeforeCall = false;
+          // Пользователь вручную нажал паузу во время прерывания (lock-screen /
+          // FAB) → НЕ возобновляем study, уважаем его последнее намерение.
+          if (userPaused) {
+            debugPrint('📞 PlayerScreen: study resume skipped '
+                '(user paused during call)');
+            return;
+          }
+          // В момент начала звонка реально ничего не звучало (слушатель давно
+          // на паузе через экран блокировки) → НЕ возобновляем, иначе музыка
+          // внезапно заиграла бы после отбоя.
+          if (!wasAudible) {
+            debugPrint('📞 PlayerScreen: study resume skipped '
+                '(was not audible before call)');
+            return;
+          }
+          debugPrint('📞 PlayerScreen: resuming study after call/interruption');
           _studyModeService.resumeSession();
         }
       };

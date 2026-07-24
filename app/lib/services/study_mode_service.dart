@@ -1079,11 +1079,21 @@ class StudyModeService extends ChangeNotifier {
   }
 
   /// Pauses the current study session (stops TTS and song, keeps position).
-  Future<void> pauseSession() async {
+  ///
+  /// [forCall]: установить в `true`, когда пауза вызвана прерыванием звонка
+  /// (вызывается из `BackgroundAudioHandler.onPlaybackInterrupted`). В этом
+  /// случае финальная пауза плеера делается сырым `_audio.player.pause()` (в
+  /// обход `BackgroundAudioHandler.pause`) — это и safety-net re-pause после
+  /// дренирования kick-цикла (kick мог реактивировать воспроизведение), и
+  /// защита от ложного `_userPausedDuringCall` (иначе заблокировала бы честный
+  /// авто-resume study после звонка). Для обычной пользовательской паузы (FAB) —
+  /// `false` (паузит через handler, обновляя уведомление).
+  Future<void> pauseSession({bool forCall = false}) async {
     if (!_isActive || _isUserPaused) return;
     _isUserPaused = true;
     _speakToken++; // инвалидировать pending _speakOver().then
-    debugPrint('⏸ StudyModeService: session paused at line $_currentIndex');
+    debugPrint('⏸ StudyModeService: session paused at line $_currentIndex'
+        '${forCall ? ' (for call — raw player pause)' : ''}');
     // Координатор сам завершит completer текущего speak-запроса и вызовет stop.
     await _ttsCoordinator.stop();
     _cancelSegmentAwait(false);
@@ -1096,9 +1106,22 @@ class StudyModeService extends ChangeNotifier {
       } catch (_) {}
       _kickPlaybackFuture = null;
     }
-    try {
-      await _audio.pause();
-    } catch (_) {}
+    if (forCall) {
+      // Safety-net re-pause ПОСЛЕ дренирования kick: kick мог успеть вызвать
+      // handler.play() (реактивация сессии + _player.play()) уже ПОСЛЕ
+      // _systemPause handler'а → песня осталась бы играющей во время звонка.
+      // Паузим сырым _audio.player.pause() — в обход handler.pause(), чтобы НЕ
+      // выставить ложно _userPausedDuringCall (что заблокировало бы авто-resume
+      // study после звонка). Уведомление синхронизируется playbackEventStream-
+      // листенером handler'а.
+      try {
+        await _audio.player.pause();
+      } catch (_) {}
+    } else {
+      try {
+        await _audio.pause();
+      } catch (_) {}
+    }
     await _restoreVolume();
     _isSpeaking = false;
     _phase = StudyPhase.idle;
