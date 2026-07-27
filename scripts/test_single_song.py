@@ -218,7 +218,7 @@ for file_path in [lrc_path, ru_json_path, trans_json_path]:
     try:
         if os.path.exists(file_path):
             os.remove(file_path)
-    except:
+    except Exception:
         pass
 
 print("\n" + "=" * 60)

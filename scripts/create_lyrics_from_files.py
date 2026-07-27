@@ -224,7 +224,7 @@ def process_song(base_name: str, original_path: str, ru_path: str, trans_path: s
         try:
             if os.path.exists(file_path):
                 os.remove(file_path)
-        except:
+        except Exception:
             pass
     
     print(f"\n✓ Successfully processed: {base_name}")

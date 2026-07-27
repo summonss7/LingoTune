@@ -100,7 +100,7 @@ def create_gradient_icon(size=1024):
     # Add "LT" text
     try:
         font = ImageFont.truetype("arial.ttf", size // 10)
-    except:
+    except Exception:
         font = ImageFont.load_default()
     
     text = "LT"
@@ -195,7 +195,7 @@ def create_modern_icon(size=1024):
     try:
         font_size = int(logo_size * 1.5)
         font = ImageFont.truetype("arial.ttf", font_size)
-    except:
+    except Exception:
         font = None
     
     if font:
@@ -333,7 +333,7 @@ def create_original_icon(size=1024):
                 fill=(255,255,255, 255),
                 font=font
             )
-        except:
+        except Exception:
             pass
     
     # Draw sound waves

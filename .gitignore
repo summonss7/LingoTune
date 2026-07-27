@@ -28,6 +28,10 @@ ENV/
 *.swo
 *~
 
+# Local agent / CLI tooling state (ZCode, opencode, etc.)
+.zcode/
+.opencode/
+
 # OS
 .DS_Store
 Thumbs.db

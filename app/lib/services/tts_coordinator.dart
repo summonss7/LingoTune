@@ -367,4 +367,37 @@ class TtsCoordinator extends ChangeNotifier {
   String? get activeEngine => _engine?.activeEngine;
   String? get selectedEngine => _engine?.selectedEngine;
   int get lastGenerationMs => _engine?.lastGenerationMs ?? 0;
+
+  // -------------------------------------------------------------------
+  // Dispose
+  // -------------------------------------------------------------------
+
+  /// Освобождает активный движок и его нативные ресурсы.
+  ///
+  /// Координатор — синглтон и живёт всё время работы процесса, поэтому в
+  /// обычном цикле приложения этот метод не вызывается (Android сам убивает
+  /// процесс со всей памятью). Он нужен для **hot-restart во время разработки**:
+  /// иначе старый engine (особенно `OfflineTtsEngine` с ~63 МБ sherpa_onnx
+  /// модели) переживает rebuild и остаётся в ОЗУ — на каждой итерации
+  /// разработки теряется до 63 МБ, пока процесс не перезапустится целиком.
+  ///
+  /// Идемпотентен: повторный вызов — no-op. После dispose следующий
+  /// [ensureInitialized]/[setTtsSource] создаст движок заново.
+  @override
+  void dispose() {
+    _interruptCurrent();
+    final engine = _engine;
+    _engine = null;
+    _initialized = false;
+    _sourceLock = null;
+    if (engine != null) {
+      engine.removeListener(_onEngineChanged);
+      try {
+        engine.dispose();
+      } catch (e) {
+        debugPrint('⚠ TtsCoordinator: engine dispose on teardown: $e');
+      }
+    }
+    super.dispose();
+  }
 }

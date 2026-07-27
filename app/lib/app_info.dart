@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.7.4';
+  static const String version = '5.7.5';
 
-  static const String versionCode = '226';
+  static const String versionCode = '227';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -35,7 +35,6 @@ class AppInfo {
     '⚡ Batch lyrics generator',
     '🔍 Search lyrics from online databases',
     '🤖 AI-powered translation (DeepSeek)',
-    '🎯 Batch lyrics generator',
     '💾 Export and import settings',
     '📦 Backup your song library',
     '🚗 Car detection via microphone (safety for runners)',

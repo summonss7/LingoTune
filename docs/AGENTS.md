@@ -2,6 +2,9 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
+**Current version: 5.7.5** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+`app/android/app/build.gradle`). Release history: `CHANGELOG_v*.dart` in the project root.
+
 ## Project Structure
 
 - **app/**: Flutter mobile application (Dart 3.0+)
@@ -249,8 +252,74 @@ void main() {
 ## Audio
 
 - Uses `just_audio` for playback
-- `audio_service` for background playback
-- Handle content URIs (`content://`) vs file paths differently
+- `audio_service` (`BackgroundAudioHandler`) for background playback / media notification
+- `audio_session` for audio-focus handling and ducking during TTS / phone calls
+- Handle content URIs (`content://`) vs file paths differently (see `AudioService.loadAudio`)
+- **Zombie-state recovery**: after a TTS audio-session handoff, just_audio can report
+  `playing == true` while the position never advances. `AudioService.ensurePlaybackAdvancing`
+  and `StudyModeService._kickPlaybackAsync` reactivate the session, retry `play()`, and nudge
+  the player with a seek to force a re-buffer.
+
+---
+
+## Study Mode (`StudyModeService`)
+
+- Speaks the translation (TTS) and plays the corresponding song segment per lyric line,
+  in the order defined by `StudyModeOrder` (`translationFirst` / `originalFirst` / `overlay`).
+- Overlay mode runs continuously: TTS is triggered over the ducked song at line boundaries
+  according to `OverlayTiming` (`start` / `end` / `both`).
+- Per-song override: order, speech rate, speech volume, overlay timing and duck volume can be
+  overridden per song (`song_{id}_*` SharedPreferences keys).
+- Race-condition hardening via `_sessionToken` and `_speakToken` — invalidates stale
+  fire-and-forget callbacks when the song changes or the session stops, preventing
+  zombie-kick loops and overlapping audio.
+- Watchdog timers protect against zombie just_audio state: `_segmentWatchdog` forces a line
+  advance when the segment completer would otherwise hang forever.
+- Persisted flag `studyModeEnabled` auto-restarts study mode on the next song / app restart.
+
+---
+
+## Text-to-Speech (`TtsCoordinator` + `services/tts/`)
+
+- `TtsCoordinator` is a **singleton** (`TtsCoordinator.instance`) holding a polymorphic
+  `TtsEngine` selected by the `ttsSource` setting: `SystemTtsEngine` (flutter_tts) or
+  `OfflineTtsEngine` (sherpa_onnx VITS, ~63 MB model).
+- Priority queue: study-mode translation (`TtsPriority.study`) always dominates car-alert
+  voice (`TtsPriority.alert`); an alert fired during a translation is suppressed.
+- `_sourceLock` serializes `setTtsSource` / `setLanguage` to avoid the cold-start race where
+  two concurrent calls created two engines (and two 63 MB models).
+- `OfflineTtsEngine` runs synthesis in a separate isolate (`OfflineTtsIsolate`) to keep the UI
+  thread responsive; voice models are downloaded on-demand (`TtsModelManager`).
+- `dispose()` releases the active engine and its native resources — called in
+  `MainScreen.dispose()` to prevent a ~63 MB leak on hot-restart during development.
+
+---
+
+## Phone-call Detection (`PhoneCallService`)
+
+- Dart wrapper over the native EventChannel `lingotune/phone_state` (Kotlin
+  `PhoneCallPlugin` → `TelephonyManager`).
+- Rationale: on some ROMs (ColorOS/Realme UI, MIUI/HyperOS, EMUI) system media-ducking
+  during a call ignores `audio_session`'s `willPauseWhenDucked`, so the song keeps playing
+  silently through the call. A direct `TelephonyManager` listener fires reliably first.
+- Emits `CallState.ringing` / `offhook` / `idle`. On non-Android platforms `start()` returns
+  `false` and callers fall back to the `audio_session` interruption scheme.
+- Requires `READ_PHONE_STATE` permission, requested at runtime via `permission_handler`
+  (`Permission.phone`).
+
+---
+
+## Car Detection (`CarDetectionService` + `CarAlertService`)
+
+- On-device FFT analysis of microphone input (`utils/fft.dart`, `record` plugin, PCM 16 kHz)
+  to detect approaching vehicles — a safety feature for runners.
+- `CarAlertService` triggers a sound (`assets/sounds/car_alert.wav`) and/or a TTS voice alert
+  (routed through `TtsCoordinator` with `TtsPriority.alert`, so it never interrupts a study
+  translation).
+- `CarCalibrationScreen` lets the user record their own sound samples to build a
+  `CalibrationProfile` for better detection accuracy on their device/environment.
+- Microphone is optional (`<uses-feature android:required="false"/>`); the feature is simply
+  unavailable on devices without a mic.
 
 ---
 
@@ -282,10 +351,19 @@ Run `flutter pub get` after modifying `app/pubspec.yaml`
 
 ## File Organization
 
-- **models/**: Data models (Song, Playlist, Translation, LyricLine)
-- **services/**: Business logic (AudioService, DatabaseService, TranslationService)
-- **screens/**: UI screens (SongLibraryScreen, PlayerScreen, SettingsScreen)
-- **widgets/**: Reusable components (SongListTile, EmptyLibraryWidget)
-- **utils/**: Utility functions (SnackBarHelper, LrcFormatter)
+- **models/**: Data models (Song, Playlist, Translation, LyricLine, LoopMode, GenerationResult, TranslationRequest)
+- **services/**: Business logic
+  - **Audio**: `AudioService`, `BackgroundAudioHandler`, `AudioPositionCorrector`
+  - **Data**: `DatabaseService` (sqflite singleton), `LyricsService`, `TranslationService`, `PlaylistService`, `SongImportService`, `FolderImportService`, `FolderConfigService`, `ExportImportService`, `CoverArtService`
+  - **AI / API**: `DeepSeekApiService`, `TranslationApiService`, `LyricsApiService`, `LyricsGeneratorService`
+  - **Study mode**: `StudyModeService` (line-by-line translation playback coordinator)
+  - **TTS**: `TtsCoordinator` (singleton, polymorphic engine) → `services/tts/` (`TtsEngine`, `SystemTtsEngine`, `OfflineTtsEngine`, `OfflineTtsIsolate`, `TtsModelManager`, `TtsCatalog`)
+  - **Car detection**: `CarDetectionService` (on-device FFT), `CarAlertService`, `CalibrationProfile`
+  - **Phone calls**: `PhoneCallService` (native TelephonyManager EventChannel wrapper)
+  - **Settings**: `SettingsProvider`, `ThemeProvider`, `SettingsHelper`, `SettingsDialogs`, `SettingsExportService`
+- **screens/**: UI screens (SongLibraryScreen, PlayerScreen, PlaylistScreen, PlaylistSongsScreen, SettingsScreen, LyricGeneratorDialog, TextLoaderDialog, TranslationEditorScreen, VoicePackagesScreen, CarCalibrationScreen)
+- **screens/helpers/**: Helper classes for complex screens (SongImportHelper, PlayerImportHelper, PlayerPlaylistHelper, PlayerTranslationHelper, SongTranslationLoader, CoverArtHelper, PlaylistImportHelper)
+- **widgets/**: Reusable components (SongListTile, EmptyLibraryWidget, MiniPlayerWidget, LyricLineWidget, GenerationOptionsWidget, GenerationProgressWidget, LibraryManagerWidget, BatchSelectionWidget, LoadingWidget, LyricsSearchDialog, SongSortWidget, SelectionModeActions) + `widgets/settings/` (ApiSettingsTile, TextSettingsSection, DefaultAutoScrollFocusOffsetControl)
+- **utils/**: Utility functions (SnackBarHelper, LrcFormatter, LanguageHelpers, TtsEngineHelper, Fft)
 - **constants/**: Constants and configuration (DeepSeekPrompts, GenerationConstants)
-- **screens/helpers/**: Helper classes for complex screens (SongImportHelper, PlayerPlaylistHelper)
+- **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 667 keys each; ARB sources + generated `app_localizations*.dart`

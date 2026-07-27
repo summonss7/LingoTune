@@ -197,7 +197,7 @@ def main():
     if temp_dir.exists():
         try:
             temp_dir.rmdir()
-        except:
+        except Exception:
             pass
 
 

@@ -12,6 +12,7 @@ import '../services/theme_provider.dart';
 import '../services/settings_provider.dart';
 import '../services/background_audio_handler.dart';
 import '../services/database_service.dart';
+import '../services/tts_coordinator.dart';
 import '../app_info.dart';
 import '../models/lyric_line.dart';
 import '../models/translation.dart' show Translation;
@@ -251,6 +252,12 @@ class _MainScreenState extends State<MainScreen> {
     _audioService.dispose();
     _lyricsService.dispose();
     _translationService.dispose();
+    // TtsCoordinator — синглтон, переживает rebuild. В production не диспозим
+    // (процесс всё равно убивается), но при hot-restart во время разработки
+    // без этого теряется ~63 МБ sherpa_onnx-модели на каждой итерации.
+    // Диспозим последним: к этому моменту StudyModeService (если был активен)
+    // уже освобождён своим владельцем.
+    TtsCoordinator.instance.dispose();
     super.dispose();
   }
 
@@ -356,8 +363,14 @@ class _MainScreenState extends State<MainScreen> {
 
   void _togglePlayback() async {
     try {
-      final isPlaying = await _audioService.player.playingStream.first;
-      if (isPlaying) {
+      // Синхронный снапшот состояния плеера. Раньше здесь использовался
+      // `await _audioService.player.playingStream.first` — это открывало окно
+      // гонки между чтением состояния и вызовом pause()/play(): за время
+      // await состояние могло измениться (фоновый handler, study mode, звонок),
+      // что приводило к инверсии/«мерцанию» кнопки play/pause. Текущее значение
+      // `player.playing` — синхронный геттер just_audio, отражающий последний
+      // известный статус — достаточно для toggle.
+      if (_audioService.player.playing) {
         await _audioService.pause();
       } else {
         if (_audioService.isInitialized) {

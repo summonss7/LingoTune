@@ -209,15 +209,24 @@ class DeepSeekApiService {
           }
         }
         debugPrint('✗ Invalid response structure');
-        debugPrint('Response: ${response.body}');
+        // Полный ответ может содержать приватный пользовательский контент
+        // (переводы песен). Логируем его только в debug-сборках — в release
+        // это утекало бы в logcat, доступный другим приложениям через ADB.
+        if (kDebugMode) {
+          debugPrint('Response: ${response.body}');
+        }
       } catch (e) {
         debugPrint('✗ Error parsing response: $e');
-        debugPrint('Response body: ${response.body}');
+        if (kDebugMode) {
+          debugPrint('Response body: ${response.body}');
+        }
       }
     } else {
       debugPrint('✗ API request failed');
       debugPrint('Status: ${response.statusCode}');
-      debugPrint('Response body: ${response.body}');
+      if (kDebugMode) {
+        debugPrint('Response body: ${response.body}');
+      }
     }
 
     return null;

@@ -846,82 +846,68 @@ class DatabaseService {
   }
 
   static Future<List<Song>> insertBatchSongs(List<Map<String, dynamic>> songsData) async {
-    final dbPath = await getDatabasesPath();
-    final databasePath = path.join(dbPath, 'lingotune.db');
+    // Раньше метод открывал собственное соединение к БД через openDatabase(...)
+    // параллельно singleton-у. На Android sqflite держит одно соединение на
+    // файл — второй openDatabase мог вызвать SQLITE_BUSY («database is
+    // locked») во время массового импорта. Теперь переиспользуем singleton
+    // (_instance.database): тот же хэндл, тот же retry-on-locked в _initDatabase.
+    final db = await _instance.database;
 
-    final db = await openDatabase(
-      databasePath,
-      version: 11,
-      readOnly: false,
-    );
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (final songData in songsData) {
+        batch.insert('songs', songData, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+    });
 
-    try {
-      await db.transaction((txn) async {
-        final batch = txn.batch();
-        for (final songData in songsData) {
-          batch.insert('songs', songData, conflictAlgorithm: ConflictAlgorithm.replace);
-        }
-        await batch.commit(noResult: true);
-      });
+    return List.generate(songsData.length, (i) {
+      final songData = songsData[i];
+      final hasLyricsValue = songData['hasLyrics'];
+      final hasLyrics = hasLyricsValue == 1 || hasLyricsValue == true;
 
-      return List.generate(songsData.length, (i) {
-        final songData = songsData[i];
-        final hasLyricsValue = songData['hasLyrics'];
-        final hasLyrics = hasLyricsValue == 1 || hasLyricsValue == true;
-
-        return Song(
-          id: songData['id'] as String,
-          title: songData['title'] as String,
-          artist: songData['artist'] as String,
-          audioPath: songData['audioPath'] as String,
-          lrcPath: songData['lrcPath'] as String?,
-          translationsPath: songData['translationsPath'] as String?,
-          coverArtPath: songData['coverArtPath'] as String?,
-          coverArtVersion: songData['coverArtVersion'] as int? ?? 0,
-          originalLanguage: songData['originalLanguage'] as String? ?? 'unknown',
-          language: songData['language'] as String?,
-          hasLyrics: hasLyrics,
-          createdAt: DateTime.parse(songData['createdAt'] as String),
-        );
-      });
-    } finally {
-      await db.close();
-    }
+      return Song(
+        id: songData['id'] as String,
+        title: songData['title'] as String,
+        artist: songData['artist'] as String,
+        audioPath: songData['audioPath'] as String,
+        lrcPath: songData['lrcPath'] as String?,
+        translationsPath: songData['translationsPath'] as String?,
+        coverArtPath: songData['coverArtPath'] as String?,
+        coverArtVersion: songData['coverArtVersion'] as int? ?? 0,
+        originalLanguage: songData['originalLanguage'] as String? ?? 'unknown',
+        language: songData['language'] as String?,
+        hasLyrics: hasLyrics,
+        createdAt: DateTime.parse(songData['createdAt'] as String),
+      );
+    });
   }
 
   static Future<void> addBatchSongsToPlaylist(String playlistId, List<String> songIds) async {
-    final dbPath = await getDatabasesPath();
-    final databasePath = path.join(dbPath, 'lingotune.db');
+    // См. комментарий в insertBatchSongs: используем singleton-соединение,
+    // а не отдельный openDatabase — иначе получали гонку «database is locked»
+    // при параллельном доступе к lingotune.db.
+    final db = await _instance.database;
 
-    final db = await openDatabase(
-      databasePath,
-      version: 11,
-      readOnly: false,
-    );
+    await db.transaction((txn) async {
+      final maxPositionResult = await txn.rawQuery('''
+        SELECT MAX(position) as maxPos FROM playlist_songs
+        WHERE playlistId = ?
+      ''', [playlistId]);
+      final maxPosition = (maxPositionResult.isNotEmpty && maxPositionResult[0]['maxPos'] != null)
+          ? (maxPositionResult[0]['maxPos'] as int? ?? 0) + 1
+          : 1;
 
-    try {
-      await db.transaction((txn) async {
-        final maxPositionResult = await txn.rawQuery('''
-          SELECT MAX(position) as maxPos FROM playlist_songs
-          WHERE playlistId = ?
-        ''', [playlistId]);
-        final maxPosition = (maxPositionResult.isNotEmpty && maxPositionResult[0]['maxPos'] != null)
-            ? (maxPositionResult[0]['maxPos'] as int? ?? 0) + 1
-            : 1;
-
-        final batch = txn.batch();
-        for (int i = 0; i < songIds.length; i++) {
-          batch.insert('playlist_songs', {
-            'playlistId': playlistId,
-            'songId': songIds[i],
-            'position': maxPosition + i,
-          });
-        }
-        await batch.commit(noResult: true);
-      });
-    } finally {
-      await db.close();
-    }
+      final batch = txn.batch();
+      for (int i = 0; i < songIds.length; i++) {
+        batch.insert('playlist_songs', {
+          'playlistId': playlistId,
+          'songId': songIds[i],
+          'position': maxPosition + i,
+        });
+      }
+      await batch.commit(noResult: true);
+    });
   }
 
   String normalizePathForSync(String rawPath) {

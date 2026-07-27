@@ -504,7 +504,7 @@ def process_song_file(input_file: str, output_dir: str, languages: List[str], st
         if file_path != zip_path:
             try:
                 os.remove(file_path)
-            except:
+            except Exception:
                 pass
 
     print(f"\n✓ Successfully processed: {song_name}")
