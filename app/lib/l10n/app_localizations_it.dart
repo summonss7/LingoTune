@@ -2184,4 +2184,31 @@ class AppLocalizationsIt extends AppLocalizations {
   String voicePackageDeleteConfirm(Object lang) {
     return 'Eliminare il modello per \"$lang\"? Libera spazio su disco.';
   }
+
+  @override
+  String get lyricColors => 'Colori delle righe';
+  @override
+  String get lyricColorsTitle => 'Colori delle righe';
+  @override
+  String get lyricColorsUseCustom => 'Colori personalizzati';
+  @override
+  String get lyricColorsPresets => 'Predefiniti';
+  @override
+  String get lyricColorsOriginal => 'Originale';
+  @override
+  String get lyricColorsTranslation => 'Traduzione';
+  @override
+  String get lyricColorsPreview => 'Anteprima';
+  @override
+  String get lyricColorsDone => 'Fatto';
+  @override
+  String get lyricPresetDefault => 'Predefinito';
+  @override
+  String get lyricPresetBlueRed => 'Originale blu / Traduzione rosso';
+  @override
+  String get lyricPresetRedBlue => 'Originale rosso / Traduzione blu';
+  @override
+  String get lyricPresetGreenOrange => 'Originale verde / Traduzione arancione';
+  @override
+  String get lyricPresetContrast => 'Alto contrasto';
 }

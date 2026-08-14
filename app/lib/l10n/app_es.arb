@@ -698,5 +698,18 @@
       "@voicePackageInstalledFailed": {"placeholders": {"lang": {}}},
       "voicePackageInstalledFailed": "Error al instalar el modelo para \"{lang}\"",
       "@voicePackageDeleteConfirm": {"placeholders": {"lang": {}}},
-      "voicePackageDeleteConfirm": "¿Eliminar el modelo para \"{lang}\"? Esto libera espacio."
+      "voicePackageDeleteConfirm": "¿Eliminar el modelo para \"{lang}\"? Esto libera espacio.",
+      "lyricColors": "Colores de línea",
+      "lyricColorsTitle": "Colores de línea",
+      "lyricColorsUseCustom": "Colores personalizados",
+      "lyricColorsPresets": "Preajustes",
+      "lyricColorsOriginal": "Original",
+      "lyricColorsTranslation": "Traducción",
+      "lyricColorsPreview": "Vista previa",
+      "lyricColorsDone": "Listo",
+      "lyricPresetDefault": "Predeterminado",
+      "lyricPresetBlueRed": "Original azul / Traducción rojo",
+      "lyricPresetRedBlue": "Original rojo / Traducción azul",
+      "lyricPresetGreenOrange": "Original verde / Traducción naranja",
+      "lyricPresetContrast": "Alto contraste"
 }

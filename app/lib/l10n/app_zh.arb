@@ -698,5 +698,18 @@
       "@voicePackageInstalledFailed": {"placeholders": {"lang": {}}},
       "voicePackageInstalledFailed": "安装\"{lang}\"的模型失败",
       "@voicePackageDeleteConfirm": {"placeholders": {"lang": {}}},
-      "voicePackageDeleteConfirm": "删除\"{lang}\"的模型？这将释放磁盘空间。"
+      "voicePackageDeleteConfirm": "删除\"{lang}\"的模型？这将释放磁盘空间。",
+      "lyricColors": "歌词颜色",
+      "lyricColorsTitle": "歌词颜色",
+      "lyricColorsUseCustom": "自定义颜色",
+      "lyricColorsPresets": "预设",
+      "lyricColorsOriginal": "原文",
+      "lyricColorsTranslation": "翻译",
+      "lyricColorsPreview": "预览",
+      "lyricColorsDone": "完成",
+      "lyricPresetDefault": "默认",
+      "lyricPresetBlueRed": "原文蓝 / 翻译红",
+      "lyricPresetRedBlue": "原文红 / 翻译蓝",
+      "lyricPresetGreenOrange": "原文绿 / 翻译橙",
+      "lyricPresetContrast": "高对比度"
 }

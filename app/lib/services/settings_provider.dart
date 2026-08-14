@@ -1,5 +1,7 @@
+import 'dart:ui' show Color;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/lyric_colors.dart';
 
 class SettingsProvider with ChangeNotifier {
   double _fontSize = 16.0;
@@ -52,6 +54,13 @@ class SettingsProvider with ChangeNotifier {
   bool _carAlertVibration = true;
   bool _carAlertVoice = false;
 
+  /// Пользовательская подсветка строк: когда [_useCustomLyricColors] == true,
+  /// оригинал и перевод красятся выбранными цветами (см. [LyricColorPalette]).
+  /// Значения -1 ([LyricColorPalette.autoValue]) означают «цвет темы».
+  bool _useCustomLyricColors = false;
+  int _originalTextColorValue = LyricColorPalette.autoValue;
+  int _translationTextColorValue = LyricColorPalette.autoValue;
+
   double get fontSize => _fontSize;
   String get defaultTranslationLanguage => _defaultTranslationLanguage;
   String get defaultSourceLanguage => _defaultSourceLanguage;
@@ -90,6 +99,15 @@ class SettingsProvider with ChangeNotifier {
   bool get carAlertSound => _carAlertSound;
   bool get carAlertVibration => _carAlertVibration;
   bool get carAlertVoice => _carAlertVoice;
+  bool get useCustomLyricColors => _useCustomLyricColors;
+  /// Цвет оригинала или `null` (= «авто», цвет темы).
+  Color? get originalTextColor =>
+      LyricColorPalette.colorFromValue(_originalTextColorValue);
+  /// Цвет перевода или `null` (= «авто», цвет темы).
+  Color? get translationTextColor =>
+      LyricColorPalette.colorFromValue(_translationTextColorValue);
+  int get originalTextColorValue => _originalTextColorValue;
+  int get translationTextColorValue => _translationTextColorValue;
 
   Future<void> loadSettings() async {
     debugPrint('=== SettingsProvider: Loading settings ===');
@@ -169,6 +187,11 @@ class SettingsProvider with ChangeNotifier {
       _carAlertSound = prefs.getBool('carAlertSound') ?? true;
       _carAlertVibration = prefs.getBool('carAlertVibration') ?? true;
       _carAlertVoice = prefs.getBool('carAlertVoice') ?? false;
+      _useCustomLyricColors = prefs.getBool('useCustomLyricColors') ?? false;
+      _originalTextColorValue =
+          prefs.getInt('lyricOriginalColor') ?? LyricColorPalette.autoValue;
+      _translationTextColorValue =
+          prefs.getInt('lyricTranslationColor') ?? LyricColorPalette.autoValue;
 
       debugPrint('Font size: $_fontSize');
       debugPrint('Translation language: $_defaultTranslationLanguage');
@@ -617,6 +640,30 @@ class SettingsProvider with ChangeNotifier {
     debugPrint('Car alert voice updated and notified listeners');
   }
 
+  Future<void> setUseCustomLyricColors(bool value) async {
+    if (_useCustomLyricColors == value) return;
+    _useCustomLyricColors = value;
+    await _save();
+    notifyListeners();
+    debugPrint('Custom lyric colors ${value ? 'enabled' : 'disabled'}');
+  }
+
+  /// Устанавливает цвет оригинала. `null` = «авто» (цвет темы).
+  Future<void> setOriginalTextColor(Color? value) async {
+    _originalTextColorValue =
+        value?.value ?? LyricColorPalette.autoValue;
+    await _save();
+    notifyListeners();
+  }
+
+  /// Устанавливает цвет перевода. `null` = «авто» (цвет темы).
+  Future<void> setTranslationTextColor(Color? value) async {
+    _translationTextColorValue =
+        value?.value ?? LyricColorPalette.autoValue;
+    await _save();
+    notifyListeners();
+  }
+
   Future<void> _save() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -658,6 +705,9 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setBool('carAlertSound', _carAlertSound);
       await prefs.setBool('carAlertVibration', _carAlertVibration);
       await prefs.setBool('carAlertVoice', _carAlertVoice);
+      await prefs.setBool('useCustomLyricColors', _useCustomLyricColors);
+      await prefs.setInt('lyricOriginalColor', _originalTextColorValue);
+      await prefs.setInt('lyricTranslationColor', _translationTextColorValue);
       await prefs.setString('settingsVersion', '4.2.1');
       debugPrint('Settings saved to SharedPreferences');
     } catch (e) {

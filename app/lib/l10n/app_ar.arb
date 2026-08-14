@@ -698,5 +698,18 @@
       "@voicePackageInstalledFailed": {"placeholders": {"lang": {}}},
       "voicePackageInstalledFailed": "فشل تثبيت نموذج \"{lang}\"",
       "@voicePackageDeleteConfirm": {"placeholders": {"lang": {}}},
-      "voicePackageDeleteConfirm": "حذف نموذج \"{lang}\"؟ سيؤدي ذلك إلى تحرير مساحة."
+      "voicePackageDeleteConfirm": "حذف نموذج \"{lang}\"؟ سيؤدي ذلك إلى تحرير مساحة.",
+      "lyricColors": "ألوان الأسطر",
+      "lyricColorsTitle": "ألوان الأسطر",
+      "lyricColorsUseCustom": "ألوان مخصصة",
+      "lyricColorsPresets": "إعدادات مسبقة",
+      "lyricColorsOriginal": "الأصلي",
+      "lyricColorsTranslation": "الترجمة",
+      "lyricColorsPreview": "معاينة",
+      "lyricColorsDone": "تم",
+      "lyricPresetDefault": "افتراضي",
+      "lyricPresetBlueRed": "الأصلي أزرق / الترجمة أحمر",
+      "lyricPresetRedBlue": "الأصلي أحمر / الترجمة أزرق",
+      "lyricPresetGreenOrange": "الأصلي أخضر / الترجمة برتقالي",
+      "lyricPresetContrast": "تباين عالٍ"
 }

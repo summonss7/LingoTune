@@ -2184,4 +2184,31 @@ class AppLocalizationsRo extends AppLocalizations {
   String voicePackageDeleteConfirm(Object lang) {
     return 'Ștergi modelul pentru \"$lang\"? Asta va elibera spațiu pe disc.';
   }
+
+  @override
+  String get lyricColors => 'Culorile liniilor';
+  @override
+  String get lyricColorsTitle => 'Culorile liniilor';
+  @override
+  String get lyricColorsUseCustom => 'Culori personalizate';
+  @override
+  String get lyricColorsPresets => 'Presetări';
+  @override
+  String get lyricColorsOriginal => 'Original';
+  @override
+  String get lyricColorsTranslation => 'Traducere';
+  @override
+  String get lyricColorsPreview => 'Previzualizare';
+  @override
+  String get lyricColorsDone => 'Gata';
+  @override
+  String get lyricPresetDefault => 'Implicit';
+  @override
+  String get lyricPresetBlueRed => 'Original albastru / Traducere roșu';
+  @override
+  String get lyricPresetRedBlue => 'Original roșu / Traducere albastru';
+  @override
+  String get lyricPresetGreenOrange => 'Original verde / Traducere portocaliu';
+  @override
+  String get lyricPresetContrast => 'Contrast ridicat';
 }

@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.7.5';
+  static const String version = '5.8.0';
 
-  static const String versionCode = '227';
+  static const String versionCode = '228';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -46,6 +46,7 @@ class AppInfo {
     '🎯 Overlay translation synced with line highlight (no more lost lines)',
     '📐 Highlight timing correction for VBR MP3 (wall-clock interpolation)',
     '❤ Favorites playlist + play-favorites-only loop mode',
+    '🎨 Custom line colors (original & translation): presets + per-type palette',
   ];
 
   static const List<String> supportedLanguages = [

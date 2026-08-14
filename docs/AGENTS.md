@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.7.5** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.0** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `CHANGELOG_v*.dart` in the project root.
 
 ## Project Structure
@@ -255,10 +255,27 @@ void main() {
 - `audio_service` (`BackgroundAudioHandler`) for background playback / media notification
 - `audio_session` for audio-focus handling and ducking during TTS / phone calls
 - Handle content URIs (`content://`) vs file paths differently (see `AudioService.loadAudio`)
-- **Zombie-state recovery**: after a TTS audio-session handoff, just_audio can report
-  `playing == true` while the position never advances. `AudioService.ensurePlaybackAdvancing`
-  and `StudyModeService._kickPlaybackAsync` reactivate the session, retry `play()`, and nudge
-  the player with a seek to force a re-buffer.
+- **Zombie-state recovery**: after a TTS audio-session handoff (or a phone call), just_audio
+  can report `playing == true` while the position never advances — or fail to restart after
+  `completed`. `AudioService.ensurePlaybackAdvancing`, `StudyModeService._kickPlaybackAsync`,
+  `BackgroundAudioHandler._restartLoopOne` (loop-one restart) and
+  `BackgroundAudioHandler._ensureAdvancingAfterResume` (post-call resume) reactivate the
+  session, retry `play()`, verify the position actually advances, and nudge the player with a
+  seek to force a re-buffer.
+- **Loop mode** — `AudioService` is the single source of truth (persisted, pushed to
+  `BackgroundAudioHandler`, mirrored in `PlayerScreen` via a listener so lock-screen changes
+  are reflected). Button cycle: `off → all → one → allPlaylists → off`. The `favorites` enum
+  value is retained only for prefs backward-compat — it is NOT part of the cycle; favorites
+  are played by opening the favorites playlist (behaves as `LoopMode.all`). The heart button
+  only adds/removes the song from favorites and never changes the playback mode.
+- **Track completion**: `AudioService.onSongComplete` (fired on `processingState == completed`)
+  is guarded while study mode is active — advancement then depends on study's own completion
+  detector. A completion watchdog in `PlayerScreen` (`_armCompletionWatchdog`) breaks the
+  deadlock when study fails to advance after a call: if the song hasn't changed within ~4 s,
+  it forces `_playNextSong()`.
+- **Phone calls**: `becomingNoisy` (headphone unplug) is ignored while a call pause is active
+  (`_pausedForCall`) — some ROMs fire it on the in-call audio-route change, and it would
+  otherwise set `_userPausedDuringCall` and block the legitimate post-call auto-resume.
 
 ---
 
@@ -364,6 +381,6 @@ Run `flutter pub get` after modifying `app/pubspec.yaml`
 - **screens/**: UI screens (SongLibraryScreen, PlayerScreen, PlaylistScreen, PlaylistSongsScreen, SettingsScreen, LyricGeneratorDialog, TextLoaderDialog, TranslationEditorScreen, VoicePackagesScreen, CarCalibrationScreen)
 - **screens/helpers/**: Helper classes for complex screens (SongImportHelper, PlayerImportHelper, PlayerPlaylistHelper, PlayerTranslationHelper, SongTranslationLoader, CoverArtHelper, PlaylistImportHelper)
 - **widgets/**: Reusable components (SongListTile, EmptyLibraryWidget, MiniPlayerWidget, LyricLineWidget, GenerationOptionsWidget, GenerationProgressWidget, LibraryManagerWidget, BatchSelectionWidget, LoadingWidget, LyricsSearchDialog, SongSortWidget, SelectionModeActions) + `widgets/settings/` (ApiSettingsTile, TextSettingsSection, DefaultAutoScrollFocusOffsetControl)
-- **utils/**: Utility functions (SnackBarHelper, LrcFormatter, LanguageHelpers, TtsEngineHelper, Fft)
+- **utils/**: Utility functions (SnackBarHelper, LrcFormatter, LanguageHelpers, TtsEngineHelper, Fft, LyricColors — palette + presets for custom lyric-line text colors, see `SettingsProvider.useCustomLyricColors` / `originalTextColor` / `translationTextColor`)
 - **constants/**: Constants and configuration (DeepSeekPrompts, GenerationConstants)
 - **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 667 keys each; ARB sources + generated `app_localizations*.dart`

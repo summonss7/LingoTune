@@ -2,7 +2,7 @@ name: lingotune
 description: Language learning through music application
 
 publish_to: 'none'
-version: 5.7.5
+version: 5.8.0
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

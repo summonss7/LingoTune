@@ -141,6 +141,15 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       });
       
       _becomingNoisySubscription = session.becomingNoisyEventStream.listen((_) {
+        // Отключение наушников (ACTION_AUDIO_BECOMING_NOISY). Во время звонка
+        // игнорируем: плеер уже на паузе (_pausedForCall), а некоторые ROM
+        // шпурят это событие при смене аудио-маршрута на earpiece — без этой
+        // защиты pause() выставил бы _userPausedDuringCall=true и заблокировал
+        // честный авто-resume после звонка (симптом «после звонка встаёт»).
+        if (_pausedForCall) {
+          debugPrint('📞 BackgroundAudioHandler: becomingNoisy ignored (call in progress)');
+          return;
+        }
         pause();
       });
       
@@ -197,8 +206,48 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     }
     if (wasPlaying) {
       play();
+      // Лёгкий zombie-recovery после звонка: аудиосессия была деактивирована, и
+      // play() мог оставить just_audio в состоянии «playing=true, позиция не
+      // двигается» — тогда песня не дойдёт до completed и не начнётся
+      // следующая. Для study этот вызов не выполняется (wasPlaying=false,
+      // resume делает _kickPlayback); здесь защищаем обычный фоновый путь.
+      // Fire-and-forget, чтобы onPlaybackResumed сработал без задержки.
+      _ensureAdvancingAfterResume();
     }
     onPlaybackResumed?.call(false);
+  }
+
+  /// Лёгкий zombie-recovery после звонка (см. [_handleCallResume]). Проверяет,
+  /// действительно ли позиция плеера двигается после resume-`play()`; если нет —
+  /// реактивирует аудиосессию и ретраит play(). Несколько попыток с timeout,
+  /// чтобы висящий just_audio Future нас не заблокировал.
+  Future<void> _ensureAdvancingAfterResume() async {
+    const stepTimeout = Duration(seconds: 1);
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      final Duration before = _player.position;
+      await Future.delayed(const Duration(milliseconds: 400));
+      // Песня естественным образом доиграла — кикать нечего.
+      if (_player.processingState == ProcessingState.completed) {
+        debugPrint('⚠ BackgroundAudioHandler: resume-kick — player completed, nothing to kick');
+        return;
+      }
+      final Duration after = _player.position;
+      if (after != before) {
+        debugPrint('✓ BackgroundAudioHandler: playback advancing after resume '
+            '(attempt $attempt, ${before.inMilliseconds}→${after.inMilliseconds}ms)');
+        return;
+      }
+      debugPrint('⚠ BackgroundAudioHandler: resume-kick attempt $attempt '
+          '— position stuck at ${after.inMilliseconds}ms');
+      try {
+        final session = await AudioSession.instance;
+        await session.setActive(true).timeout(stepTimeout);
+        await _player.play().timeout(stepTimeout);
+      } catch (e) {
+        debugPrint('⚠ BackgroundAudioHandler: resume-kick error (attempt $attempt): $e');
+      }
+    }
+    debugPrint('✗ BackgroundAudioHandler: resume-kick gave up (position not advancing)');
   }
 
   /// Публичный триггер паузы от нативного детектора звонка
@@ -230,11 +279,13 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         if (_loopMode == LoopMode.one && !_isHandlingCompletion) {
           _isHandlingCompletion = true;
           debugPrint('✓ BackgroundAudioHandler: LoopMode.one - restarting song');
-          _player.seek(Duration.zero).then((_) {
-            _player.play().then((_) {
-              _isHandlingCompletion = false;
-            });
-          });
+          // Рестарт loop-one в async-функции с try/finally + timeout: цепочка
+          // seek().then(play().then(...)) БЕЗ обработки ошибок могла залипнуть
+          // _isHandlingCompletion=true навсегда, если seek/play бросал или висел
+          // (just_audio Futures виснут после деактивации сессии TTS/звонком) —
+          // тогда loop-one навсегда переставал перезапускать песню. Теперь флаг
+          // гарантированно сбрасывается в finally.
+          _restartLoopOne();
         }
       } else {
         _isHandlingCompletion = false;
@@ -274,6 +325,66 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         mediaItem.add(currentMediaItem.copyWith(duration: duration));
       }
     });
+  }
+
+  /// Перезапуск текущей песни для LoopMode.one. Поправляет зомби-состояние
+  /// just_audio, типичное сразу после `processingState == completed`: seek(0)
+  /// сбрасывает позицию в начало, но `play()` может НЕ запустить звук (плеер
+  /// числится playing, позиция стоит на 0) — симптом «переключилось в начало,
+  /// но плей не включается». Поэтому после seek+play проверяем, что позиция
+  /// реально пошла от 0; если нет — реактивируем аудиосессию и nudge'им seek'ом
+  /// к текущей позиции (force re-buffer), как в [_kickPlaybackAsync] /
+  /// [AudioService.ensurePlaybackAdvancing]. Try/finally + timeout гарантируют,
+  /// что [_isHandlingCompletion] всегда сбросится.
+  Future<void> _restartLoopOne() async {
+    const stepTimeout = Duration(seconds: 1);
+    try {
+      for (int attempt = 1; attempt <= 4; attempt++) {
+        try {
+          await _player.seek(Duration.zero).timeout(stepTimeout);
+        } catch (e) {
+          debugPrint(
+              '⚠ BackgroundAudioHandler: loop-one seek error (attempt $attempt): $e');
+        }
+        try {
+          await _player.play().timeout(stepTimeout);
+        } catch (e) {
+          debugPrint(
+              '⚠ BackgroundAudioHandler: loop-one play error (attempt $attempt): $e');
+        }
+        // Даём плееру ~0.4с реально стартовать и проверяем движение позиции.
+        await Future.delayed(const Duration(milliseconds: 400));
+        final pos = _player.position;
+        if (pos > Duration.zero) {
+          debugPrint('✓ BackgroundAudioHandler: LoopMode.one restarted on '
+              'attempt $attempt (pos=${pos.inMilliseconds}ms)');
+          return;
+        }
+        // Зомби: позиция стоит на 0 при playing=true. Nudge — реактивируем
+        // сессию и seek к текущей позиции, чтобы заставить just_audio re-buffer.
+        debugPrint('⚠ BackgroundAudioHandler: loop-one zombie at 0 '
+            '(attempt $attempt) — nudging');
+        try {
+          final session = await AudioSession.instance;
+          await session.setActive(true).timeout(stepTimeout);
+        } catch (e) {
+          debugPrint(
+              '⚠ BackgroundAudioHandler: loop-one session error (attempt $attempt): $e');
+        }
+        try {
+          await _player.seek(_player.position).timeout(stepTimeout);
+        } catch (e) {
+          debugPrint(
+              '⚠ BackgroundAudioHandler: loop-one nudge seek error (attempt $attempt): $e');
+        }
+      }
+      debugPrint('✗ BackgroundAudioHandler: LoopMode.one restart — '
+          'position not advancing after retries');
+    } catch (e) {
+      debugPrint('⚠ BackgroundAudioHandler: LoopMode.one restart error: $e');
+    } finally {
+      _isHandlingCompletion = false;
+    }
   }
 
   AudioProcessingState _mapProcessingState(ProcessingState state) {
@@ -626,6 +737,11 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   @override
   Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {
+    // Цикл с уведомления (экран блокировки) ограничен базовыми режимами
+    // off → all → one → off. allPlaylists/favorites требуют динамической
+    // загрузки списков в PlayerScreen (БД/плейлисты), что недоступно из
+    // notification-контролов: попадание в них с экрана блокировки ломало бы
+    // очередь. Если текущий режим — allPlaylists/favorites, сбрасываем в off.
     switch (_loopMode) {
       case LoopMode.off:
         _loopMode = LoopMode.all;
@@ -634,11 +750,9 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         _loopMode = LoopMode.one;
         break;
       case LoopMode.one:
-        _loopMode = LoopMode.allPlaylists;
+        _loopMode = LoopMode.off;
         break;
       case LoopMode.allPlaylists:
-        _loopMode = LoopMode.favorites;
-        break;
       case LoopMode.favorites:
         _loopMode = LoopMode.off;
         break;

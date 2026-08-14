@@ -698,5 +698,18 @@
       "@voicePackageInstalledFailed": {"placeholders": {"lang": {}}},
       "voicePackageInstalledFailed": "Не удалось установить модель для \"{lang}\"",
       "@voicePackageDeleteConfirm": {"placeholders": {"lang": {}}},
-      "voicePackageDeleteConfirm": "Удалить модель для \"{lang}\"? Это освободит место на диске."
+      "voicePackageDeleteConfirm": "Удалить модель для \"{lang}\"? Это освободит место на диске.",
+      "lyricColors": "Цвета строк",
+      "lyricColorsTitle": "Цвета строк",
+      "lyricColorsUseCustom": "Свои цвета",
+      "lyricColorsPresets": "Пресеты",
+      "lyricColorsOriginal": "Оригинал",
+      "lyricColorsTranslation": "Перевод",
+      "lyricColorsPreview": "Предпросмотр",
+      "lyricColorsDone": "Готово",
+      "lyricPresetDefault": "По умолчанию",
+      "lyricPresetBlueRed": "Оригинал синий / Перевод красный",
+      "lyricPresetRedBlue": "Оригинал красный / Перевод синий",
+      "lyricPresetGreenOrange": "Оригинал зелёный / Перевод оранжевый",
+      "lyricPresetContrast": "Высокий контраст"
 }

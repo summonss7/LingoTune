@@ -2184,4 +2184,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String voicePackageDeleteConfirm(Object lang) {
     return '删除\"$lang\"的模型？这将释放磁盘空间。';
   }
+
+  @override
+  String get lyricColors => '歌词颜色';
+  @override
+  String get lyricColorsTitle => '歌词颜色';
+  @override
+  String get lyricColorsUseCustom => '自定义颜色';
+  @override
+  String get lyricColorsPresets => '预设';
+  @override
+  String get lyricColorsOriginal => '原文';
+  @override
+  String get lyricColorsTranslation => '翻译';
+  @override
+  String get lyricColorsPreview => '预览';
+  @override
+  String get lyricColorsDone => '完成';
+  @override
+  String get lyricPresetDefault => '默认';
+  @override
+  String get lyricPresetBlueRed => '原文蓝 / 翻译红';
+  @override
+  String get lyricPresetRedBlue => '原文红 / 翻译蓝';
+  @override
+  String get lyricPresetGreenOrange => '原文绿 / 翻译橙';
+  @override
+  String get lyricPresetContrast => '高对比度';
 }

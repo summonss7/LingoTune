@@ -30,6 +30,13 @@ class LyricLineWidget extends StatelessWidget {
         final translationBold = settingsProvider.translationBold;
         final transcriptBold = settingsProvider.transcriptBold;
         final fontFamily = settingsProvider.fontFamily.isEmpty ? null : settingsProvider.fontFamily;
+        // Пользовательская подсветка строк цветами. Когда useCustomLyricColors
+        // включён и цвет задан (!= null), он перекрывает цвет темы для оригинала
+        // и/или перевода (с прозрачностью для неактивных строк). null = «авто».
+        final origCustom =
+            settingsProvider.useCustomLyricColors ? settingsProvider.originalTextColor : null;
+        final transCustom =
+            settingsProvider.useCustomLyricColors ? settingsProvider.translationTextColor : null;
 
         return InkWell(
           onTap: onTap,
@@ -63,11 +70,13 @@ class LyricLineWidget extends StatelessWidget {
                           fontSize: isCurrent ? settingsProvider.translationFontSize + 2 : isNext ? settingsProvider.translationFontSize : settingsProvider.translationFontSize - 2,
                           fontWeight: translationBold ? FontWeight.bold : FontWeight.normal,
                           fontFamily: fontFamily,
-                          color: isCurrent
-                              ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8)
-                              : isNext
-                                  ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
-                                  : Colors.grey[600],
+                          color: transCustom != null
+                              ? transCustom.withOpacity(isCurrent ? 1.0 : isNext ? 0.75 : 0.65)
+                              : isCurrent
+                                  ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8)
+                                  : isNext
+                                      ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
+                                      : Colors.grey[600],
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -84,11 +93,13 @@ class LyricLineWidget extends StatelessWidget {
                       fontFamily: fontFamily,
                       color: isEditMode
                           ? Colors.orange[900]
-                          : isCurrent
-                              ? Theme.of(context).colorScheme.primary
-                              : isNext
-                                  ? Theme.of(context).colorScheme.primary.withOpacity(0.6)
-                                  : Colors.black87,
+                          : origCustom != null
+                              ? origCustom.withOpacity(isCurrent ? 1.0 : isNext ? 0.75 : 0.65)
+                              : isCurrent
+                                  ? Theme.of(context).colorScheme.primary
+                                  : isNext
+                                      ? Theme.of(context).colorScheme.primary.withOpacity(0.6)
+                                      : Colors.black87,
                     ),
                   ),
                   if (!settingsProvider.showTranslationFirst && line.translatedText != null)
@@ -100,11 +111,13 @@ class LyricLineWidget extends StatelessWidget {
                           fontSize: isCurrent ? settingsProvider.translationFontSize + 2 : isNext ? settingsProvider.translationFontSize : settingsProvider.translationFontSize - 2,
                           fontWeight: translationBold ? FontWeight.bold : FontWeight.normal,
                           fontFamily: fontFamily,
-                          color: isCurrent
-                              ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8)
-                              : isNext
-                                  ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
-                                  : Colors.grey[600],
+                          color: transCustom != null
+                              ? transCustom.withOpacity(isCurrent ? 1.0 : isNext ? 0.75 : 0.65)
+                              : isCurrent
+                                  ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8)
+                                  : isNext
+                                      ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
+                                      : Colors.grey[600],
                           fontStyle: FontStyle.italic,
                         ),
                       ),

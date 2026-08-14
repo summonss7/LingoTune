@@ -2184,4 +2184,31 @@ class AppLocalizationsUk extends AppLocalizations {
   String voicePackageDeleteConfirm(Object lang) {
     return 'Видалити модель для \"$lang\"? Це звільнить місце на диску.';
   }
+
+  @override
+  String get lyricColors => 'Кольори рядків';
+  @override
+  String get lyricColorsTitle => 'Кольори рядків';
+  @override
+  String get lyricColorsUseCustom => 'Свої кольори';
+  @override
+  String get lyricColorsPresets => 'Пресети';
+  @override
+  String get lyricColorsOriginal => 'Оригінал';
+  @override
+  String get lyricColorsTranslation => 'Переклад';
+  @override
+  String get lyricColorsPreview => 'Попередній перегляд';
+  @override
+  String get lyricColorsDone => 'Готово';
+  @override
+  String get lyricPresetDefault => 'Типово';
+  @override
+  String get lyricPresetBlueRed => 'Оригінал синій / Переклад червоний';
+  @override
+  String get lyricPresetRedBlue => 'Оригінал червоний / Переклад синій';
+  @override
+  String get lyricPresetGreenOrange => 'Оригінал зелений / Переклад помаранчевий';
+  @override
+  String get lyricPresetContrast => 'Високий контраст';
 }

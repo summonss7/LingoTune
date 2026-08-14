@@ -698,5 +698,18 @@
       "@voicePackageInstalledFailed": {"placeholders": {"lang": {}}},
       "voicePackageInstalledFailed": "Nu s-a putut instala modelul pentru \"{lang}\"",
       "@voicePackageDeleteConfirm": {"placeholders": {"lang": {}}},
-      "voicePackageDeleteConfirm": "Ștergi modelul pentru \"{lang}\"? Asta va elibera spațiu pe disc."
+      "voicePackageDeleteConfirm": "Ștergi modelul pentru \"{lang}\"? Asta va elibera spațiu pe disc.",
+      "lyricColors": "Culorile liniilor",
+      "lyricColorsTitle": "Culorile liniilor",
+      "lyricColorsUseCustom": "Culori personalizate",
+      "lyricColorsPresets": "Presetări",
+      "lyricColorsOriginal": "Original",
+      "lyricColorsTranslation": "Traducere",
+      "lyricColorsPreview": "Previzualizare",
+      "lyricColorsDone": "Gata",
+      "lyricPresetDefault": "Implicit",
+      "lyricPresetBlueRed": "Original albastru / Traducere roșu",
+      "lyricPresetRedBlue": "Original roșu / Traducere albastru",
+      "lyricPresetGreenOrange": "Original verde / Traducere portocaliu",
+      "lyricPresetContrast": "Contrast ridicat"
 }

@@ -75,6 +75,16 @@ class AudioService extends ChangeNotifier {
       _globalPlaybackSpeed = prefs.getDouble('playbackSpeed') ?? 1.0;
       // На старте (песня ещё не установлена) активная скорость = глобальная.
       _playbackSpeed = _globalPlaybackSpeed;
+      // Восстановленные loop/shuffle пушим в background handler, если он уже
+      // подключён (setBackgroundHandler мог выполниться ДО завершения этого
+      // асинхронного load — тогда handler остался бы на дефолте off и loop-one
+      // не сработал бы до первого ручного тапа). Без этого push'а порядок
+      // «конструктор AudioService → setBackgroundHandler» гоняется с чтением
+      // prefs, и восстановленный режим не доходил до handler'а.
+      if (_backgroundHandler != null) {
+        _backgroundHandler!.setLoopMode(_loopMode);
+        _backgroundHandler!.setShuffleEnabled(_isShuffleEnabled);
+      }
       debugPrint('✓ AudioService: Loaded playback settings - loop: $_loopMode, shuffle: $_isShuffleEnabled, speed: $_globalPlaybackSpeed');
     } catch (e) {
       debugPrint('✗ Error loading playback settings: $e');
@@ -376,9 +386,13 @@ class AudioService extends ChangeNotifier {
         _loopMode = LoopMode.allPlaylists;
         break;
       case LoopMode.allPlaylists:
-        _loopMode = LoopMode.favorites;
+        // Режим «избранное» убран из цикла переключения: избранные песни
+        // доступны через отдельную закладку (откроешь плейлист избранного — и
+        // играет по кругу как обычный LoopMode.all). Цикл замыкается на off.
+        _loopMode = LoopMode.off;
         break;
       case LoopMode.favorites:
+        // На всякий случай (устаревшее значение из prefs) — сброс в off.
         _loopMode = LoopMode.off;
         break;
     }
@@ -396,6 +410,13 @@ class AudioService extends ChangeNotifier {
   void setLoopMode(LoopMode mode) {
     _loopMode = mode;
     _backgroundHandler?.setLoopMode(_loopMode);
+    // favorites — transient-режим (не персистится, см. toggleLoop). Остальные
+    // изменения принудительной установки режима (например, сброс в off при
+    // пустом списке избранного) сохраняем, иначе prefs рассинхронизированы с
+    // активным режимом и после рестарта восстанавливается устаревшее значение.
+    if (_loopMode != LoopMode.favorites) {
+      _savePlaybackSettings();
+    }
     notifyListeners();
   }
 
@@ -465,10 +486,19 @@ class AudioService extends ChangeNotifier {
     _backgroundHandler?.setShuffleEnabled(_isShuffleEnabled);
     _backgroundHandler!.onShuffleToggled = (enabled) {
       _isShuffleEnabled = enabled;
+      // Смена shuffle с экрана блокировки должна сохраняться — иначе после
+      // рестарта восстанавливается устаревшее значение (симптом «режимы
+      // глючат в фоне / не работают после блокировки»).
+      _savePlaybackSettings();
       notifyListeners();
     };
     _backgroundHandler!.onLoopToggled = (mode) {
       _loopMode = mode;
+      // favorites — transient-режим, не персистим (см. toggleLoop). Остальные
+      // смены loop-режима с уведомления сохраняем.
+      if (_loopMode != LoopMode.favorites) {
+        _savePlaybackSettings();
+      }
       notifyListeners();
     };
     debugPrint('✓ AudioService: Background handler set from MainScreen');

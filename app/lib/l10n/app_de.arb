@@ -698,5 +698,18 @@
       "@voicePackageInstalledFailed": {"placeholders": {"lang": {}}},
       "voicePackageInstalledFailed": "Installation des Modells für \"{lang}\" fehlgeschlagen",
       "@voicePackageDeleteConfirm": {"placeholders": {"lang": {}}},
-      "voicePackageDeleteConfirm": "Modell für \"{lang}\" löschen? Das gibt Speicherplatz frei."
+      "voicePackageDeleteConfirm": "Modell für \"{lang}\" löschen? Das gibt Speicherplatz frei.",
+      "lyricColors": "Zeilenfarben",
+      "lyricColorsTitle": "Zeilenfarben",
+      "lyricColorsUseCustom": "Eigene Farben",
+      "lyricColorsPresets": "Vorlagen",
+      "lyricColorsOriginal": "Original",
+      "lyricColorsTranslation": "Übersetzung",
+      "lyricColorsPreview": "Vorschau",
+      "lyricColorsDone": "Fertig",
+      "lyricPresetDefault": "Standard",
+      "lyricPresetBlueRed": "Original blau / Übersetzung rot",
+      "lyricPresetRedBlue": "Original rot / Übersetzung blau",
+      "lyricPresetGreenOrange": "Original grün / Übersetzung orange",
+      "lyricPresetContrast": "Hoher Kontrast"
 }

@@ -2184,4 +2184,31 @@ class AppLocalizationsAr extends AppLocalizations {
   String voicePackageDeleteConfirm(Object lang) {
     return 'حذف نموذج \"$lang\"؟ سيؤدي ذلك إلى تحرير مساحة.';
   }
+
+  @override
+  String get lyricColors => 'ألوان الأسطر';
+  @override
+  String get lyricColorsTitle => 'ألوان الأسطر';
+  @override
+  String get lyricColorsUseCustom => 'ألوان مخصصة';
+  @override
+  String get lyricColorsPresets => 'إعدادات مسبقة';
+  @override
+  String get lyricColorsOriginal => 'الأصلي';
+  @override
+  String get lyricColorsTranslation => 'الترجمة';
+  @override
+  String get lyricColorsPreview => 'معاينة';
+  @override
+  String get lyricColorsDone => 'تم';
+  @override
+  String get lyricPresetDefault => 'افتراضي';
+  @override
+  String get lyricPresetBlueRed => 'الأصلي أزرق / الترجمة أحمر';
+  @override
+  String get lyricPresetRedBlue => 'الأصلي أحمر / الترجمة أزرق';
+  @override
+  String get lyricPresetGreenOrange => 'الأصلي أخضر / الترجمة برتقالي';
+  @override
+  String get lyricPresetContrast => 'تباين عالٍ';
 }

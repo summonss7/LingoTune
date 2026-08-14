@@ -698,5 +698,18 @@
       "@voicePackageInstalledFailed": {"placeholders": {"lang": {}}},
       "voicePackageInstalledFailed": "Failed to install model for \"{lang}\"",
       "@voicePackageDeleteConfirm": {"placeholders": {"lang": {}}},
-      "voicePackageDeleteConfirm": "Delete model for \"{lang}\"? This frees up disk space."
+      "voicePackageDeleteConfirm": "Delete model for \"{lang}\"? This frees up disk space.",
+      "lyricColors": "Line colors",
+      "lyricColorsTitle": "Line colors",
+      "lyricColorsUseCustom": "Custom colors",
+      "lyricColorsPresets": "Presets",
+      "lyricColorsOriginal": "Original",
+      "lyricColorsTranslation": "Translation",
+      "lyricColorsPreview": "Preview",
+      "lyricColorsDone": "Done",
+      "lyricPresetDefault": "Default",
+      "lyricPresetBlueRed": "Original blue / Translation red",
+      "lyricPresetRedBlue": "Original red / Translation blue",
+      "lyricPresetGreenOrange": "Original green / Translation orange",
+      "lyricPresetContrast": "High contrast"
 }

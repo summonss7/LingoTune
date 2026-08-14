@@ -35,6 +35,7 @@ import 'translation_editor_screen.dart';
 import 'text_loader_dialog.dart';
 import 'package:lingotune/l10n/app_localizations.dart';
 import '../utils/lrc_formatter.dart';
+import '../utils/lyric_colors.dart';
 import 'helpers/player_translation_helper.dart';
 import 'helpers/player_playlist_helper.dart';
 import 'helpers/player_import_helper.dart';
@@ -111,6 +112,17 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isInBackground = false;
   bool _isReloading = false;
   bool _isSongLoading = false;
+
+  /// Watchdog дедлока завершения трека в study-режиме. Когда песня доиграла
+  /// (`processingState == completed`), обычный путь [onSongComplete] заблоки-
+  /// рован (study активен), а продвижение зависит от того, что СВОЙ детектор
+  /// study поймает completed и дёрнет [onStudyCompleted]. После звонка этот
+  /// детектор может не сработать чисто → песня доиграла, а следующая не
+  /// началась. Watchdog принудительно запускает следующую, если за ~4с study
+  /// не продвинулся. [_watchdogSongId] хранит id песни, на которой вооружились
+  /// (если песня сменилась — study справился, форсить не нужно).
+  Timer? _completionWatchdog;
+  String? _watchdogSongId;
 
   /// Была ли study-сессия паузнута ради входящего звонка/прерывания. Ставится
   /// в [onPlaybackInterrupted] (BackgroundAudioHandler) и снимается в
@@ -431,23 +443,70 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   void _toggleLoop() {
-    final previousMode = _loopMode;
+    // Режим «избранное» убран из цикла: off → all → one → allPlaylists → off.
+    // Избранные песни слушаются через отдельную закладку (открываешь плейлист
+    // избранного — и играет по кругу как LoopMode.all).
     setState(() {
       widget.audioService.toggleLoop();
       _loopMode = widget.audioService.loopMode;
     });
+  }
 
-    if (_loopMode == LoopMode.favorites) {
-      // Переход в режим избранного — загрузить список избранных песен.
-      _switchToFavoritesMode();
-    } else if (previousMode == LoopMode.favorites) {
-      // Выход из режима избранного — вернуть исходный плейлист экрана как
-      // активный список воспроизведения.
-      setState(() => _activePlaybackList = widget.playlistSongs);
-      if (widget.playlistSongs != null) {
-        widget.audioService.setCurrentPlaylist(widget.playlistSongs!);
-      }
+  /// Синхронизация локальных копий loop/shuffle с [AudioService]. Режим можно
+  /// переключить с экрана блокировки (notification) — без этого слушателя
+  /// кнопки и логика next/prev/study-completion работали бы с устаревшим
+  /// значением (симптом «режимы глючат в фоне»). Регистрируется в initState,
+  /// снимается в dispose.
+  void _onAudioServiceChanged() {
+    if (!mounted) return;
+    final newLoop = widget.audioService.loopMode;
+    final newShuffle = widget.audioService.isShuffleEnabled;
+    if (newLoop != _loopMode || newShuffle != _isShuffleEnabled) {
+      setState(() {
+        _loopMode = newLoop;
+        _isShuffleEnabled = newShuffle;
+      });
     }
+  }
+
+  /// Вооружает watchdog дедлока завершения (см. [_completionWatchdog]).
+  /// Вызывается из [onSongComplete], когда song завершается в study-режиме.
+  void _armCompletionWatchdog() {
+    _completionWatchdog?.cancel();
+    _watchdogSongId = _currentSong.id;
+    _completionWatchdog = Timer(const Duration(seconds: 4), () {
+      if (!mounted) return;
+      final player = widget.audioService.player;
+      // Песня сменилась → study сам справился, форсить не нужно.
+      if (_currentSong.id != _watchdogSongId) {
+        _studyEvt('completion WATCHDOG: song already advanced, no-op');
+        return;
+      }
+      // Загрузка другой песни идёт → _playSong доберётся до конца сам.
+      if (_isSongLoading) {
+        _studyEvt('completion WATCHDOG: song is loading, no-op');
+        return;
+      }
+      final completed =
+          player.processingState == ProcessingState.completed;
+      final stuck = !player.playing;
+      if (completed || stuck) {
+        _studyEvt('completion WATCHDOG FIRED — study did not advance, '
+            'forcing next (completed=$completed, stuck=$stuck)');
+        debugPrint('⏰ PlayerScreen: completion watchdog — forcing next song '
+            '(study did not handle completion after call/zombie)');
+        _playNextSong();
+      } else {
+        _studyEvt('completion WATCHDOG: player still playing, no-op');
+      }
+    });
+  }
+
+  /// Отменяет watchdog. Вызывается при начале [_playSong] (любая смена песни)
+  /// и когда обычный путь завершения сам запускает next (study не активен).
+  void _cancelCompletionWatchdog() {
+    _completionWatchdog?.cancel();
+    _completionWatchdog = null;
   }
 
   /// Pre-flight TTS check before starting study mode. If the current
@@ -990,58 +1049,6 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
-  /// Активирует режим [LoopMode.favorites]: загружает песни из системного
-  /// плейлиста `favorites` и делает их активным списком воспроизведения.
-  /// Если избранное пусто — показывает SnackBar и откатывает режим в `off`.
-  Future<void> _switchToFavoritesMode() async {
-    try {
-      final db = DatabaseService();
-      final favSongs = await db.getSongsInPlaylist('favorites');
-
-      if (favSongs.isEmpty) {
-        if (mounted) {
-          final l10n = AppLocalizations.of(context)!;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.noFavoriteSongs),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-        // Откатываем режим в off (favorites пуст).
-        if (mounted) {
-          setState(() => _loopMode = LoopMode.off);
-        }
-        widget.audioService.setLoopMode(LoopMode.off);
-        return;
-      }
-
-      if (!mounted) return;
-      setState(() => _activePlaybackList = favSongs);
-      widget.audioService.setCurrentPlaylist(favSongs);
-      debugPrint('❤ favorites: activated with ${favSongs.length} songs');
-
-      // Если текущая песня уже в избранном — продолжаем с неё (обновляем
-      // очередь в handler, но НЕ перезапускаем воспроизведение). Иначе —
-      // переключаемся на первую песню из избранного.
-      final currentIndex = favSongs.indexWhere((s) => s.id == _currentSong.id);
-      if (currentIndex >= 0) {
-        final handler = widget.audioService.backgroundHandler;
-        if (handler != null) {
-          await handler.setPlaylist(favSongs, currentIndex);
-        }
-      } else {
-        await _playSong(favSongs.first);
-      }
-    } catch (e, st) {
-      debugPrint('✗ Error switching to favorites mode: $e\n$st');
-      if (mounted) {
-        setState(() => _loopMode = LoopMode.off);
-        widget.audioService.setLoopMode(LoopMode.off);
-      }
-    }
-  }
-
   /// Перезагружает [_isCurrentSongFavorite] для [_currentSong]. Вызывается при
   /// смене песни ([_playSong]) и при открытии экрана.
   Future<void> _refreshCurrentSongFavoriteStatus() async {
@@ -1057,8 +1064,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   /// Добавляет/убирает текущую песню из системного плейлиста `favorites`.
-  /// Если удаляем во время игры в режиме favorites — синхронно обновляем
-  /// [_activePlaybackList], чтобы next не ушёл в удалённую песню.
+  /// Сердечко НЕ меняет режим воспроизведения: режим «избранное» убран из цикла
+  /// переключения, поэтому здесь только обновляем флаг и сам список избранного.
+  /// Слушать избранные песни можно, открыв плейлист избранного в библиотеке.
   Future<void> _toggleCurrentSongFavorite() async {
     try {
       final db = DatabaseService();
@@ -1071,31 +1079,6 @@ class _PlayerScreenState extends State<PlayerScreen>
       }
       if (mounted) {
         setState(() => _isCurrentSongFavorite = !_isCurrentSongFavorite);
-      }
-
-      // Синхронизация активного списка, если играем в режиме favorites.
-      if (_loopMode == LoopMode.favorites && _activePlaybackList != null) {
-        final updated = _activePlaybackList!
-            .where((s) => s.id != _currentSong.id)
-            .toList();
-        if (updated.isEmpty) {
-          // Избранное опустело — откатываем режим.
-          if (mounted) {
-            setState(() {
-              _loopMode = LoopMode.off;
-              _activePlaybackList = widget.playlistSongs;
-            });
-          }
-          widget.audioService.setLoopMode(LoopMode.off);
-          if (widget.playlistSongs != null) {
-            widget.audioService.setCurrentPlaylist(widget.playlistSongs!);
-          }
-        } else {
-          if (mounted) {
-            setState(() => _activePlaybackList = updated);
-          }
-          widget.audioService.setCurrentPlaylist(updated);
-        }
       }
     } catch (e) {
       debugPrint('✗ Error toggling favorite: $e');
@@ -1142,6 +1125,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Future<void> _playSong(Song song) async {
+    // Любая смена песни (study-completion, ручной next/prev, watchdog-форс) —
+    // отменяем watchdog дедлока завершения (см. _armCompletionWatchdog).
+    _cancelCompletionWatchdog();
     _studyEvt('playSong: ENTER "${song.title}" '
         '(load=$_isSongLoading, isActive=${_studyModeService.isActive}, '
         'persist=${_studyModeService.enabledPersist})');
@@ -1317,14 +1303,28 @@ class _PlayerScreenState extends State<PlayerScreen>
     widget.audioService.onSongComplete = () {
       if (!mounted) return;
       if (_studyModeService.isActive) {
-        _studyEvt('onSongComplete: GUARDED (study active)');
+        _studyEvt('onSongComplete: GUARDED (study active) — arming watchdog');
         debugPrint(
             '=== Study mode active, completion handled by StudyModeService ===');
+        // Study активен → обычный путь onSongComplete заблокирован. Но
+        // продвижение зависит от того, что СВОЙ детектор study поймает
+        // completed и дёрнет onStudyCompleted. После звонка аудиосессия
+        // сброшена и этот детектор может не сработать чисто → песня доиграла,
+        // а следующая не началась (симптом «после звонка встаёт»). Вооружаем
+        // watchdog: если за ~4с study не продвинулся — принудительно next.
+        _armCompletionWatchdog();
         return;
       }
+      _cancelCompletionWatchdog();
       _studyEvt('onSongComplete: NOT guarded -> playNext');
       _playNextSong();
     };
+
+    // Синхронизация локальных копий loop/shuffle с сервисом: режим можно
+    // переключить с экрана блокировки (notification), и без этого слушателя
+    // кнопки/логика PlayerScreen работали бы с устаревшим значением (симптом
+    // «режимы глючат в фоне»). Снимается в dispose.
+    widget.audioService.addListener(_onAudioServiceChanged);
 
     _initBackgroundAudio();
 
@@ -1862,6 +1862,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _settingsProvider?.removeListener(_onSettingsChanged);
+    widget.audioService.removeListener(_onAudioServiceChanged);
+    _completionWatchdog?.cancel();
     _positionTimer?.cancel();
     _scrollController.dispose();
     // Чистим колбэки, владельцы которых переживают этот screen:
@@ -2168,6 +2170,8 @@ class _PlayerScreenState extends State<PlayerScreen>
               setState(() => _autoScroll = !_autoScroll);
             } else if (value == 'songSpeed') {
               _showSpeedDialog();
+            } else if (value == 'lyricColors') {
+              _showLyricColorsDialog();
             } else if (value == 'share') {
               await _exportCurrentSong();
             } else if (value == 'editMode') {
@@ -2228,7 +2232,17 @@ class _PlayerScreenState extends State<PlayerScreen>
                     const Icon(Icons.speed, size: 20),
                     const SizedBox(width: 12),
                     Text(
-                        '${l10n.playbackSpeed}: ${_playbackSpeed == _playbackSpeed.roundToDouble() ? _playbackSpeed.toStringAsFixed(1) : _playbackSpeed}x'),
+                      '${l10n.playbackSpeed}: ${_playbackSpeed == _playbackSpeed.roundToDouble() ? _playbackSpeed.toStringAsFixed(1) : _playbackSpeed}x'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'lyricColors',
+                child: Row(
+                  children: [
+                    const Icon(Icons.palette, size: 20),
+                    const SizedBox(width: 12),
+                    Text(l10n.lyricColors),
                   ],
                 ),
               ),
@@ -2327,8 +2341,10 @@ class _PlayerScreenState extends State<PlayerScreen>
         color = Theme.of(context).colorScheme.primary;
         break;
       case LoopMode.favorites:
-        icon = Icons.favorite;
-        color = Colors.red;
+        // Режим убран из цикла переключения; defensive — не должен наступить
+        // через UI (избранное слушается через отдельную закладку).
+        icon = Icons.repeat;
+        color = null;
         break;
     }
 
@@ -2366,7 +2382,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                         ? localizations.repeatOne
                         : _loopMode == LoopMode.allPlaylists
                             ? localizations.repeatAllPlaylists
-                            : localizations.playFavoritesOnly,
+                            : localizations.repeatOff,
             iconSize: iconSize,
           ),
           if (_loopMode == LoopMode.allPlaylists)
@@ -2428,6 +2444,246 @@ class _PlayerScreenState extends State<PlayerScreen>
           );
         }).toList(),
       ),
+    );
+  }
+
+  /// Диалог выбора цветов оригинала/перевода: пресеты + точная настройка
+  /// палитрой для каждого типа текста + живой preview. Без новых зависимостей
+  /// — используется палитра [LyricColorPalette]. См. задачу подсветки строк.
+  void _showLyricColorsDialog() {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+
+    // Локализованное имя пресета по его ключу (см. LyricColorPresets.nameKey).
+    String presetName(String key) {
+      switch (key) {
+        case 'lyricPresetDefault':
+          return l10n.lyricPresetDefault;
+        case 'lyricPresetBlueRed':
+          return l10n.lyricPresetBlueRed;
+        case 'lyricPresetRedBlue':
+          return l10n.lyricPresetRedBlue;
+        case 'lyricPresetGreenOrange':
+          return l10n.lyricPresetGreenOrange;
+        case 'lyricPresetContrast':
+          return l10n.lyricPresetContrast;
+        default:
+          return key;
+      }
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        bool useCustom = settings.useCustomLyricColors;
+        int origVal = settings.originalTextColorValue;
+        int transVal = settings.translationTextColorValue;
+
+        // Свотч одного цвета. Если выбран (currentValue == color.value) — рамка
+        // и галочка. color == null означает «Авто» (цвет темы).
+        Widget swatch(Color? color, int currentValue, ValueChanged<int?> onSelect) {
+          final isAuto = color == null;
+          final selected = isAuto
+              ? currentValue == LyricColorPalette.autoValue
+              : currentValue == color!.value;
+          return GestureDetector(
+            onTap: () => onSelect(isAuto ? null : color!.value),
+            child: Container(
+              width: 38,
+              height: 38,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isAuto ? null : color,
+                border: Border.all(
+                  color: selected
+                      ? Theme.of(dialogContext).colorScheme.primary
+                      : Colors.black26,
+                  width: selected ? 3 : 1,
+                ),
+              ),
+              child: isAuto
+                  ? Center(
+                      child: Text(
+                        'A',
+                        style: TextStyle(
+                          color: Theme.of(dialogContext).colorScheme.onSurface,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  : (selected
+                      ? const Icon(Icons.check, color: Colors.white, size: 20)
+                      : null),
+            ),
+          );
+        }
+
+        Widget swatchRow(
+            String label, int currentValue, ValueChanged<int?> onSelect) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 6),
+                child: Text(label,
+                    style: Theme.of(dialogContext).textTheme.titleSmall),
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    swatch(null, currentValue, onSelect),
+                    ...LyricColorPalette.swatches.map(
+                        (s) => swatch(s.color, currentValue, onSelect)),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Применяет пресет и включает useCustom.
+            void applyPreset(LyricColorPreset p) {
+              setState(() {
+                origVal = p.originalValue;
+                transVal = p.translationValue;
+                useCustom = true;
+              });
+              settings.setUseCustomLyricColors(true);
+              settings.setOriginalTextColor(
+                  LyricColorPalette.colorFromValue(p.originalValue));
+              settings.setTranslationTextColor(
+                  LyricColorPalette.colorFromValue(p.translationValue));
+            }
+
+            void setOriginal(int? v) {
+              setState(() {
+                origVal = v ?? LyricColorPalette.autoValue;
+                useCustom = true;
+              });
+              settings.setUseCustomLyricColors(true);
+              settings.setOriginalTextColor(
+                  LyricColorPalette.colorFromValue(origVal));
+            }
+
+            void setTranslation(int? v) {
+              setState(() {
+                transVal = v ?? LyricColorPalette.autoValue;
+                useCustom = true;
+              });
+              settings.setUseCustomLyricColors(true);
+              settings.setTranslationTextColor(
+                  LyricColorPalette.colorFromValue(transVal));
+            }
+
+            final origColor = useCustom
+                ? LyricColorPalette.colorFromValue(origVal)
+                : null;
+            final transColor = useCustom
+                ? LyricColorPalette.colorFromValue(transVal)
+                : null;
+
+            return AlertDialog(
+              title: Text(l10n.lyricColorsTitle),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(l10n.lyricColorsUseCustom),
+                      value: useCustom,
+                      onChanged: (v) {
+                        setState(() => useCustom = v);
+                        settings.setUseCustomLyricColors(v);
+                      },
+                    ),
+                    if (useCustom) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 6),
+                        child: Text(l10n.lyricColorsPresets,
+                            style:
+                                Theme.of(dialogContext).textTheme.titleSmall),
+                      ),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: LyricColorPresets.all.map((p) {
+                          final selected = origVal == p.originalValue &&
+                              transVal == p.translationValue;
+                          return ChoiceChip(
+                            label: Text(presetName(p.nameKey)),
+                            selected: selected,
+                            onSelected: (_) => applyPreset(p),
+                          );
+                        }).toList(),
+                      ),
+                      swatchRow(l10n.lyricColorsOriginal, origVal, setOriginal),
+                      swatchRow(
+                          l10n.lyricColorsTranslation, transVal, setTranslation),
+                      // Живой preview: как будет выглядеть строка.
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16, bottom: 6),
+                        child: Text(l10n.lyricColorsPreview,
+                            style:
+                                Theme.of(dialogContext).textTheme.titleSmall),
+                      ),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color:
+                              Theme.of(dialogContext).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hello, how are you?',
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.bold,
+                                color: origColor ??
+                                    Theme.of(dialogContext)
+                                        .colorScheme
+                                        .primary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Привет, как дела?',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontStyle: FontStyle.italic,
+                                color: transColor ??
+                                    Theme.of(dialogContext)
+                                        .colorScheme
+                                        .onPrimaryContainer
+                                        .withOpacity(0.8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(l10n.lyricColorsDone),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

@@ -698,5 +698,18 @@
       "@voicePackageInstalledFailed": {"placeholders": {"lang": {}}},
       "voicePackageInstalledFailed": "Не вдалося встановити модель для \"{lang}\"",
       "@voicePackageDeleteConfirm": {"placeholders": {"lang": {}}},
-      "voicePackageDeleteConfirm": "Видалити модель для \"{lang}\"? Це звільнить місце на диску."
+      "voicePackageDeleteConfirm": "Видалити модель для \"{lang}\"? Це звільнить місце на диску.",
+      "lyricColors": "Кольори рядків",
+      "lyricColorsTitle": "Кольори рядків",
+      "lyricColorsUseCustom": "Свої кольори",
+      "lyricColorsPresets": "Пресети",
+      "lyricColorsOriginal": "Оригінал",
+      "lyricColorsTranslation": "Переклад",
+      "lyricColorsPreview": "Попередній перегляд",
+      "lyricColorsDone": "Готово",
+      "lyricPresetDefault": "Типово",
+      "lyricPresetBlueRed": "Оригінал синій / Переклад червоний",
+      "lyricPresetRedBlue": "Оригінал червоний / Переклад синій",
+      "lyricPresetGreenOrange": "Оригінал зелений / Переклад помаранчевий",
+      "lyricPresetContrast": "Високий контраст"
 }
