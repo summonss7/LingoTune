@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.0** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.1** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `CHANGELOG_v*.dart` in the project root.
 
 ## Project Structure
@@ -276,6 +276,14 @@ void main() {
 - **Phone calls**: `becomingNoisy` (headphone unplug) is ignored while a call pause is active
   (`_pausedForCall`) — some ROMs fire it on the in-call audio-route change, and it would
   otherwise set `_userPausedDuringCall` and block the legitimate post-call auto-resume.
+- **Headphone unplug** (v5.8.1): `audio_session` registers its `ACTION_AUDIO_BECOMING_NOISY`
+  receiver only while it holds audio focus, which this app drops constantly (TTS handoff,
+  zombie recovery) — so unplug events got lost and playback continued on the speaker.
+  The native `BecomingNoisyPlugin` (Kotlin, EventChannel `lingotune/becoming_noisy`, wrapped
+  by `BecomingNoisyService`) keeps its own receiver regardless of focus; `BackgroundAudioHandler
+  ._handleBecomingNoisy` gates on audibility, defers to the study-aware `onBecomingNoisy`
+  callback (PlayerScreen pauses the study session like the FAB does), and the old
+  audio_session subscription stays as a fallback.
 
 ---
 
@@ -290,6 +298,9 @@ void main() {
 - Race-condition hardening via `_sessionToken` and `_speakToken` — invalidates stale
   fire-and-forget callbacks when the song changes or the session stops, preventing
   zombie-kick loops and overlapping audio.
+- The `_speak` watchdog disables TTS only after 2 consecutive hangs (`_ttsFailStreak`);
+  `resumeSession()` re-enables speech (`_speakDisabled=false`) so a hang during a phone
+  call no longer silences the rest of the current song (v5.8.1).
 - Watchdog timers protect against zombie just_audio state: `_segmentWatchdog` forces a line
   advance when the segment completer would otherwise hang forever.
 - Persisted flag `studyModeEnabled` auto-restarts study mode on the next song / app restart.

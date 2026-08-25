@@ -76,6 +76,11 @@ class SystemTtsEngine extends TtsEngine {
     // ЕДИНСТВЕННОЕ место установки handlers (как в координаторе 5.4.0).
     _tts.setCompletionHandler(_handleCompletion);
     _tts.setErrorHandler((e) => _handleError(e));
+    // Отменённая фраза (потеря аудиофокуса / звонок) БЕЗ cancel-handler не
+    // порождает ни completion-, ни error-событие → completer висел бы вечно.
+    // stop() зануляет _speakCompleter до вызова движка, так что повторное
+    // завершение здесь безопасно.
+    _tts.setCancelHandler(_handleCompletion);
 
     // Применяем дефолтные параметры речи (как _initTts в 5.4.0).
     try {
@@ -172,7 +177,15 @@ class SystemTtsEngine extends TtsEngine {
     final completer = Completer<void>();
     _speakCompleter = completer;
     try {
-      await _tts.speak(text);
+      final result = await _tts.speak(text);
+      // flutter_tts возвращает 1 при успехе; при неудаче (0) ни completion-,
+      // ни error-handler не придёт → completer висел бы вечно.
+      if (result != 1 && result != '1') {
+        debugPrint('⚠ SystemTtsEngine: speak() returned $result (failure)');
+        _speakCompleter = null;
+        if (!completer.isCompleted) completer.complete();
+        return;
+      }
     } catch (e) {
       debugPrint('✗ SystemTtsEngine: speak() error: $e');
       _speakCompleter = null;

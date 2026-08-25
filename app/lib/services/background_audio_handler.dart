@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart' hide LoopMode;
 import '../models/song.dart';
 import '../models/loop_mode.dart';
+import 'becoming_noisy_service.dart';
 
 class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player;
@@ -68,6 +69,15 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   /// возобновляется (уважаем последнее намерение пользователя).
   void Function(bool userPaused)? onPlaybackResumed;
 
+  /// Вызывается при отключении наушников (нативный ACTION_AUDIO_BECOMING_NOISY
+  /// через [BecomingNoisyService] — надёжнее audio_session, который держит
+  /// свой receiver только при активном audio focus, а приложение регулярно
+  /// деактивирует сессию: TTS-хендофф study, zombie-recovery). Возвращает
+  /// `true`, если колбэк взял паузу на себя (активен study mode →
+  /// pauseSession корректно стопает и TTS, и kick-цикл — обычный pause()
+  /// плеера kick-цикл тут же перебил бы и песня заиграла бы в динамике).
+  bool Function()? onBecomingNoisy;
+
   StreamSubscription? _playbackEventSubscription;
   StreamSubscription? _positionSubscription;
   StreamSubscription? _playingSubscription;
@@ -76,6 +86,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   StreamSubscription? _durationSubscription;
   StreamSubscription? _interruptionSubscription;
   StreamSubscription? _becomingNoisySubscription;
+  StreamSubscription? _nativeNoisySubscription;
 
   BackgroundAudioHandler(this._player) {
     _setupListeners();
@@ -152,7 +163,19 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         }
         pause();
       });
-      
+
+      // Нативный детектор отключения наушников — основной путь: audio_session
+      // регистрирует свой receiver (выше) ТОЛЬКО пока держит audio focus, а
+      // приложение регулярно деактивирует сессию (TTS-хендофф study,
+      // zombie-recovery) — в этих состояниях unplug не доходил до Dart и
+      // песня продолжала играть в динамике. Нативный receiver работает всегда.
+      if (BecomingNoisyService.instance.start()) {
+        _nativeNoisySubscription =
+            BecomingNoisyService.instance.noisyEvents.listen((_) {
+          _handleBecomingNoisy();
+        });
+      }
+
       debugPrint('✓ BackgroundAudioHandler: AudioSession configured (willPauseWhenDucked=true) with interruption handling');
     } catch (e) {
       debugPrint('✗ BackgroundAudioHandler: Error configuring AudioSession: $e');
@@ -215,6 +238,40 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       _ensureAdvancingAfterResume();
     }
     onPlaybackResumed?.call(false);
+  }
+
+  /// Пауза при отключении наушников. Основной путь — нативный
+  /// [BecomingNoisyPlugin] (подписка в [_initAudioSession]); подписка
+  /// audio_session.becomingNoisyEventStream остаётся дублирующим fallback
+  /// (пауза идемпотентна — второе срабатывание по уже паузнутому плееру
+  /// безвредно).
+  void _handleBecomingNoisy() {
+    // Ничего не звучит → игнор. Покрывает и ложные noisy при смене
+    // аудио-маршрута во время звонка (ROM-костыль из v5.7.4): в call-паузе
+    // плеер стоит, событие должно быть проигнорировано, чтобы не тронуть
+    // честный авто-resume после звонка. wasPlayingRecently покрывает
+    // кратковременные паузы study (kick-фаза, TTS-сегмент).
+    final audible = _player.playing || wasPlayingRecently;
+    if (!audible) {
+      debugPrint('🎧 BackgroundAudioHandler: becomingNoisy ignored (not audible)');
+      return;
+    }
+    // Study mode: экран сам ставит сессию на паузу через pauseSession()
+    // (стоп TTS + drain kick-цикла); системный pause() плеера kick-цикл
+    // тут же перебил бы — и песня продолжила бы играть в динамике.
+    if (onBecomingNoisy?.call() ?? false) {
+      return;
+    }
+    if (_pausedForCall) {
+      // Редкий случай: ROM не остановил воспроизведение во время звонка и
+      // слушатель выдернул наушники. Только системная пауза, без
+      // _userPausedDuringCall — чтобы не блокировать авто-resume после звонка.
+      debugPrint('🎧 BackgroundAudioHandler: becomingNoisy → system pause (call in progress)');
+      _systemPause();
+      return;
+    }
+    debugPrint('🎧 BackgroundAudioHandler: becomingNoisy → pause');
+    pause();
   }
 
   /// Лёгкий zombie-recovery после звонка (см. [_handleCallResume]). Проверяет,
@@ -645,6 +702,14 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   Future<void> dispose() async {
     await stop();
+    // Нативную noisy-подписку снимаем только здесь, а НЕ в stop(): stop()
+    // вызывается и при обычной остановке воспроизведения (закрытие
+    // уведомления), а receiver должен пережить её — иначе после остановки и
+    // повторного запуска воспроизведения отключение наушников снова
+    // потерялось бы (регрессия «подписки отменяются навсегда»).
+    await _nativeNoisySubscription?.cancel();
+    _nativeNoisySubscription = null;
+    BecomingNoisyService.instance.stop();
   }
 
   @override

@@ -145,6 +145,10 @@ class StudyModeService extends ChangeNotifier {
   // TTS repeatedly fails to produce speech, or manually from the UI ("continue
   // without voice").
   bool _speakDisabled = false;
+  // Consecutive TTS watchdog timeouts. The session-wide _speakDisabled is only
+  // armed after 2 in a row, so a single transient hang (typically the first
+  // speak after a phone call) doesn't silence the rest of the song.
+  int _ttsFailStreak = 0;
 
   // All TTS engines reported by the system (via getEngines). Populated in
   // _initTts(). On Android 11+ requires the TTS_SERVICE <queries> declaration
@@ -448,6 +452,7 @@ class StudyModeService extends ChangeNotifier {
     final estSeconds = (text.length / 8).ceil().clamp(4, 9);
     final watchdogSeconds = (estSeconds + 3).clamp(5, 12);
 
+    var timedOut = false;
     try {
       await _ttsCoordinator
           .speak(
@@ -458,16 +463,28 @@ class StudyModeService extends ChangeNotifier {
             volume: _speechVolume,
           )
           .timeout(Duration(seconds: watchdogSeconds), onTimeout: () {
-        debugPrint('⚠ StudyMode TTS watchdog (${watchdogSeconds}s) '
-            '— disabling TTS for this session');
+        timedOut = true;
+        debugPrint('⚠ StudyMode TTS watchdog (${watchdogSeconds}s) — hang');
         // Останавливаем координатор — он завершит completer и вызовет
         // engine.stop() (FlutterTts.stop или остановка AudioPlayer у офлайна).
         _ttsCoordinator.stop();
-        // Авто-отключение TTS до конца сессии, чтобы не висеть на каждой строке.
-        setSpeakDisabled(true);
       });
     } catch (e) {
       debugPrint('✗ StudyMode TTS speak error: $e');
+    }
+    if (timedOut) {
+      // Авто-отключение TTS до конца сессии — но только после 2 ПОДРЯД
+      // зависаний, чтобы не висеть на каждой строке. Единичный сбой (типично
+      // первый speak после звонка на деактивированной аудиосессии) не должен
+      // лишать перевода всю оставшуюся часть песни.
+      _ttsFailStreak++;
+      if (_ttsFailStreak >= 2) {
+        debugPrint('⚠ StudyMode: TTS hung $_ttsFailStreak times in a row '
+            '— disabling TTS for this session');
+        setSpeakDisabled(true);
+      }
+    } else {
+      _ttsFailStreak = 0;
     }
   }
 
@@ -1132,6 +1149,14 @@ class StudyModeService extends ChangeNotifier {
   Future<void> resumeSession() async {
     if (!_isActive || !_isUserPaused) return;
     _isUserPaused = false;
+    // Watchdog мог выключить TTS ВО ВРЕМЯ звонка (первый speak после отбоя
+    // зависает на деактивированной телефонией аудиосессии) — даём речи второй
+    // шанс в ЭТОЙ же песне, иначе перевод молчал бы до конца трека и
+    // восстанавливался только на следующей песне (_ensureTtsReady).
+    if (_speakDisabled && _langAvailable) {
+      _ttsFailStreak = 0;
+      setSpeakDisabled(false);
+    }
     debugPrint('▶ StudyModeService: session resumed from line $_currentIndex');
     notifyListeners();
     _startRunner();

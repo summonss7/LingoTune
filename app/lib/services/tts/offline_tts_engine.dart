@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path/path.dart' as p;
@@ -257,14 +258,31 @@ class OfflineTtsEngine extends TtsEngine {
     _positionSub = _player.positionStream.listen((_) {});
 
     try {
-      await _player.setFilePath(wavPath);
+      // Реактивируем аудиосессию: после телефонного звонка (или TTS-хендоффа)
+      // сессия деактивирована, и just_audio-фьючерсы (setFilePath/play) могут
+      // висеть вечно — тот же zombie-паттерн, что и в
+      // StudyModeService._kickPlaybackAsync / AudioService.ensurePlaybackAdvancing.
+      try {
+        final session = await AudioSession.instance;
+        await session.setActive(true).timeout(const Duration(seconds: 1));
+      } catch (_) {}
+      await _player
+          .setFilePath(wavPath)
+          .timeout(const Duration(seconds: 3), onTimeout: () {
+        throw TimeoutException('OfflineTtsEngine: setFilePath hung');
+      });
       // Громкость сгенерированной речи. setVolume ограничен 1.0; всё что выше
-      // уже заложено в сэмплы через gain (нормализация + буст).
+      // уже заложено в сэмплах через gain (нормализация + буст).
       try {
         await _player.setVolume(playerVol.clamp(0.0, 1.0));
       } catch (_) {}
-      await _player.play();
+      await _player.play().timeout(const Duration(seconds: 1), onTimeout: () {
+        throw TimeoutException('OfflineTtsEngine: play() hung');
+      });
     } catch (e, st) {
+      // Включая таймауты: развязываем completer и чистим плеер/WAV, чтобы
+      // TtsCoordinator.speak не завис навсегда (иначе study-watchdog гасил бы
+      // перевод до конца песни).
       debugPrint('✗ OfflineTtsEngine: play() failed: $e\n$st');
       _onPlaybackDone();
     }

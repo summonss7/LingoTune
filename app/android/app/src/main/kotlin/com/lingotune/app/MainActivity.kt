@@ -5,6 +5,7 @@ import io.flutter.embedding.engine.FlutterEngine
 
 class MainActivity : AudioServiceActivity() {
     private val phoneCallPlugin = PhoneCallPlugin()
+    private val becomingNoisyPlugin = BecomingNoisyPlugin()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -14,5 +15,10 @@ class MainActivity : AudioServiceActivity() {
         // дакинг медиапотока при звонке игнорирует willPauseWhenDucked, и
         // песня «тихо играет» вместо честной паузы.
         flutterEngine.plugins.add(phoneCallPlugin)
+        // Нативный детектор отключения наушников (EventChannel
+        // "lingotune/becoming_noisy"). audio_session держит свой receiver
+        // только при активном audio focus — в TTS-хендоффе режима обучения
+        // событие терялось, и песня продолжала играть в динамике.
+        flutterEngine.plugins.add(becomingNoisyPlugin)
     }
 }

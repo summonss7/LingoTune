@@ -1480,6 +1480,21 @@ class _PlayerScreenState extends State<PlayerScreen>
         }
       };
 
+      // Отключение наушников: в study mode ставим сессию на паузу тем же
+      // путём, что кнопка паузы на FAB (pauseSession с forCall=false — стоп
+      // TTS + drain kick-цикла + честная пауза плеера с обновлением
+      // уведомления). Возвращаем true → handler не делает свой pause()
+      // плеера (kick-цикл его тут же перебил бы).
+      widget.audioService.backgroundHandler!.onBecomingNoisy = () {
+        if (!mounted) return false;
+        if (_studyModeService.isActive && !_studyModeService.isUserPaused) {
+          debugPrint('🎧 PlayerScreen: pausing study (headphones unplugged)');
+          _studyModeService.pauseSession();
+          return true;
+        }
+        return false;
+      };
+
       // Прямой детектор звонка (TelephonyManager) — надёжнее audio-focus на
       // ROM с агрессивным системным дакингом (ColorOS/Realme, MIUI). Запрос
       // READ_PHONE_STATE выполняется асинхронно; при отказе грациозно
@@ -1884,6 +1899,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       handler.onSkipToPreviousRequested = null;
       handler.onPlaybackInterrupted = null;
       handler.onPlaybackResumed = null;
+      handler.onBecomingNoisy = null;
     }
 
     // Отписываемся от детектора звонка и глушим нативный слушатель — иначе
