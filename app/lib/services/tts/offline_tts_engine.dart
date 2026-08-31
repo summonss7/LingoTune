@@ -276,13 +276,22 @@ class OfflineTtsEngine extends TtsEngine {
       try {
         await _player.setVolume(playerVol.clamp(0.0, 1.0));
       } catch (_) {}
-      await _player.play().timeout(const Duration(seconds: 1), onTimeout: () {
-        throw TimeoutException('OfflineTtsEngine: play() hung');
-      });
+      // ВАЖНО: Future play() в just_audio завершается НЕ при старте
+      // воспроизведения, а когда оно ЗАКОНЧИЛОСЬ/поставлено на паузу. Поэтому
+      // таймаут здесь — норма («фраза ещё говорит»), а НЕ сбой: его нужно
+      // проглотить и НЕ трогать плеер, иначе речь обрывалась бы через секунду
+      // (регрессия v5.8.1). Завершение фразы приходит через playerStateStream
+      // → _onPlaybackDone; истинный завис ловит study-watchdog (streak-политика
+      // v5.8.1 — максимум одна потерянная строка, без отключения TTS).
+      try {
+        await _player.play().timeout(const Duration(seconds: 1));
+      } on TimeoutException {
+        // Ещё играет — так и должно быть.
+      }
     } catch (e, st) {
-      // Включая таймауты: развязываем completer и чистим плеер/WAV, чтобы
-      // TtsCoordinator.speak не завис навсегда (иначе study-watchdog гасил бы
-      // перевод до конца песни).
+      // Реальная ошибка загрузки/старта (в т.ч. таймаут setFilePath):
+      // развязываем completer и чистим плеер/WAV, чтобы TtsCoordinator.speak
+      // не завис навсегда.
       debugPrint('✗ OfflineTtsEngine: play() failed: $e\n$st');
       _onPlaybackDone();
     }

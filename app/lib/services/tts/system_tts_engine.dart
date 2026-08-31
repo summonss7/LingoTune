@@ -178,9 +178,12 @@ class SystemTtsEngine extends TtsEngine {
     _speakCompleter = completer;
     try {
       final result = await _tts.speak(text);
-      // flutter_tts возвращает 1 при успехе; при неудаче (0) ни completion-,
-      // ни error-handler не придёт → completer висел бы вечно.
-      if (result != 1 && result != '1') {
+      // flutter_tts возвращает 1 при успехе, 0 при неудаче; при неудаче ни
+      // completion-, ни error-handler не придёт → completer висел бы вечно.
+      // Явной неудачей считаем ТОЛЬКО 0/false: нестандартные значения некоторых
+      // ROM не должны завершать ожидание раньше конца фразы (речь бы
+      // обрывалась следующим stop).
+      if (result == 0 || result == '0' || result == false) {
         debugPrint('⚠ SystemTtsEngine: speak() returned $result (failure)');
         _speakCompleter = null;
         if (!completer.isCompleted) completer.complete();
