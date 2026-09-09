@@ -1950,6 +1950,8 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => 'Volume de l\'original';
+  String get studyModeTtsOffset => 'Décalage de la voix';
+  String get studyModeTtsOffsetHint => 'Moins — plus tôt, plus — plus tard (s). Mode superposition uniquement';
 
   @override
   String get studyModeOpenSettings => 'Paramètres du mode étude';

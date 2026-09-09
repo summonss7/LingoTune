@@ -308,9 +308,11 @@ void main() {
 - Speaks the translation (TTS) and plays the corresponding song segment per lyric line,
   in the order defined by `StudyModeOrder` (`translationFirst` / `originalFirst` / `overlay`).
 - Overlay mode runs continuously: TTS is triggered over the ducked song at line boundaries
-  according to `OverlayTiming` (`start` / `end` / `both`).
-- Per-song override: order, speech rate, speech volume, overlay timing and duck volume can be
-  overridden per song (`song_{id}_*` SharedPreferences keys).
+  according to `OverlayTiming` (`start` / `end` / `both`). `ttsOffset` (−5..+5 s, plus =
+  later, minus = earlier) shifts the boundary detection in the 150 ms position poll;
+  segment modes are sequential by construction and ignore it.
+- Per-song override: order, speech rate, speech volume, overlay timing, duck volume and
+  TTS offset can be overridden per song (`song_{id}_*` SharedPreferences keys).
 - Race-condition hardening via `_sessionToken` and `_speakToken` — invalidates stale
   fire-and-forget callbacks when the song changes or the session stops, preventing
   zombie-kick loops and overlapping audio.

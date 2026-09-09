@@ -618,6 +618,8 @@
       "studyModeOverlayAtEnd": "La sfârșitul rândului",
       "studyModeOverlayAtBoth": "Început și sfârșit",
       "studyModeDuckVolume": "Volumul originalului",
+      "studyModeTtsOffset": "Decalajul vocii",
+      "studyModeTtsOffsetHint": "Minus — mai devreme, plus — mai târziu (sec). Doar modul suprapus",
       "studyModeOpenSettings": "Setări mod studiu",
       "carDetectionTitle": "Detecție mașini",
       "carDetectionEnabled": "Activat",

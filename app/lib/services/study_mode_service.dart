@@ -56,15 +56,18 @@ class StudyModeService extends ChangeNotifier {
   double _speechRate = 0.5;
   double _speechVolume = 1.0;
   double _duckVolume = 0.3;
+  // Смещение момента озвучки относительно меток строк (сек; только overlay).
+  // Положительное — говорить позже (задержка), отрицательное — раньше.
+  double _ttsOffset = 0.0;
   OverlayTiming _overlayTiming = OverlayTiming.start;
   double _savedVolume = 1.0;
   bool _isDucked = false;
 
   // Per-song override: когда [_perSongOverride] == true, значения выше
-  // (order/speechRate/speechVolume/overlayTiming/duckVolume) относятся к
-  // конкретной песне [_perSongSongId], а сеттеры пишут в `song_{id}_*` ключи.
-  // Иначе работают глобальные настройки (`studyMode*`). enabledPersist
-  // остаётся глобальным.
+  // (order/speechRate/speechVolume/overlayTiming/duckVolume/ttsOffset)
+  // относятся к конкретной песне [_perSongSongId], а сеттеры пишут в
+  // `song_{id}_*` ключи. Иначе работают глобальные настройки (`studyMode*`).
+  // enabledPersist остаётся глобальным.
   bool _perSongOverride = false;
   String? _perSongSongId;
 
@@ -169,6 +172,9 @@ class StudyModeService extends ChangeNotifier {
   OverlayTiming get overlayTiming => _overlayTiming;
   double get duckVolume => _duckVolume;
 
+  /// Смещение озвучки перевода (сек, −5..+5): плюс — позже, минус — раньше.
+  double get ttsOffset => _ttsOffset;
+
   /// Активно ли per-song переопределение для текущей песни.
   bool get perSongOverride => _perSongOverride;
 
@@ -227,10 +233,11 @@ class StudyModeService extends ChangeNotifier {
     }
   }
 
-  /// Грузит 4 study-значения (order/speechRate/overlayTiming/duckVolume) либо
-  /// из глобальных ключей, либо из per-song. При perSong=true и отсутствии
-  /// per-song ключа поле НЕ сбрасывается — сохраняется текущее значение (что
-  /// позволяет наследовать глобальные значения при первом включении override).
+  /// Грузит study-значения (order/speechRate/speechVolume/overlayTiming/
+  /// duckVolume/ttsOffset) либо из глобальных ключей, либо из per-song. При
+  /// perSong=true и отсутствии per-song ключа поле НЕ сбрасывается —
+  /// сохраняется текущее значение (что позволяет наследовать глобальные
+  /// значения при первом включении override).
   Future<void> _loadValuesFromPrefs(SharedPreferences prefs,
       {required bool perSong, String? songId}) async {
     if (perSong && songId != null) {
@@ -250,6 +257,8 @@ class StudyModeService extends ChangeNotifier {
       }
       final dv = prefs.getDouble('song_${songId}_duckVolume');
       if (dv != null) _duckVolume = dv.clamp(0.0, 1.0);
+      final to = prefs.getDouble('song_${songId}_ttsOffset');
+      if (to != null) _ttsOffset = to.clamp(-5.0, 5.0);
     } else {
       final orderIdx = prefs.getInt('studyModeOrder') ?? 0;
       _order = StudyModeOrder
@@ -261,6 +270,8 @@ class StudyModeService extends ChangeNotifier {
       _overlayTiming =
           OverlayTiming.values[ti.clamp(0, OverlayTiming.values.length - 1)];
       _duckVolume = prefs.getDouble('studyModeDuckVolume') ?? 0.3;
+      _ttsOffset =
+          (prefs.getDouble('studyModeTtsOffset') ?? 0.0).clamp(-5.0, 5.0);
     }
   }
 
@@ -319,6 +330,9 @@ class StudyModeService extends ChangeNotifier {
         }
         if (prefs.getDouble('song_${id}_duckVolume') == null) {
           await prefs.setDouble('song_${id}_duckVolume', _duckVolume);
+        }
+        if (prefs.getDouble('song_${id}_ttsOffset') == null) {
+          await prefs.setDouble('song_${id}_ttsOffset', _ttsOffset);
         }
       }
       // Перезагрузить значения (per-song если включили, global если выключили).
@@ -399,6 +413,26 @@ class StudyModeService extends ChangeNotifier {
         await prefs.setDouble('song_${_perSongSongId!}_duckVolume', _duckVolume);
       } else {
         await prefs.setDouble('studyModeDuckVolume', _duckVolume);
+      }
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  /// Смещение момента озвучки перевода относительно меток строк (сек,
+  /// −5..+5). Плюс — говорить позже (задержка), минус — раньше (опережение).
+  /// Действует только в режиме overlay: сдвигает определение границы строки
+  /// в опросе позиции (точность — интервал опроса 150 мс). Сегментные режимы
+  /// (сначала перевод/сначала оригинал) последовательны по построению и
+  /// смещение не используют.
+  Future<void> setTtsOffset(double offset) async {
+    _ttsOffset = offset.clamp(-5.0, 5.0);
+    debugPrint('✓ StudyModeService: tts offset set to $_ttsOffset s');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_usePerSong) {
+        await prefs.setDouble('song_${_perSongSongId!}_ttsOffset', _ttsOffset);
+      } else {
+        await prefs.setDouble('studyModeTtsOffset', _ttsOffset);
       }
     } catch (_) {}
     notifyListeners();
@@ -790,8 +824,12 @@ class StudyModeService extends ChangeNotifier {
       return;
     }
 
-    int curLine =
-        _findLineIndexForPosition(_audio.position.inMilliseconds / 1000.0);
+    // Граница строки для триггера речи ищется по смещённой позиции:
+    // pos − offset (offset > 0 = задержка → граница «наступает» позже,
+    // offset < 0 = опережение → раньше). _ttsOffset действует только здесь
+    // (режим overlay); сегментные режимы последовательны по построению.
+    int curLine = _findLineIndexForPosition(
+        _audio.position.inMilliseconds / 1000.0 - _ttsOffset);
     if (curLine < 0) curLine = 0;
     _currentIndex = curLine;
     _phase = StudyPhase.playingSegment;
@@ -828,7 +866,7 @@ class StudyModeService extends ChangeNotifier {
         return;
       }
       final posSec = _audio.position.inMilliseconds / 1000.0;
-      final newLine = _findLineIndexForPosition(posSec);
+      final newLine = _findLineIndexForPosition(posSec - _ttsOffset);
       if (newLine == lastLine || newLine < 0) return;
       debugPrint(
           '↔ StudyMode continuous: line $lastLine -> $newLine @ ${posSec}s');

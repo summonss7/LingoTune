@@ -618,6 +618,8 @@
       "studyModeOverlayAtEnd": "À la fin de la ligne",
       "studyModeOverlayAtBoth": "Début et fin",
       "studyModeDuckVolume": "Volume de l'original",
+      "studyModeTtsOffset": "Décalage de la voix",
+      "studyModeTtsOffsetHint": "Moins — plus tôt, plus — plus tard (s). Mode superposition uniquement",
       "studyModeOpenSettings": "Paramètres du mode étude",
       "carDetectionTitle": "Détection de voitures",
       "carDetectionEnabled": "Activé",

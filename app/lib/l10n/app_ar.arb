@@ -618,6 +618,8 @@
       "studyModeOverlayAtEnd": "في نهاية السطر",
       "studyModeOverlayAtBoth": "البداية والنهاية",
       "studyModeDuckVolume": "مستوى صوت الأصل",
+      "studyModeTtsOffset": "إزاحة توقيت الصوت",
+      "studyModeTtsOffsetHint": "سالب — أبكر، موجب — متأخر (ث). وضع التراكب فقط",
       "studyModeOpenSettings": "إعدادات وضع الدراسة",
       "carDetectionTitle": "كشف السيارات",
       "carDetectionEnabled": "مفعّل",

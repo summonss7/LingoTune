@@ -1950,6 +1950,8 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => '原声音量';
+  String get studyModeTtsOffset => '语音时序偏移';
+  String get studyModeTtsOffsetHint => '负值 — 提前，正值 — 延后（秒）。仅限叠加模式';
 
   @override
   String get studyModeOpenSettings => '学习模式设置';

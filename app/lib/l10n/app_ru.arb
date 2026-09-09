@@ -618,6 +618,8 @@
       "studyModeOverlayAtEnd": "В конце строки",
       "studyModeOverlayAtBoth": "В начале и в конце",
       "studyModeDuckVolume": "Громкость оригинала",
+      "studyModeTtsOffset": "Смещение озвучки",
+      "studyModeTtsOffsetHint": "Минус — говорить раньше, плюс — позже (сек). Только режим «Поверх»",
       "studyModeOpenSettings": "Настройки режима изучения",
       "carDetectionTitle": "Детекция машин",
       "carDetectionEnabled": "Включено",

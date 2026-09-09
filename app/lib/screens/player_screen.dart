@@ -723,6 +723,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     double currentVolume = _studyModeService.speechVolume;
     OverlayTiming currentTiming = _studyModeService.overlayTiming;
     double currentDuck = _studyModeService.duckVolume;
+    double currentTtsOffset = _studyModeService.ttsOffset;
     double currentSpeed = widget.audioService.playbackSpeed;
     bool perSong = _studyModeService.perSongOverride;
     final songTitle = _currentSong.title;
@@ -764,6 +765,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                           currentVolume = _studyModeService.speechVolume;
                           currentTiming = _studyModeService.overlayTiming;
                           currentDuck = _studyModeService.duckVolume;
+                          currentTtsOffset = _studyModeService.ttsOffset;
                           currentSpeed = widget.audioService.playbackSpeed;
                         });
                       },
@@ -846,6 +848,28 @@ class _PlayerScreenState extends State<PlayerScreen>
                           setState(() => currentDuck = v);
                           _studyModeService.setDuckVolume(v);
                         },
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                          '${l10n.studyModeTtsOffset}: ${currentTtsOffset >= 0 ? '+' : ''}${currentTtsOffset.toStringAsFixed(1)}',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Slider(
+                        value: currentTtsOffset.clamp(-5.0, 5.0),
+                        min: -5.0,
+                        max: 5.0,
+                        divisions: 100,
+                        label: '${currentTtsOffset.toStringAsFixed(1)}',
+                        onChanged: (v) {
+                          setState(() => currentTtsOffset = v);
+                          _studyModeService.setTtsOffset(v);
+                        },
+                      ),
+                      Text(
+                        l10n.studyModeTtsOffsetHint,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                     const Divider(),

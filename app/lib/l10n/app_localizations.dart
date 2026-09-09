@@ -3683,6 +3683,18 @@ abstract class AppLocalizations {
   /// **'Original volume'**
   String get studyModeDuckVolume;
 
+  /// No description provided for @studyModeTtsOffset.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech timing offset'**
+  String get studyModeTtsOffset;
+
+  /// No description provided for @studyModeTtsOffsetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Negative — speak earlier, positive — later (sec). Overlay mode only'**
+  String get studyModeTtsOffsetHint;
+
   /// No description provided for @studyModeOpenSettings.
   ///
   /// In en, this message translates to:

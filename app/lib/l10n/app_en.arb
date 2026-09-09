@@ -618,6 +618,8 @@
       "studyModeOverlayAtEnd": "At line end",
       "studyModeOverlayAtBoth": "Start and end",
       "studyModeDuckVolume": "Original volume",
+      "studyModeTtsOffset": "Speech timing offset",
+      "studyModeTtsOffsetHint": "Negative — speak earlier, positive — later (sec). Overlay mode only",
       "studyModeOpenSettings": "Study mode settings",
       "carDetectionTitle": "Car Detection",
       "carDetectionEnabled": "Enabled",

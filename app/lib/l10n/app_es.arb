@@ -618,6 +618,8 @@
       "studyModeOverlayAtEnd": "Al final de la línea",
       "studyModeOverlayAtBoth": "Inicio y final",
       "studyModeDuckVolume": "Volumen del original",
+      "studyModeTtsOffset": "Desfase de la locución",
+      "studyModeTtsOffsetHint": "Menos — antes, más — después (s). Solo en modo superpuesto",
       "studyModeOpenSettings": "Ajustes del modo estudio",
       "carDetectionTitle": "Detección de coches",
       "carDetectionEnabled": "Activado",

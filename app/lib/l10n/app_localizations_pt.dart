@@ -1950,6 +1950,8 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => 'Volume do original';
+  String get studyModeTtsOffset => 'Ajuste de tempo da fala';
+  String get studyModeTtsOffsetHint => 'Menos — antes, mais — depois (s). Somente no modo sobreposição';
 
   @override
   String get studyModeOpenSettings => 'Configurações do modo estudo';

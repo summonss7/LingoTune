@@ -1950,6 +1950,8 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => 'Volumul originalului';
+  String get studyModeTtsOffset => 'Decalajul vocii';
+  String get studyModeTtsOffsetHint => 'Minus — mai devreme, plus — mai târziu (sec). Doar modul suprapus';
 
   @override
   String get studyModeOpenSettings => 'Setări mod studiu';

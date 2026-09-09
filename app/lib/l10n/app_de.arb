@@ -618,6 +618,8 @@
       "studyModeOverlayAtEnd": "Am Zeilenende",
       "studyModeOverlayAtBoth": "Anfang und Ende",
       "studyModeDuckVolume": "Lautstärke Original",
+      "studyModeTtsOffset": "Sprachversatz",
+      "studyModeTtsOffsetHint": "Minus — früher, Plus — später (Sek.). Nur im Overlay-Modus",
       "studyModeOpenSettings": "Lernmodus-Einstellungen",
       "carDetectionTitle": "Autoerkennung",
       "carDetectionEnabled": "Aktiviert",

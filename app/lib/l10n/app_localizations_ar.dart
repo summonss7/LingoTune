@@ -1950,6 +1950,8 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => 'مستوى صوت الأصل';
+  String get studyModeTtsOffset => 'إزاحة توقيت الصوت';
+  String get studyModeTtsOffsetHint => 'سالب — أبكر، موجب — متأخر (ث). وضع التراكب فقط';
 
   @override
   String get studyModeOpenSettings => 'إعدادات وضع الدراسة';

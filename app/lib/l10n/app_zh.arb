@@ -618,6 +618,8 @@
       "studyModeOverlayAtEnd": "行尾",
       "studyModeOverlayAtBoth": "行首和行尾",
       "studyModeDuckVolume": "原声音量",
+      "studyModeTtsOffset": "语音时序偏移",
+      "studyModeTtsOffsetHint": "负值 — 提前，正值 — 延后（秒）。仅限叠加模式",
       "studyModeOpenSettings": "学习模式设置",
       "carDetectionTitle": "汽车检测",
       "carDetectionEnabled": "已启用",

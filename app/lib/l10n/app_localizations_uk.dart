@@ -1950,6 +1950,8 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => 'Гучність оригіналу';
+  String get studyModeTtsOffset => 'Зсув озвучення';
+  String get studyModeTtsOffsetHint => 'Мінус — раніше, плюс — пізніше (с). Лише режим «Поверх»';
 
   @override
   String get studyModeOpenSettings => 'Налаштування режиму вивчення';

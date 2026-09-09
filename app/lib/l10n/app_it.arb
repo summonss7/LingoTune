@@ -618,6 +618,8 @@
       "studyModeOverlayAtEnd": "A fine riga",
       "studyModeOverlayAtBoth": "Inizio e fine",
       "studyModeDuckVolume": "Volume originale",
+      "studyModeTtsOffset": "Scostamento della voce",
+      "studyModeTtsOffsetHint": "Meno — prima, più — dopo (sec). Solo modalità sovrapposta",
       "studyModeOpenSettings": "Impostazioni modalità studio",
       "carDetectionTitle": "Rilevamento auto",
       "carDetectionEnabled": "Attivo",
