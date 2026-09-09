@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.2** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.3** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).

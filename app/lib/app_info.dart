@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.8.2';
+  static const String version = '5.8.3';
 
-  static const String versionCode = '230';
+  static const String versionCode = '231';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -49,6 +49,7 @@ class AppInfo {
     '📐 Highlight timing correction for VBR MP3 (wall-clock interpolation)',
     '❤ Favorites playlist + play-favorites-only loop mode',
     '🎨 Custom line colors (original & translation): presets + per-type palette',
+    '⏱️ TTS translation timing offset (speak earlier/later than the lyric timestamp)',
   ];
 
   static const List<String> supportedLanguages = [
