@@ -1,5 +1,10 @@
 # Архитектура LingoTune
 
+> Актуально для версии **5.8.2**. Авторитетный источник по конвенциям и
+> поведению сервисов — [`AGENTS.md`](../AGENTS.md) (обновляется каждым релизом);
+> этот документ даёт структурный обзор. История изменений —
+> [`CHANGELOG.md`](CHANGELOG.md).
+
 ## Общая архитектура
 
 LingoTune - это гибридный проект, состоящий из двух основных частей:
@@ -54,7 +59,20 @@ app/lib/
 ├── services/                    # Сервисы (бизнес-логика)
 │   ├── audio_service.dart      # Аудио плеер
 │   ├── background_audio_handler.dart  # Фоновое воспроизведение
+│   ├── audio_position_corrector.dart  # Коррекция дрейфа позиции (VBR MP3)
 │   ├── phone_call_service.dart # Нативный детектор звонка (TelephonyManager → EventChannel)
+│   ├── becoming_noisy_service.dart # Нативный детектор отключения наушников
+│   ├── study_mode_service.dart  # Режим изучения (TTS + воспроизведение)
+│   ├── tts_coordinator.dart    # Очередь TTS с приоритетами (study > alert)
+│   ├── tts/                    # Полиморфные TTS-движки
+│   │   ├── tts_engine.dart     #   интерфейс TtsEngine
+│   │   ├── system_tts_engine.dart    #   flutter_tts (системный)
+│   │   ├── offline_tts_engine.dart   #   sherpa_onnx VITS (офлайн, ~63 МБ)
+│   │   ├── offline_tts_isolate.dart  #   синтез в отдельном изоляте
+│   │   ├── tts_model_manager.dart    #   загрузка голосовых моделей
+│   │   └── tts_catalog.dart    #   каталог доступных голосов
+│   ├── car_detection_service.dart # Детекция машин (FFT по микрофону)
+│   ├── car_alert_service.dart  # Предупреждение о транспорте (звук/TTS)
 │   ├── database_service.dart    # База данных SQLite
 │   ├── lyrics_service.dart     # Работа с LRC файлами
 │   ├── translation_service.dart # Управление переводами
@@ -69,9 +87,7 @@ app/lib/
 │   ├── playlist_service.dart   # Управление плейлистами
 │   ├── cover_art_service.dart   # Обложки альбомов
 │   ├── folder_config_service.dart # Конфигурация папок
-│   ├── settings_export_service.dart # Экспорт настроек
-│   ├── study_mode_service.dart  # Режим изучения (TTS + воспроизведение)
-│   └── export_import_service.dart # Экспорт/импорт
+│   └── settings_export_service.dart # Экспорт настроек
 │
 ├── screens/                     # Экраны приложения
 │   ├── main.dart               # Главный экран
@@ -201,11 +217,16 @@ class Playlist {
 - Воспроизведение/пауза/стоп
 - Перемотка
 - Переключение песен
-- Режимы повтора (off, all, one, allPlaylists, favorites)
+- Режимы повтора (off, all, one, allPlaylists; `favorites` — только для
+  обратной совместимости настроек, в цикле кнопки его нет — избранное
+  слушается открытием плейлиста favorites)
 - Перемешивание (shuffle)
 - Управление скоростью
 - Фоновое воспроизведение с уведомлением
 - `currentSongIdNotifier` — ValueNotifier для отслеживания текущей песни
+- **Zombie-recovery:** `ensurePlaybackAdvancing` — после TTS-хендоффа аудиосессии
+  или звонка just_audio может «думать», что играет, при стоящей позиции;
+  корректор реактивирует сессию, ретраит `play()` и проверяет реальный ход позиции
 
 **Зависимости:** just_audio, audio_service, audio_session
 
@@ -213,13 +234,20 @@ class Playlist {
 **Ответственность:** Фоновое воспроизведение (notification-контролы), интеграция с `audio_service`
 
 - `play()`/`pause()`/`seek()`/`skipToNext()`/`skipToPrevious()` через `BaseAudioHandler`
-- Цикл loop-режимов (`off → all → one → allPlaylists → favorites → off`)
+- Цикл loop-режимов (`off → all → one → allPlaylists → off`; `favorites` из цикла
+  убран в v5.8.0 — избранное слушается через одноимённый плейлист)
 - Колбэки для делегирования next/prev на `PlayerScreen` (`onSkipToNextRequested`/`onSkipToPreviousRequested`)
 - **Пауза при прерывании (звонок/будильник/другой плеер):**
   - `interruptionEventStream` (audio_session, флаг `androidWillPauseWhenDucked: true`) — базовый путь.
   - Прямой детектор звонка через `PhoneCallService` (см. ниже) — надёжный путь на ROM с агрессивным системным дакингом (ColorOS/Realme UI, MIUI/HyperOS).
   - Единый путь паузы/resume через `_handleCallPause()`/`_handleCallResume()` с **дедупликацией** по флагу `_pausedForCall`: двойное срабатывание (phone-state + audio-focus) безопасно.
   - Study-handoff: `onPlaybackInterrupted` (возвращает `bool` — взял ли study паузу на себя) / `onPlaybackResumed` — корректно стопают TTS + дренируют kick-цикл study mode.
+- **Пауза при отключении наушников (v5.8.1):** нативный `BecomingNoisyService`
+  (EventChannel `lingotune/becoming_noisy`) держит receiver независимо от
+  audio focus, который приложение регулярно теряет (TTS-хендофф, zombie-recovery);
+  подписка audio_session остаётся дублирующим fallback. `becomingNoisy`
+  игнорируется при активной паузе на звонок (ROM-ы шлют ложные события при
+  смене аудио-маршрута в звонке).
 
 **Зависимости:** just_audio, audio_service, audio_session
 
@@ -235,20 +263,60 @@ class Playlist {
 
 **Зависимости:** нативный Kotlin `PhoneCallPlugin.kt` (TelephonyManager), permission_handler
 
-
+#### StudyModeService
 **Ответственность:** Режим изучения — озвучивание перевода (TTS) и воспроизведение песни по строкам
 
 - Три режима порядка (`StudyModeOrder`):
   - `translationFirst` — сначала TTS перевода, затем фрагмент оригинала (песня на паузе во время речи)
   - `originalFirst` — сначала фрагмент оригинала, затем TTS перевода (песня на паузе во время речи)
-  - `overlay` — песня играет **непрерывно без пауз**, перевод говорит поверх (ducking)
+  - `overlay` — песня играет **непрерывно без пауз**, перевод говорит поверх (ducking); триггер речи — опрос позиции плеера каждые 150 мс и сравнение с метками строк
 - В режиме `overlay`: выбор момента речи (`OverlayTiming`: start / end / both) и регулируемая громкость оригинала (`duckVolume`, 0–100%)
-- Скорость речи TTS (`speechRate`) — пресеты, дефолт 0.5
-- Надёжность: watchdog-таймаут TTS, ретрай `play()` (реактивация аудиосессии после паузы), fallback по завершению песни
+- Скорость (`speechRate`) и громкость (`speechVolume`) речи TTS
+- **Настройки на уровне песни:** order / rate / volume / overlay timing / duck
+  можно переопределить для каждой песни (`song_{id}_*` в SharedPreferences,
+  при включении переопределения наследуют глобальные значения)
+- Надёжность: watchdog-таймаут TTS (отключает речь только после 2 зависаний
+  подряд — `_ttsFailStreak`), session/speak-токены против гонок при смене
+  песни, zombie-kick реактивация плеера, completion-детектор самой песни
+  (продвижение в study блокирует `onSongComplete` плеера)
+- `resumeSession()` (после звонка) сбрасывает флаг запрета речи — единичный
+  сбой больше не глушит перевод до конца песни
 - Старт с текущей позиции; пауза/возобновление сессии через FAB
-- Настройки сохраняются в `SharedPreferences`: `studyModeOrder`, `studyModeOverlayTiming`, `studyModeSpeechRate`, `studyModeDuckVolume`
+- Настройки сохраняются в `SharedPreferences`: `studyModeOrder`, `studyModeOverlayTiming`, `studyModeSpeechRate`, `studyModeSpeechVolume`, `studyModeDuckVolume` + пер-песенные `song_{id}_*`
 
-**Зависимости:** flutter_tts, just_audio (через AudioService)
+**Зависимости:** TtsCoordinator (речь), just_audio (через AudioService)
+
+#### TtsCoordinator + services/tts/
+**Ответственность:** Единая точка озвучки с очередью приоритетов и полиморфным движком
+
+- Синглтон `TtsCoordinator.instance`; движок выбирается настройкой `ttsSource`:
+  - `SystemTtsEngine` — системный TTS (flutter_tts), виден в системном пикере движков
+  - `OfflineTtsEngine` — офлайн-нейронный VITS через **sherpa_onnx** (модель ~63 МБ,
+    скачивается по требованию `TtsModelManager`, синтез — в отдельном изоляте
+    `OfflineTtsIsolate`, UI не фризится)
+- **Приоритетная очередь:** перевод режима изучения (`TtsPriority.study`) всегда
+  доминирует над голосовым предупреждением о транспорте (`TtsPriority.alert`);
+  alert, выпавший во время перевода, подавляется
+- `_sourceLock` сериализует смену движка/языка — защита от гонки холодного
+  старта (два движка = две модели по 63 МБ)
+- `dispose()` освобождает нативные ресурсы движка (вызывается в `MainScreen.dispose`,
+  иначе ~63 МБ утечки на hot-restart в разработке)
+
+**Зависимости:** flutter_tts, sherpa_onnx, audio_session
+
+#### CarDetectionService + CarAlertService
+**Ответственность:** Безопасность бегуна — детекция приближающегося транспорта по звуку
+
+- `CarDetectionService` — on-device FFT-анализ микрофона (`utils/fft.dart`, plugin
+  `record`, PCM 16 кГц), детекция приближающегося автомобиля
+- `CarCalibrationScreen` — запись собственных образцов шума для
+  `CalibrationProfile` (улучшает точность на конкретном устройстве/среде)
+- `CarAlertService` — предупреждение звуком (`assets/sounds/car_alert.wav`)
+  и/или голосом через `TtsCoordinator` с `TtsPriority.alert` (не перебивает перевод)
+- Микрофон опционален (`<uses-feature android:required="false"/>`) — без него
+  фича просто недоступна
+
+**Зависимости:** record, permission_handler (микрофон)
 
 #### DatabaseService
 **Ответственность:** Управление базой данных SQLite
@@ -266,7 +334,7 @@ class Playlist {
 - `song_translations` - переводы песен
 - `playlist_songs` - песни в плейлистах (junction table, в т.ч. для избранного)
 
-> **Системный плейлист `favorites`** создаётся автоматически при первом запуске (`isSystem=1`). Используется как единая глобальная корзина избранного. Добавление/удаление песни = строка в `playlist_songs` с `playlistId='favorites'`. Режим воспроизведения «только избранное» — `LoopMode.favorites` (см. [PLAN_v5.7.0_favorites.md](PLAN_v5.7.0_favorites.md)).
+> **Системный плейлист `favorites`** создаётся автоматически при первом запуске (`isSystem=1`). Используется как единая глобальная корзина избранного. Добавление/удаление песни = строка в `playlist_songs` с `playlistId='favorites'`. Слушается открытием плейлиста favorites (ведёт себя как `LoopMode.all`); кнопка-сердечко только добавляет/убирает песню из корзины и не меняет режим воспроизведения (см. [archive/PLAN_v5.7.0_favorites.md](archive/PLAN_v5.7.0_favorites.md)).
 
 #### LyricsService
 **Ответственность:** Работа с LRC файлами
@@ -353,15 +421,17 @@ scripts/
 ├── create_lyrics_from_files.py  # Обработка файлов
 ├── process_excel_songs.py        # Обработка Excel файлов
 ├── generate_lesson_template.py  # Генерация шаблонов уроков
-├── generate_lesson01.py         # Генерация уроков
-├── arabic_lrc_generator.py      # Генератор арабского текста
-├── arabic_songs_generator.py    # Генератор арабских песен
+├── generate_translation_audio.py # Локальный TTS-пайплайн перевода песен (edge-tts)
+├── batch_generate.py            # Пакетная генерация караоке-версий
+├── word_align.py                # Выравнивание TTS по словам
+├── voices_map.py                # Маппинг языков на голоса edge-tts
+├── demucs_service.py            # Разделение стемов (караоке-режим)
 ├── update_localization.py       # Обновление локализации
-├── create_uk_arb.py            # Создание локализации
-├── icon_generator.py           # Генерация иконок
 ├── check_files.py              # Проверка файлов
 └── auto_sync_tool.py           # Автоматическая синхронизация
 ```
+
+Описание пайплайна контента — [`CONTENT_PIPELINE.md`](CONTENT_PIPELINE.md).
 
 ### Основной Python генератор (deepseek_generator_v3.py)
 
@@ -558,4 +628,6 @@ DEEPSEEK_API_KEY=your_api_key_here
 Дополнительная информация:
 - [Настройка окружения](SETUP.md)
 - [Форматы данных](DATA_FORMATS.md)
-- [Руководство по API](API_GUIDE.md)
+- [Пайплайн контента](CONTENT_PIPELINE.md)
+- [История версий](CHANGELOG.md)
+- [AGENTS.md](../AGENTS.md) — конвенции и поведение сервисов (актуализируется каждым релизом)

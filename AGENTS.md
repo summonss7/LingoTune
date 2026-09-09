@@ -3,7 +3,23 @@
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
 **Current version: 5.8.2** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
-`app/android/app/build.gradle`). Release history: `CHANGELOG_v*.dart` in the project root.
+`app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
+(consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
+the release ritual).
+
+## Documentation Map
+
+- `README.md` (root) — project overview, quick start, doc index (Russian)
+- `AGENTS.md` (this file) — authoritative dev guide; update every release
+- `docs/ARCHITECTURE.md` — system architecture (Russian)
+- `docs/CONTENT_PIPELINE.md` — content pipeline: text → DeepSeek → LRC/JSON/ZIP →
+  SUNO → import, plus the local TTS translation-audio pipeline (Russian)
+- `docs/CHANGELOG.md` — full version history v4.6.15 → current
+- `docs/SETUP.md` — Windows environment setup
+- `docs/DATA_FORMATS.md` — LRC / JSON / ZIP / audio format specs
+- `docs/TROUBLESHOOTING.md` — FAQ + known Android OEM/TTS quirks
+- `docs/plans/` — active (not yet implemented) plans
+- `docs/archive/` — completed plans and superseded docs; do not update, reference only
 
 ## Project Structure
 

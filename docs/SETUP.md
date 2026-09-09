@@ -481,4 +481,6 @@ flutter build apk --release
 Дополнительная информация:
 - [Архитектура](ARCHITECTURE.md)
 - [Форматы данных](DATA_FORMATS.md)
-- [Руководство по API](API_GUIDE.md)
+- [Пайплайн контента](CONTENT_PIPELINE.md)
+- [История версий](CHANGELOG.md)
+- [AGENTS.md](../AGENTS.md) — конвенции разработки

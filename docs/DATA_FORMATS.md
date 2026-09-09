@@ -454,5 +454,5 @@ python scripts/process_excel_songs.py \
 
 Дополнительная информация:
 - [Архитектура](ARCHITECTURE.md)
-- [Руководство по API](API_GUIDE.md)
-- [Создание уроков](LESSON_CREATION.md)
+- [Пайплайн контента](CONTENT_PIPELINE.md)
+- [AGENTS.md](../AGENTS.md) — конвенции разработки
