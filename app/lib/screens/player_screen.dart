@@ -250,8 +250,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (sp == null) return;
     final source =
         sp.ttsSource == 'system' ? TtsSource.system : TtsSource.offline;
-    final lang =
-        widget.translationService.currentTranslation?.language ?? 'ru';
+    final lang = widget.translationService.currentTranslation?.language ?? 'ru';
     try {
       await _ttsCoordinator.setTtsSource(source, languageCode: lang);
       // После смены движка — синхронизируем доступность языка в study.
@@ -487,8 +486,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         _studyEvt('completion WATCHDOG: song is loading, no-op');
         return;
       }
-      final completed =
-          player.processingState == ProcessingState.completed;
+      final completed = player.processingState == ProcessingState.completed;
       final stuck = !player.playing;
       if (completed || stuck) {
         _studyEvt('completion WATCHDOG FIRED — study did not advance, '
@@ -522,7 +520,8 @@ class _PlayerScreenState extends State<PlayerScreen>
       _studyModeService.setSpeakDisabled(false);
       return true;
     }
-    _studyEvt('ensureTts: lang $lang NOT available (engine=${_studyModeService.activeEngine})');
+    _studyEvt(
+        'ensureTts: lang $lang NOT available (engine=${_studyModeService.activeEngine})');
     if (fromUser && mounted) {
       final cont = await _showTtsUnavailableDialog();
       if (!cont) return false;
@@ -904,8 +903,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     const Divider(),
                     Text(
                         '${l10n.playbackSpeed}: ${currentSpeed.toStringAsFixed(2)}x',
-                        style:
-                            const TextStyle(fontWeight: FontWeight.bold)),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                     Slider(
                       value: currentSpeed,
                       min: 0.5,
@@ -1025,7 +1023,8 @@ class _PlayerScreenState extends State<PlayerScreen>
       }
       if (songsByPlaylist.isEmpty) return;
 
-      final nonEmpty = songsByPlaylist.keys.toList(); // порядок createdAt сохранён
+      final nonEmpty =
+          songsByPlaylist.keys.toList(); // порядок createdAt сохранён
 
       // Идентифицируем текущий плейлист по первой песне активного списка.
       String? currentId;
@@ -1462,8 +1461,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           //    сигнала wasAudible ложно = false в kick-фазе → после звонка study
           //    не возобновлялся (регрессия v5.7.3).
           // Если ВСЁ false (часы простоя) → тишина → resume не нужен.
-          _studyWasAudibleBeforeCall =
-              _studyModeService.isSpeaking ||
+          _studyWasAudibleBeforeCall = _studyModeService.isSpeaking ||
               widget.audioService.player.playing ||
               (widget.audioService.backgroundHandler?.wasPlayingRecently ??
                   false);
@@ -1773,8 +1771,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             speed: widget.audioService.playbackSpeed,
           );
         }
-        final positionSec =
-            posForHighlight.inMilliseconds.toDouble() / 1000;
+        final positionSec = posForHighlight.inMilliseconds.toDouble() / 1000;
         widget.lyricsService.updatePosition(positionSec);
 
         final currentLineIndex = widget.lyricsService.currentIndex;
@@ -2074,12 +2071,9 @@ class _PlayerScreenState extends State<PlayerScreen>
               ),
             ),
           SizedBox(
-              width: widget.translationService.translations.length > 1
-                  ? 6
-                  : 0),
+              width: widget.translationService.translations.length > 1 ? 6 : 0),
           DropdownButton<String>(
-            value:
-                widget.translationService.currentLanguageIndex.toString(),
+            value: widget.translationService.currentLanguageIndex.toString(),
             icon: const Icon(Icons.arrow_drop_down, size: 20),
             underline: const SizedBox(),
             style: TextStyle(
@@ -2100,8 +2094,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                   final l10n = AppLocalizations.of(context)!;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(l10n
-                          .languageSelected(translation.languageName)),
+                      content:
+                          Text(l10n.languageSelected(translation.languageName)),
                       duration: const Duration(seconds: 2),
                     ),
                   );
@@ -2114,28 +2108,26 @@ class _PlayerScreenState extends State<PlayerScreen>
                 .entries
                 .map((entry) {
               final translation = entry.value;
-              final isSelected = entry.key ==
-                  widget.translationService.currentLanguageIndex;
+              final isSelected =
+                  entry.key == widget.translationService.currentLanguageIndex;
               final shortName = _getShortLanguageName(
                   translation.languageName, translation.language);
-              final emoji = _getLanguageEmoji(
-                  translation.language, translation.type);
+              final emoji =
+                  _getLanguageEmoji(translation.language, translation.type);
               return DropdownMenuItem<String>(
                 value: entry.key.toString(),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(emoji,
-                        style:
-                            TextStyle(fontSize: isLandscape ? 14 : 16)),
+                        style: TextStyle(fontSize: isLandscape ? 14 : 16)),
                     const SizedBox(width: 6),
                     Text(
                       shortName,
                       style: TextStyle(
                         fontSize: isLandscape ? 12 : 14,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                         color: isSelected
                             ? Theme.of(context).colorScheme.primary
                             : null,
@@ -2272,7 +2264,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     const Icon(Icons.speed, size: 20),
                     const SizedBox(width: 12),
                     Text(
-                      '${l10n.playbackSpeed}: ${_playbackSpeed == _playbackSpeed.roundToDouble() ? _playbackSpeed.toStringAsFixed(1) : _playbackSpeed}x'),
+                        '${l10n.playbackSpeed}: ${_playbackSpeed == _playbackSpeed.roundToDouble() ? _playbackSpeed.toStringAsFixed(1) : _playbackSpeed}x'),
                   ],
                 ),
               ),
@@ -2521,7 +2513,8 @@ class _PlayerScreenState extends State<PlayerScreen>
 
         // Свотч одного цвета. Если выбран (currentValue == color.value) — рамка
         // и галочка. color == null означает «Авто» (цвет темы).
-        Widget swatch(Color? color, int currentValue, ValueChanged<int?> onSelect) {
+        Widget swatch(
+            Color? color, int currentValue, ValueChanged<int?> onSelect) {
           final isAuto = color == null;
           final selected = isAuto
               ? currentValue == LyricColorPalette.autoValue
@@ -2574,8 +2567,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                 child: Row(
                   children: [
                     swatch(null, currentValue, onSelect),
-                    ...LyricColorPalette.swatches.map(
-                        (s) => swatch(s.color, currentValue, onSelect)),
+                    ...LyricColorPalette.swatches
+                        .map((s) => swatch(s.color, currentValue, onSelect)),
                   ],
                 ),
               ),
@@ -2619,12 +2612,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                   LyricColorPalette.colorFromValue(transVal));
             }
 
-            final origColor = useCustom
-                ? LyricColorPalette.colorFromValue(origVal)
-                : null;
-            final transColor = useCustom
-                ? LyricColorPalette.colorFromValue(transVal)
-                : null;
+            final origColor =
+                useCustom ? LyricColorPalette.colorFromValue(origVal) : null;
+            final transColor =
+                useCustom ? LyricColorPalette.colorFromValue(transVal) : null;
 
             return AlertDialog(
               title: Text(l10n.lyricColorsTitle),
@@ -2662,8 +2653,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                         }).toList(),
                       ),
                       swatchRow(l10n.lyricColorsOriginal, origVal, setOriginal),
-                      swatchRow(
-                          l10n.lyricColorsTranslation, transVal, setTranslation),
+                      swatchRow(l10n.lyricColorsTranslation, transVal,
+                          setTranslation),
                       // Живой preview: как будет выглядеть строка.
                       Padding(
                         padding: const EdgeInsets.only(top: 16, bottom: 6),
@@ -2676,8 +2667,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(
-                          color:
-                              Theme.of(dialogContext).colorScheme.primaryContainer,
+                          color: Theme.of(dialogContext)
+                              .colorScheme
+                              .primaryContainer,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Column(
@@ -2689,9 +2681,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                 fontSize: 19,
                                 fontWeight: FontWeight.bold,
                                 color: origColor ??
-                                    Theme.of(dialogContext)
-                                        .colorScheme
-                                        .primary,
+                                    Theme.of(dialogContext).colorScheme.primary,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -2755,8 +2745,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             ),
             onPressed: _toggleStudyMode,
             onLongPress: _openStudyModeSettings,
-            tooltip:
-                '${l10n.studyModeTooltip}\n${l10n.studyModeLongPressHint}',
+            tooltip: '${l10n.studyModeTooltip}\n${l10n.studyModeLongPressHint}',
             iconSize: iconSize,
             padding: EdgeInsets.zero,
             constraints:
@@ -3462,10 +3451,30 @@ class _PlayerScreenState extends State<PlayerScreen>
                               isEditMode: _isEditMode,
                               onTap: () async {
                                 if (_isEditMode) {
-                                  final currentTime = widget
-                                          .audioService.position.inMilliseconds
-                                          .toDouble() /
-                                      1000;
+                                  // Живая позиция just_audio (updatePosition +
+                                  // wall-clock), а не кэш positionStream:
+                                  // во время редактирования тапы и пересборка
+                                  // списка задерживают доставку событий, кэш
+                                  // устаревает и метки пишутся раньше. Плюс
+                                  // прогоняем через тот же корректор, что и
+                                  // подсветка — метка и переключение строки
+                                  // живут в одном домене времени.
+                                  final player = widget.audioService.player;
+                                  final livePos = player.position;
+                                  final markPos = (_settingsProvider
+                                              ?.timingCorrection ??
+                                          true)
+                                      ? _positionCorrector.correct(
+                                          livePos,
+                                          playing: player.playing,
+                                          isReady: player.processingState ==
+                                              ProcessingState.ready,
+                                          speed:
+                                              widget.audioService.playbackSpeed,
+                                        )
+                                      : livePos;
+                                  final currentTime =
+                                      markPos.inMilliseconds.toDouble() / 1000;
                                   widget.lyricsService
                                       .updateLineTimestamp(index, currentTime);
                                   widget.translationService

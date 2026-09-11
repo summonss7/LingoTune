@@ -4,19 +4,21 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.8.3';
+  static const String version = '5.8.4';
 
-  static const String versionCode = '231';
+  static const String versionCode = '232';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
   static const String privacyPolicyUrl = 'https://lingotune.app/privacy';
 
-  static const String appDescription = 'Learn languages through music with synchronized lyrics. '
+  static const String appDescription =
+      'Learn languages through music with synchronized lyrics. '
       'Study your favorite songs while seeing the original lyrics and translations in real-time. '
       'Perfect for language learners and music lovers!';
 
-  static const String longDescription = 'LingoTune is an innovative language learning application that helps you master new languages through music. '
+  static const String longDescription =
+      'LingoTune is an innovative language learning application that helps you master new languages through music. '
       'With synchronized song lyrics displaying original text alongside translations, you can understand the meaning behind the words while enjoying your favorite tracks. '
       'Features include audio playback, automatic line highlighting, translation support, and more. '
       'Start learning languages the fun way today!';
@@ -50,6 +52,7 @@ class AppInfo {
     '❤ Favorites playlist + play-favorites-only loop mode',
     '🎨 Custom line colors (original & translation): presets + per-type palette',
     '⏱️ TTS translation timing offset (speak earlier/later than the lyric timestamp)',
+    '🔧 Fix: lyric highlight no longer switches early after manual re-timestamping (corrector heals phantom lead, marks share the highlight time base)',
   ];
 
   static const List<String> supportedLanguages = [

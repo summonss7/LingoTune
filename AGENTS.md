@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.3** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.4** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -271,6 +271,17 @@ void main() {
 - `audio_service` (`BackgroundAudioHandler`) for background playback / media notification
 - `audio_session` for audio-focus handling and ducking during TTS / phone calls
 - Handle content URIs (`content://`) vs file paths differently (see `AudioService.loadAudio`)
+- **Highlight position correction** (`AudioPositionCorrector`): only `LyricsService.updatePosition`
+  (lyric-line highlighting) uses the corrected position; slider/time indicators use raw
+  `_player.position`. Wall-clock interpolation bridges event-delivery gaps; a *constant* lead
+  (one-off ~550 ms hiccup pinned at 500–550 ms) is an artifact and heals back to raw after a
+  10 s stability window, while a *growing* lead (real VBR drift) keeps the wall-clock trajectory
+  (v5.8.4). Injectable clock → unit tests in `test/audio_position_corrector_test.dart`.
+- **Timestamp marks time-domain invariant**: the edit-mode tap writes the LIVE
+  `player.position` (just_audio computes it from wall-clock, not the ~5 Hz `positionStream`
+  cache which goes stale during edit bursts) through the SAME `AudioPositionCorrector`
+  instance the highlight uses — marks and line switching must never live in different
+  time domains (v5.8.4 fix: highlight switched early after manual re-timestamping).
 - **Zombie-state recovery**: after a TTS audio-session handoff (or a phone call), just_audio
   can report `playing == true` while the position never advances — or fail to restart after
   `completed`. `AudioService.ensurePlaybackAdvancing`, `StudyModeService._kickPlaybackAsync`,
