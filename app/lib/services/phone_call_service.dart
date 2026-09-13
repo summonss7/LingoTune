@@ -40,8 +40,18 @@ class PhoneCallService {
   final StreamController<CallState> _stateController =
       StreamController<CallState>.broadcast();
 
+  /// Последнее известное состояние линии (обновляется каждым событием
+  /// нативного детектора; плагин шлёт sticky-состояние сразу при подписке).
+  /// null — событий ещё не было. Используется дебаунсом эха interruption-
+  /// событий в BackgroundAudioHandler и проверками «идёт ли звонок сейчас».
+  CallState? _current;
+
   /// Поток состояний звонка. Эмитит `ringing` / `offhook` / `idle`.
   Stream<CallState> get callStates => _stateController.stream;
+
+  /// Текущее состояние линии, или null если детектор ещё не прислал ни одного
+  /// события (не запущен / нет permission).
+  CallState? get current => _current;
 
   /// Активна ли подписка на нативный детектор.
   bool get isListening => _subscription != null;
@@ -56,6 +66,7 @@ class PhoneCallService {
           final parsed = _parseState(event);
           if (parsed != null) {
             debugPrint('📞 PhoneCallService: state -> ${parsed.name}');
+            _current = parsed;
             _stateController.add(parsed);
           }
         },

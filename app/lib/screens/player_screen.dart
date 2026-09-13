@@ -486,6 +486,18 @@ class _PlayerScreenState extends State<PlayerScreen>
         _studyEvt('completion WATCHDOG: song is loading, no-op');
         return;
       }
+      // Идёт звонок/прерывание — плеер ЛЕГИТИМНО на паузе (v5.8.5: раньше
+      // «stuck = !playing» стрелял в call-паузе и запускал следующую песню
+      // ПРЯМО посреди разговора). Переносим проверку, пока прерывание активно;
+      // после отбоя study сам двинется (resumeSession) либо watchdog сработает
+      // по-настоящему.
+      if ((widget.audioService.backgroundHandler?.isPausedForCall ?? false) ||
+          _studyPausedForCall) {
+        _studyEvt('completion WATCHDOG: call/interruption in progress '
+            '— re-arming');
+        _armCompletionWatchdog();
+        return;
+      }
       final completed = player.processingState == ProcessingState.completed;
       final stuck = !player.playing;
       if (completed || stuck) {

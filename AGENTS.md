@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.4** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.5** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -286,9 +286,16 @@ void main() {
   can report `playing == true` while the position never advances — or fail to restart after
   `completed`. `AudioService.ensurePlaybackAdvancing`, `StudyModeService._kickPlaybackAsync`,
   `BackgroundAudioHandler._restartLoopOne` (loop-one restart) and
-  `BackgroundAudioHandler._ensureAdvancingAfterResume` (post-call resume) reactivate the
+  `BackgroundAudioHandler._ensureAdvancingAfterResume` (post-call resume; since v5.8.5 — two
+  rounds with a 5 s gap, gated on a fresh user pause / new interruption) reactivate the
   session, retry `play()`, verify the position actually advances, and nudge the player with a
-  seek to force a re-buffer.
+  seek to force a re-buffer. Kick loops abort when a call pause is active
+  (`BackgroundAudioHandler.isPausedForCall`) instead of fighting the pause (music over the
+  ringtone).
+- **Stale interruption echo** (v5.8.5): on ROMs where `audio_session` events lag, a delayed
+  interruption-`begin` of an ALREADY-ENDED call used to trigger a fresh pause with no matching
+  `end` → playback frozen forever. `BackgroundAudioHandler._handleCallPause` now ignores a
+  `begin` arriving within 5 s after a resume when `PhoneCallService.current == idle`.
 - **Loop mode** — `AudioService` is the single source of truth (persisted, pushed to
   `BackgroundAudioHandler`, mirrored in `PlayerScreen` via a listener so lock-screen changes
   are reflected). Button cycle: `off → all → one → allPlaylists → off`. The `favorites` enum
@@ -299,7 +306,9 @@ void main() {
   is guarded while study mode is active — advancement then depends on study's own completion
   detector. A completion watchdog in `PlayerScreen` (`_armCompletionWatchdog`) breaks the
   deadlock when study fails to advance after a call: if the song hasn't changed within ~4 s,
-  it forces `_playNextSong()`.
+  it forces `_playNextSong()`. While a call/interruption pause is active
+  (`isPausedForCall` / `_studyPausedForCall`) the watchdog re-arms instead of firing —
+  `!player.playing` is legitimate during a call pause, not a deadlock (v5.8.5).
 - **Phone calls**: `becomingNoisy` (headphone unplug) is ignored while a call pause is active
   (`_pausedForCall`) — some ROMs fire it on the in-call audio-route change, and it would
   otherwise set `_userPausedDuringCall` and block the legitimate post-call auto-resume.
@@ -328,8 +337,19 @@ void main() {
   fire-and-forget callbacks when the song changes or the session stops, preventing
   zombie-kick loops and overlapping audio.
 - The `_speak` watchdog disables TTS only after 2 consecutive hangs (`_ttsFailStreak`);
-  `resumeSession()` re-enables speech (`_speakDisabled=false`) so a hang during a phone
-  call no longer silences the rest of the current song (v5.8.1).
+  `resumeSession()` re-enables speech (`_speakDisabled=false`, `_ttsFailStreak=0` unconditionally)
+  so a hang during a phone call no longer silences the rest of the current song (v5.8.1).
+  Since v5.8.5 the disable is **self-healing**: it arms a cooldown (20 s, doubling up to 120 s
+  on repeated failures; any successful speak resets it) and after the cooldown `_speak()` probes
+  once, so speech returns within the SAME song after a transient interruption (notification
+  beep). No probes when the language is genuinely unavailable — segments-only stays permanent.
+  Engine `stop()` paths are time-boxed (2 s) so a wedged stop can't hang
+  `TtsCoordinator._interruptCurrent` and cascade every following speak into a timeout.
+- `pauseSession`/`resumeSession` re-entrancy (v5.8.5): `resumeSession` awaits the in-flight
+  pause tail (`_pauseSessionFuture`, 3 s timeout) before starting the runner; a wedged tail is
+  stopped by the `_pauseGen` generation token before its player re-pause. A short interruption
+  (notification beep ~1–2 s) can no longer have its stale pause tail cancel the just-resumed
+  runner. `stop()` bumps the same token.
 - Watchdog timers protect against zombie just_audio state: `_segmentWatchdog` forces a line
   advance when the segment completer would otherwise hang forever.
 - Persisted flag `studyModeEnabled` auto-restarts study mode on the next song / app restart.
@@ -361,6 +381,9 @@ void main() {
   silently through the call. A direct `TelephonyManager` listener fires reliably first.
 - Emits `CallState.ringing` / `offhook` / `idle`. On non-Android platforms `start()` returns
   `false` and callers fall back to the `audio_session` interruption scheme.
+- The plugin dispatches the CURRENT call state on subscribe (sticky, v5.8.5) — a screen
+  re-subscribing mid-call no longer misses `ringing`/`offhook`; `PhoneCallService.current`
+  exposes the last known state (used by the stale-echo debounce in `BackgroundAudioHandler`).
 - Requires `READ_PHONE_STATE` permission, requested at runtime via `permission_handler`
   (`Permission.phone`).
 

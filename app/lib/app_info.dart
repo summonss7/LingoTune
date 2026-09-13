@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.8.4';
+  static const String version = '5.8.5';
 
-  static const String versionCode = '232';
+  static const String versionCode = '233';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -53,6 +53,8 @@ class AppInfo {
     '🎨 Custom line colors (original & translation): presets + per-type palette',
     '⏱️ TTS translation timing offset (speak earlier/later than the lyric timestamp)',
     '🔧 Fix: lyric highlight no longer switches early after manual re-timestamping (corrector heals phantom lead, marks share the highlight time base)',
+    '🔧 Fix: study-mode voice recovers by itself after a notification sound (cooldown + retry instead of silence till song end)',
+    '🔧 Fix: playback reliably resumes after a phone call (stale interruption echo ignored, second resume-kick round, no next-song jump mid-call)',
   ];
 
   static const List<String> supportedLanguages = [

@@ -93,6 +93,15 @@ class StudyModeService extends ChangeNotifier {
   // накладывающийся звук и рассинхрон (симптом «звук идёт параллельно»).
   Future<void>? _kickPlaybackFuture;
 
+  // Хвост незавершённой pauseSession и его generation-токен (v5.8.5). Короткое
+  // прерывание (звук SMS ~1-2с) может закончиться, пока pauseSession ещё
+  // дренирует kick-цикл (до 2с): resumeSession ДОЖИДАЕТСЯ этот future перед
+  // запуском нового runner'а, а если пауза зависла дольше таймаута — инкремент
+  // генерации останавливает её хвост до разрушительного re-pause плеера
+  // (иначе хвост гасил только что возобновлённое воспроизведение).
+  Future<void>? _pauseSessionFuture;
+  int _pauseGen = 0;
+
   // Токен «поколения» активной study-сессии. Инкрементируется в stop() — это
   // инвалидирует все висящие fire-and-forget колбэки _speakOver().then: они
   // захватывают токен при старте и выходят, если токен сменился. Иначе .then
@@ -152,6 +161,17 @@ class StudyModeService extends ChangeNotifier {
   // armed after 2 in a row, so a single transient hang (typically the first
   // speak after a phone call) doesn't silence the rest of the song.
   int _ttsFailStreak = 0;
+  // Cooldown самовосстановления речи (v5.8.5). Раньше после 2 подряд зависаний
+  // watchdog глушил перевод ДО КОНЦА песни: внутри песни сброса не было, речь
+  // возвращал только _ensureTtsReady на следующей (симптом «звук сообщения
+  // выключил голос обучения до конца трека, на следующей песне включился»).
+  // Теперь отключение временное: по истечении cooldown _speak() делает пробу,
+  // и если движок ожил — речь продолжает звучать в той же песне. Каждая
+  // повторная неудача удваивает паузу (backoff, до капа).
+  Duration _speakCooldown = const Duration(seconds: 20);
+  DateTime? _speakCooldownUntil;
+  static const Duration _speakCooldownInitial = Duration(seconds: 20);
+  static const Duration _speakCooldownMax = Duration(seconds: 120);
 
   // All TTS engines reported by the system (via getEngines). Populated in
   // _initTts(). On Android 11+ requires the TTS_SERVICE <queries> declaration
@@ -205,6 +225,19 @@ class StudyModeService extends ChangeNotifier {
   void setSpeakDisabled(bool value) {
     if (_speakDisabled == value) return;
     _speakDisabled = value;
+    if (value) {
+      // Отключение watchdog'ом — всегда временное (пробы в _speak гейтятся на
+      // _langAvailable): планируем следующую пробу и удваиваем паузу на
+      // случай повторной неудачи (backoff, до капа).
+      _speakCooldownUntil = DateTime.now().add(_speakCooldown);
+      _speakCooldown = _speakCooldown * 2 > _speakCooldownMax
+          ? _speakCooldownMax
+          : _speakCooldown * 2;
+    } else {
+      // Явное включение (UI / resumeSession / новая песня) — backoff сброшен.
+      _speakCooldown = _speakCooldownInitial;
+      _speakCooldownUntil = null;
+    }
     debugPrint(
         '🎧 StudyModeService: TTS speech ${value ? 'DISABLED' : 'enabled'}');
     notifyListeners();
@@ -478,7 +511,19 @@ class StudyModeService extends ChangeNotifier {
   Future<void> _speak(String text) async {
     // Segments-only mode: skip TTS entirely so the runner keeps advancing
     // (used when no voice is installed, or after TTS repeatedly hung).
-    if (_speakDisabled) return;
+    if (_speakDisabled) {
+      // Язык реально недоступен (нет голосов) — пробы бессмысленны, молчим до
+      // конца сессии. Иначе — self-healing (v5.8.5): после истечения cooldown
+      // пробуем заговорить снова В ЭТОЙ ЖЕ песне, чтобы одно прерывание (звук
+      // SMS/уведомления) не глушило перевод до конца трека.
+      if (!_langAvailable) return;
+      final until = _speakCooldownUntil;
+      if (until != null && DateTime.now().isBefore(until)) return;
+      debugPrint(
+          '🎧 StudyMode: TTS probe after cooldown — re-enabling speech in this song');
+      setSpeakDisabled(false);
+      _ttsFailStreak = 0;
+    }
 
     // Запрос через координатор: единая очередь с приоритетом study. Alert
     // детекции машин НЕ прервёт этот speak (координатор сам отложит/пропустит
@@ -507,18 +552,23 @@ class StudyModeService extends ChangeNotifier {
       debugPrint('✗ StudyMode TTS speak error: $e');
     }
     if (timedOut) {
-      // Авто-отключение TTS до конца сессии — но только после 2 ПОДРЯД
-      // зависаний, чтобы не висеть на каждой строке. Единичный сбой (типично
-      // первый speak после звонка на деактивированной аудиосессии) не должен
-      // лишать перевода всю оставшуюся часть песни.
+      // Авто-отключение TTS на cooldown — но только после 2 ПОДРЯД зависаний,
+      // чтобы не висеть на каждой строке. Единичный сбой (типично первый speak
+      // после прерывания на деактивированной аудиосессии) не должен лишать
+      // перевода всю оставшуюся часть песни. Повторные неудачи — backoff
+      // (см. setSpeakDisabled), но не «до конца песни»: через cooldown _speak
+      // снова пробует заговорить (v5.8.5).
       _ttsFailStreak++;
       if (_ttsFailStreak >= 2) {
         debugPrint('⚠ StudyMode: TTS hung $_ttsFailStreak times in a row '
-            '— disabling TTS for this session');
+            '— disabling TTS for ${_speakCooldown.inSeconds}s (cooldown)');
         setSpeakDisabled(true);
       }
     } else {
       _ttsFailStreak = 0;
+      // Успешная речь сбрасывает backoff: если TTS снова «умрёт», первая пауза
+      // снова будет короткой.
+      _speakCooldown = _speakCooldownInitial;
     }
   }
 
@@ -1081,6 +1131,14 @@ class StudyModeService extends ChangeNotifier {
 
     for (int attempt = 1; attempt <= 6; attempt++) {
       if (!_isActive || _isUserPaused || _disposed) break;
+      // Начался звонок/прерывание и плеер уже поставлен на паузу — НЕ боремся
+      // с ней (иначе ~1-2с музыки поверх рингтона; пауза дренируется
+      // pauseSession'ом самого прерывания) (v5.8.5).
+      if (_audio.backgroundHandler?.isPausedForCall ?? false) {
+        debugPrint(
+            '⚠ StudyMode: kick aborted (call/interruption in progress)');
+        break;
+      }
       try {
         final session = await AudioSession.instance;
         await session.setActive(true).timeout(stepTimeout);
@@ -1095,6 +1153,7 @@ class StudyModeService extends ChangeNotifier {
       final Duration before = _audio.position;
       await Future.delayed(const Duration(milliseconds: 400));
       if (_disposed || !_isActive || _isUserPaused) break;
+      if (_audio.backgroundHandler?.isPausedForCall ?? false) break;
       final Duration after = _audio.position;
       if (after != before) {
         debugPrint(
@@ -1147,6 +1206,17 @@ class StudyModeService extends ChangeNotifier {
     if (!_isActive || _isUserPaused) return;
     _isUserPaused = true;
     _speakToken++; // инвалидировать pending _speakOver().then
+    // Тело вынесено в _pauseSessionInner, а future сохраняется: resumeSession
+    // ДОЖИДАЕТСЯ его перед запуском нового runner'а (гонка коротких
+    // прерываний: interruption-end приходит, пока пауза ещё дренирует kick).
+    final gen = _pauseGen;
+    final future = _pauseSessionInner(forCall: forCall, gen: gen);
+    _pauseSessionFuture = future;
+    await future;
+  }
+
+  Future<void> _pauseSessionInner(
+      {required bool forCall, required int gen}) async {
     debugPrint('⏸ StudyModeService: session paused at line $_currentIndex'
         '${forCall ? ' (for call — raw player pause)' : ''}');
     // Координатор сам завершит completer текущего speak-запроса и вызовет stop.
@@ -1161,7 +1231,14 @@ class StudyModeService extends ChangeNotifier {
       } catch (_) {}
       _kickPlaybackFuture = null;
     }
-    if (forCall) {
+    // Пока мы дренировали, пришёл resume (короткое прерывание — звук SMS) и
+    // его runner уже запущен: НЕ пере-паузим плеер — иначе только что
+    // возобновлённое воспроизведение снова встанет (v5.8.5).
+    final stale = gen != _pauseGen;
+    if (stale) {
+      debugPrint('⏸ StudyModeService: stale pause tail — skip re-pause '
+          '(session already resumed)');
+    } else if (forCall) {
       // Safety-net re-pause ПОСЛЕ дренирования kick: kick мог успеть вызвать
       // handler.play() (реактивация сессии + _player.play()) уже ПОСЛЕ
       // _systemPause handler'а → песня осталась бы играющей во время звонка.
@@ -1186,13 +1263,28 @@ class StudyModeService extends ChangeNotifier {
   /// Resumes a paused study session (re-starts from the current line).
   Future<void> resumeSession() async {
     if (!_isActive || !_isUserPaused) return;
+    // Дождаться хвоста незавершённой паузы: у короткого прерывания (звук SMS)
+    // interruption-end приходит, пока pauseSession ещё дренирует kick-цикл.
+    // Без ожидания её хвост гасил _cancelSegmentAwait'ом и re-pause'ом только
+    // что запущенный runner (v5.8.5). Если пауза зависла дольше таймаута —
+    // инкремент генерации ниже останавливает хвост до разрушительных шагов.
+    final pause = _pauseSessionFuture;
+    if (pause != null) {
+      try {
+        await pause.timeout(const Duration(seconds: 3));
+      } catch (_) {}
+      _pauseSessionFuture = null;
+    }
+    if (!_isActive || !_isUserPaused || _disposed) return;
+    _pauseGen++; // остановить зависший хвост паузы, если он ещё жив
     _isUserPaused = false;
-    // Watchdog мог выключить TTS ВО ВРЕМЯ звонка (первый speak после отбоя
-    // зависает на деактивированной телефонией аудиосессии) — даём речи второй
-    // шанс в ЭТОЙ же песне, иначе перевод молчал бы до конца трека и
-    // восстанавливался только на следующей песне (_ensureTtsReady).
+    // Watchdog мог выключить TTS (первый speak после прерывания зависает на
+    // деактивированной аудиосессии) — даём речи второй шанс в ЭТОЙ же песне,
+    // иначе перевод молчал бы до конца трека и восстанавливался только на
+    // следующей песне (_ensureTtsReady). Стрик сбрасываем безусловно: первый
+    // speak после resume не должен быть «в одном шаге» от защёлки.
+    _ttsFailStreak = 0;
     if (_speakDisabled && _langAvailable) {
-      _ttsFailStreak = 0;
       setSpeakDisabled(false);
     }
     debugPrint('▶ StudyModeService: session resumed from line $_currentIndex');
@@ -1219,6 +1311,10 @@ class StudyModeService extends ChangeNotifier {
     // иначе они доживут до нового start() (смена песни) и создадут зомби-kick.
     _sessionToken++;
     _speakToken++;
+    // Останавливаем и возможный хвост pauseSession (v5.8.5): его re-pause и
+    // _cancelSegmentAwait не должны тронуть runner новой песни после start().
+    _pauseGen++;
+    _pauseSessionFuture = null;
     debugPrint('⏹ StudyModeService: stopped');
     _cancelSegmentAwait(false);
     // Координатор остановит текущий speak и завершит его completer.

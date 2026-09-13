@@ -204,7 +204,9 @@ class SystemTtsEngine extends TtsEngine {
     _speakCompleter = null;
     if (c != null && !c.isCompleted) c.complete();
     try {
-      await _tts.stop();
+      // Таймаут (v5.8.5): зависший stop() блокирует TtsCoordinator.
+      // _interruptCurrent → каждый следующий speak виснет до study-watchdog.
+      await _tts.stop().timeout(const Duration(seconds: 2));
     } catch (_) {}
   }
 

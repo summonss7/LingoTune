@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart' hide LoopMode;
 import '../models/song.dart';
 import '../models/loop_mode.dart';
 import 'becoming_noisy_service.dart';
+import 'phone_call_service.dart';
 
 class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player;
@@ -45,6 +46,24 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   /// системная пауза [_systemPause] и study-сегменты его НЕ трогают. Сбрасывается
   /// в [play] (пользователь нажал play — хочет слушать) и в [_handleCallResume].
   bool _userPausedDuringCall = false;
+
+  /// Время последнего resume после прерывания (отбой звонка). Используется
+  /// дебаунсом «эха» в [_handleCallPause] (v5.8.5): на целевых ROM
+  /// audio_session присылает interruption-события с большой задержкой, и
+  /// запоздалый begin уже ОТБОЙНОГО звонка делал новую паузу, а парный end
+  /// больше не приходил → плеер навсегда замирал (симптом «после звонка не
+  /// возобновляется»).
+  DateTime? _lastResumeAt;
+
+  /// Время последней явной паузы пользователем (публичный [pause]). Второй
+  /// отложенный раунд resume-kick не должен перебивать свежее намерение
+  /// пользователя (v5.8.5).
+  DateTime? _lastUserPauseAt;
+
+  /// Окно дебаунса эха: interruption-begin в пределах этого времени после
+  /// resume при подтверждённо свободной линии (PhoneCallService == idle)
+  /// считается эхом отбоя и игнорируется.
+  static const _staleEchoWindow = Duration(seconds: 5);
 
   Function(bool)? onShuffleToggled;
   Function(LoopMode)? onLoopToggled;
@@ -192,6 +211,21 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       debugPrint('📞 BackgroundAudioHandler: pause already handled (dedupe)');
       return;
     }
+    // Дебаунс эха (v5.8.5): нативный детектор (TelephonyManager) уже дал idle,
+    // мы возобновились — а сейчас пришёл ЗАПОЗДАЛЫЙ audio_session begin того
+    // же звонка. Принять его = новая пауза без парного end → плеер замрёт.
+    // Эхо игнорируем ТОЛЬКО при подтверждении детектором, что линия свободна;
+    // без детектора (нет permission / не Android) событие принимаем как раньше.
+    final lastResume = _lastResumeAt;
+    if (lastResume != null &&
+        DateTime.now().difference(lastResume) < _staleEchoWindow) {
+      final phone = PhoneCallService.instance;
+      if (phone.isListening && phone.current == CallState.idle) {
+        debugPrint('📞 BackgroundAudioHandler: stale interruption echo '
+            'after recent resume — ignored');
+        return;
+      }
+    }
     _pausedForCall = true;
     // Даём study mode корректно поставить сессию на паузу (стоп TTS +
     // drain kick-цикла). Если колбэк взял управление на себя — НЕ захватываем
@@ -213,6 +247,8 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       return;
     }
     _pausedForCall = false;
+    // Момент resume — для дебаунса эха в [_handleCallPause] (см. там).
+    _lastResumeAt = DateTime.now();
     final wasPlaying = _wasPlayingBeforeInterruption;
     _wasPlayingBeforeInterruption = false;
     // Пользователь вручную нажал паузу во время прерывания (lock-screen / FAB)
@@ -277,22 +313,53 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   /// Лёгкий zombie-recovery после звонка (см. [_handleCallResume]). Проверяет,
   /// действительно ли позиция плеера двигается после resume-`play()`; если нет —
   /// реактивирует аудиосессию и ретраит play(). Несколько попыток с timeout,
-  /// чтобы висящий just_audio Future нас не заблокировал.
+  /// чтобы висящий just_audio Future нас не заблокировал. Если первый раунд не
+  /// раскачал позицию — ОДИН отложенный второй раунд через 5с (v5.8.5): на
+  /// части ROM in-call UI возвращает фокус позже нашего кика, и раньше после
+  /// сдачи ретраев не было вообще (симптом «после звонка так и не заиграло»).
   Future<void> _ensureAdvancingAfterResume() async {
+    if (await _resumeKickRound()) return;
+    await Future.delayed(const Duration(seconds: 5));
+    // Начался новый звонок/прерывание или пользователь явно нажал паузу за
+    // время ожидания — не перебиваем чужое намерение.
+    if (_pausedForCall) {
+      debugPrint('⚠ BackgroundAudioHandler: second resume-kick round skipped '
+          '(new interruption)');
+      return;
+    }
+    final lastPause = _lastUserPauseAt;
+    if (lastPause != null &&
+        DateTime.now().difference(lastPause) < const Duration(seconds: 6)) {
+      debugPrint('⚠ BackgroundAudioHandler: second resume-kick round skipped '
+          '(user paused)');
+      return;
+    }
+    await _resumeKickRound();
+  }
+
+  /// Один раунд resume-kick'а (3 попытки). Возвращает true, когда продолжать
+  /// не нужно: позиция двигается, песня доиграла, начался звонок либо раунд
+  /// исчерпан (false — можно пробовать ещё один отложенный).
+  Future<bool> _resumeKickRound() async {
     const stepTimeout = Duration(seconds: 1);
     for (int attempt = 1; attempt <= 3; attempt++) {
+      if (_pausedForCall) {
+        debugPrint('⚠ BackgroundAudioHandler: resume-kick aborted '
+            '(call/interruption in progress)');
+        return true;
+      }
       final Duration before = _player.position;
       await Future.delayed(const Duration(milliseconds: 400));
       // Песня естественным образом доиграла — кикать нечего.
       if (_player.processingState == ProcessingState.completed) {
         debugPrint('⚠ BackgroundAudioHandler: resume-kick — player completed, nothing to kick');
-        return;
+        return true;
       }
       final Duration after = _player.position;
       if (after != before) {
         debugPrint('✓ BackgroundAudioHandler: playback advancing after resume '
             '(attempt $attempt, ${before.inMilliseconds}→${after.inMilliseconds}ms)');
-        return;
+        return true;
       }
       debugPrint('⚠ BackgroundAudioHandler: resume-kick attempt $attempt '
           '— position stuck at ${after.inMilliseconds}ms');
@@ -304,7 +371,9 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         debugPrint('⚠ BackgroundAudioHandler: resume-kick error (attempt $attempt): $e');
       }
     }
-    debugPrint('✗ BackgroundAudioHandler: resume-kick gave up (position not advancing)');
+    debugPrint('✗ BackgroundAudioHandler: resume-kick round gave up '
+        '(position not advancing)');
+    return false;
   }
 
   /// Публичный триггер паузы от нативного детектора звонка
@@ -314,6 +383,11 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   /// Публичный триггер возобновления от нативного детектора звонка
   /// ([PhoneCallService], состояние idle). См. [_handleCallResume].
   void resumeAfterCall() => _handleCallResume();
+
+  /// Активна ли сейчас пауза по звонку/прерыванию (см. [_pausedForCall]).
+  /// Публичный гейт для study kick-цикла и watchdog'ов экрана: не бороться с
+  /// легитимной паузой и не форсить смену песни посреди разговора (v5.8.5).
+  bool get isPausedForCall => _pausedForCall;
 
   void _initializeState() {
     playbackState.add(PlaybackState(
@@ -651,6 +725,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       _userPausedDuringCall = true;
       debugPrint('📞 BackgroundAudioHandler: user paused during call');
     }
+    _lastUserPauseAt = DateTime.now();
     await _systemPause();
   }
 

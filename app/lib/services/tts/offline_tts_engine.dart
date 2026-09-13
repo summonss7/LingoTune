@@ -332,7 +332,12 @@ class OfflineTtsEngine extends TtsEngine {
       } catch (_) {}
     }
     try {
-      await _player.stop();
+      // Таймаут обязателен (v5.8.5): у зомби-плеера (после потери аудиофокуса)
+      // stop() может не разрешиться никогда — тогда виснет TtsCoordinator.
+      // _interruptCurrent, и КАЖДЫЙ следующий speak зависает ещё до движка
+      // (гарантированный watchdog-timeout и глушение речи до конца песни).
+      // Следующий speak всё равно пересоздаст источник через setFilePath.
+      await _player.stop().timeout(const Duration(seconds: 2));
     } catch (_) {}
     if (c != null && !c.isCompleted) c.complete();
   }

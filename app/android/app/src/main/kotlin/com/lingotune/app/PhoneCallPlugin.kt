@@ -72,6 +72,13 @@ class PhoneCallPlugin : FlutterPlugin, EventChannel.StreamHandler {
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
         eventSink = events
         registerListener()
+        // Sticky-состояние: сразу шлём ТЕКУЩЕЕ состояние линии. Если Dart-сторона
+        // переподписалась посреди звонка (пересоздание экрана плеера), без
+        // этого первое событие она увидит лишь при ИЗМЕНЕНИИ состояния —
+        // ringing/offhook пропущены, пауза не встанет и музыка играла бы весь
+        // разговор. Также инициализирует PhoneCallService.current для дебаунса
+        // эха interruption-событий.
+        dispatchCurrentState()
     }
 
     override fun onCancel(arguments: Any?) {
@@ -146,6 +153,18 @@ class PhoneCallPlugin : FlutterPlugin, EventChannel.StreamHandler {
         }
         Log.d(TAG, "Call state -> $name")
         eventSink?.success(name)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun dispatchCurrentState() {
+        val tm = telephonyManager ?: return
+        try {
+            dispatchState(tm.callState)
+        } catch (e: SecurityException) {
+            // Нет READ_PHONE_STATE (на момент подписки) — sticky недоступен,
+            // дальнейшие события придут только через зарегистрированный listener.
+            Log.w(TAG, "No READ_PHONE_STATE for sticky call state: ${e.message}")
+        }
     }
 
     private fun unregisterListener() {
