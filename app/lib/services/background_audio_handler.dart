@@ -97,6 +97,24 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   /// плеера kick-цикл тут же перебил бы и песня заиграла бы в динамике).
   bool Function()? onBecomingNoisy;
 
+  /// Вызывается из [pause], когда пользователь нажал паузу ЛЮБЫМ способом:
+  /// FAB, мини-плеер, lock-screen, уведомление, media-button. До v5.8.6 пауза
+  /// мимо FAB до StudyModeService не доходила: плеер стоял, а сессия считала
+  /// себя «активной» → segment-watchdog через segLen+10с решал «зомби»,
+  /// форсировал следующую строку и kick-цикл перезапускал песню («пауза не
+  /// работает — само играет дальше»). Возвращает `true`, если колбэк взял
+  /// паузу на себя (study активен → pauseSession: стоп TTS + drain kick +
+  /// честная пауза плеера с обновлением уведомления). Внутренние паузы study
+  /// идут через [pauseFromStudy] и сюда НЕ попадают.
+  bool Function()? onUserPause;
+
+  /// Вызывается из [play], когда пользователь нажал play (FAB / lock-screen /
+  /// уведомление / media-button) при активной, но пользовательски
+  /// запаузненной study-сессии. Возвращает `true`, если колбэк взял запуск на
+  /// себя (resumeSession запускает runner, озвучку и kick плеера). Внутренние
+  /// play study (kick-цикл) идут через [playFromStudy] и сюда НЕ попадают.
+  bool Function()? onUserPlay;
+
   StreamSubscription? _playbackEventSubscription;
   StreamSubscription? _positionSubscription;
   StreamSubscription? _playingSubscription;
@@ -698,10 +716,17 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     if (_pausedForCall) {
       _userPausedDuringCall = false;
     }
+    // Study-сессия на пользовательской паузе → её возобновляет колбэк
+    // (resumeSession: runner + озвучка + kick плеера). Дублировать запуск
+    // здесь не нужно. Активная НЕзапаузненная сессия возвращает false —
+    // дальше обычный play (no-op: плеером управляет runner/kick).
+    if (!_pausedForCall && (onUserPlay?.call() ?? false)) {
+      return;
+    }
     try {
       final session = await AudioSession.instance;
       await session.setActive(true);
-      
+
       playbackState.add(playbackState.value.copyWith(
         playing: true,
         controls: _buildControls(true),
@@ -726,7 +751,44 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       debugPrint('📞 BackgroundAudioHandler: user paused during call');
     }
     _lastUserPauseAt = DateTime.now();
+    // Активен study mode → пауза уходит в pauseSession (стоп TTS + drain
+    // kick-цикла + честная пауза плеера). Без хендоффа прямая пауза плеера
+    // стояла бы только до ближайшего kick'а (v5.8.6). Во время звонка
+    // (_pausedForCall) study уже паузнут call-машиной — там своё расписание.
+    if (!_pausedForCall && (onUserPause?.call() ?? false)) {
+      return;
+    }
     await _systemPause();
+  }
+
+  /// Пауза плеера ИЗ ВНУТРЕННЕЙ логики StudyModeService (TTS-фазы runner'а,
+  /// финальная пауза pauseSession, stop). В отличие от публичного [pause] это
+  /// НЕ пользовательское намерение: не дёргает [onUserPause] (иначе пауза
+  /// TTS-фазы рекурсивно «превращалась» бы в pauseSession) и не трогает
+  /// [_userPausedDuringCall] / [_lastUserPauseAt]. Уведомление обновляется —
+  /// как и в [_systemPause].
+  Future<void> pauseFromStudy() => _systemPause();
+
+  /// play() ИЗ ВНУТРЕННЕЙ логики StudyModeService (kick-цикл после TTS).
+  /// Без колбэка [onUserPlay]: kick — служебный, не «пользователь нажал play»
+  /// (иначе in-flight kick во время паузы воскресил бы её через resumeSession).
+  /// Тело повторяет [play] без пользовательских веток.
+  Future<void> playFromStudy() async {
+    try {
+      final session = await AudioSession.instance;
+      await session.setActive(true);
+
+      playbackState.add(playbackState.value.copyWith(
+        playing: true,
+        controls: _buildControls(true),
+        processingState: AudioProcessingState.ready,
+      ));
+
+      await _player.play();
+      _syncPlaybackState();
+    } catch (e) {
+      debugPrint('✗ BackgroundAudioHandler: Error in playFromStudy(): $e');
+    }
   }
 
   /// Системная пауза плеера без выставления [_userPausedDuringCall].

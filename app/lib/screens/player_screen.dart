@@ -498,6 +498,16 @@ class _PlayerScreenState extends State<PlayerScreen>
         _armCompletionWatchdog();
         return;
       }
+      // Study на ПАУЗЕ у пользователя (FAB / lock-screen, v5.8.6): «стоит» —
+      // это намерение, а не deadlock. Форсить следующую песню значило бы
+      // перебить паузу (поставил паузу в конце песни → сама заиграла
+      // следующая). Переносим проверку: после resume study двинется сам либо
+      // watchdog сработает по-настоящему.
+      if (_studyModeService.isActive && _studyModeService.isUserPaused) {
+        _studyEvt('completion WATCHDOG: study user-paused — re-arming');
+        _armCompletionWatchdog();
+        return;
+      }
       final completed = player.processingState == ProcessingState.completed;
       final stuck = !player.playing;
       if (completed || stuck) {
@@ -569,7 +579,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Future<void> _toggleStudyMode() async {
-    if (_studyModeService.isActive && !_studyModeService.isUserPaused) {
+    // Верхняя кнопка — чистое ВКЛ/ВЫКЛ режима (v5.8.6): активная сессия
+    // выключается в любом состоянии, в т.ч. с пользовательской паузы (раньше
+    // пауза + нажатие кнопки молча перезапускали сессию — неинтуитивно).
+    if (_studyModeService.isActive) {
       await _studyModeService.stop(userRequested: true);
       if (mounted) setState(() {});
       return;
@@ -1529,6 +1542,38 @@ class _PlayerScreenState extends State<PlayerScreen>
         return false;
       };
 
+      // Пауза «мимо FAB» (v5.8.6): lock-screen, уведомление, мини-плеер,
+      // media-button — handler.pause() отдаёт её сюда, и study-сессия
+      // ставится на паузу честным путём (стоп TTS + drain kick + пауза
+      // плеера). Без хендоффа стоял только плеер, а сессия продолжала жить:
+      // segment-watchdog форсил следующую строку и kick снова жал play
+      // («нажимаю паузу — само играет дальше»). true → handler не делает
+      // собственный _systemPause (pauseSession сам паузит после drain).
+      widget.audioService.backgroundHandler!.onUserPause = () {
+        if (!mounted) return false;
+        if (_studyModeService.isActive &&
+            !_studyModeService.isUserPaused &&
+            !(widget.audioService.backgroundHandler?.isPausedForCall ??
+                false)) {
+          debugPrint('⏸ PlayerScreen: external pause → pauseSession (study)');
+          _studyModeService.pauseSession();
+          return true;
+        }
+        return false;
+      };
+      // Play «мимо FAB» (lock-screen / уведомление / мини-плеер) на
+      // запаузненной study-сессии — возобновляем сессию целиком (runner +
+      // озвучка + kick плеера). true → handler не дублирует запуск.
+      widget.audioService.backgroundHandler!.onUserPlay = () {
+        if (!mounted) return false;
+        if (_studyModeService.isActive && _studyModeService.isUserPaused) {
+          debugPrint('▶ PlayerScreen: external play → resumeSession (study)');
+          _studyModeService.resumeSession();
+          return true;
+        }
+        return false;
+      };
+
       // Прямой детектор звонка (TelephonyManager) — надёжнее audio-focus на
       // ROM с агрессивным системным дакингом (ColorOS/Realme, MIUI). Запрос
       // READ_PHONE_STATE выполняется асинхронно; при отказе грациозно
@@ -1933,6 +1978,8 @@ class _PlayerScreenState extends State<PlayerScreen>
       handler.onPlaybackInterrupted = null;
       handler.onPlaybackResumed = null;
       handler.onBecomingNoisy = null;
+      handler.onUserPause = null;
+      handler.onUserPlay = null;
     }
 
     // Отписываемся от детектора звонка и глушим нативный слушатель — иначе
@@ -3757,35 +3804,36 @@ class _PlayerScreenState extends State<PlayerScreen>
                                       _studyModeService.isActive;
                                   final studyPaused =
                                       _studyModeService.isUserPaused;
-                                  final studySpeaking =
-                                      _studyModeService.isSpeaking;
-                                  final IconData fabIconData;
-                                  if (studyActive && studySpeaking) {
-                                    fabIconData = Icons.record_voice_over;
-                                  } else if (studyActive) {
-                                    fabIconData = studyPaused
-                                        ? Icons.play_arrow
-                                        : Icons.pause;
-                                  } else {
-                                    fabIconData = isPlaying
-                                        ? Icons.pause
-                                        : Icons.play_arrow;
-                                  }
+                                  // Центральная кнопка — ВСЕГДА транспортная
+                                  // (v5.8.6): pause, пока что-то звучит
+                                  // (сегмент песни или озвучка study), play —
+                                  // когда всё стоит. «Голосовой» иконки тут
+                                  // больше нет: её мигание во время озвучки
+                                  // создавало ощущение, что режим живёт на
+                                  // кнопке плей/пауза; режим включается
+                                  // отдельной верхней кнопкой.
+                                  final running =
+                                      (studyActive && !studyPaused) ||
+                                          isPlaying;
+                                  final IconData fabIconData = running
+                                      ? Icons.pause
+                                      : Icons.play_arrow;
                                   return FloatingActionButton(
                                     onPressed: () {
                                       _studyEvt('FAB: pressed '
                                           'studyActive=$studyActive '
                                           'studyPaused=$studyPaused '
                                           'isPlaying=$isPlaying');
-                                      if (studyActive) {
-                                        if (studyPaused) {
-                                          _studyModeService.resumeSession();
-                                        } else {
-                                          _studyModeService.pauseSession();
-                                        }
-                                        return;
-                                      }
-                                      if (isPlaying) {
+                                      // Чистый транспорт (v5.8.6): единый путь
+                                      // для FAB, мини-плеера, lock-screen и
+                                      // уведомления. При активном study
+                                      // handler.pause()/play() хендоффятся в
+                                      // pauseSession()/resumeSession()
+                                      // (onUserPause/onUserPlay), поэтому
+                                      // пауза останавливает и музыку, и
+                                      // озвучку — а не «отрабатывает» до
+                                      // ближайшего kick'а.
+                                      if (running) {
                                         widget.audioService.pause();
                                       } else {
                                         widget.audioService.play();

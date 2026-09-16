@@ -255,6 +255,37 @@ class AudioService extends ChangeNotifier {
     }
   }
 
+  /// Пауза плеера ИЗ ВНУТРЕННЕЙ логики StudyModeService (TTS-фазы, kick,
+  /// stop). В отличие от [pause] — НЕ пользовательское намерение: не дёргает
+  /// handler.onUserPause (иначе служебная пауза рекурсивно превращалась бы в
+  /// pauseSession) и не трогает user-pause-бухгалтерию handler'а (v5.8.6).
+  Future<void> systemPause() async {
+    try {
+      if (_backgroundHandler != null) {
+        await _backgroundHandler!.pauseFromStudy();
+      } else if (_isInitialized) {
+        await _player.pause();
+      }
+    } catch (e) {
+      debugPrint('✗ Error in systemPause(): $e');
+    }
+  }
+
+  /// play() ИЗ ВНУТРЕННЕЙ логики StudyModeService (kick-цикл после TTS).
+  /// Без handler.onUserPlay — служебный запуск не должен трактоваться как
+  /// «пользователь нажал play» (v5.8.6).
+  Future<void> systemPlay() async {
+    try {
+      if (_backgroundHandler != null) {
+        await _backgroundHandler!.playFromStudy();
+      } else if (_isInitialized) {
+        await _player.play();
+      }
+    } catch (e) {
+      debugPrint('✗ Error in systemPlay(): $e');
+    }
+  }
+
   Future<void> stop() async {
     try {
       if (_backgroundHandler != null) {

@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.8.5';
+  static const String version = '5.8.6';
 
-  static const String versionCode = '233';
+  static const String versionCode = '234';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -55,6 +55,8 @@ class AppInfo {
     '🔧 Fix: lyric highlight no longer switches early after manual re-timestamping (corrector heals phantom lead, marks share the highlight time base)',
     '🔧 Fix: study-mode voice recovers by itself after a notification sound (cooldown + retry instead of silence till song end)',
     '🔧 Fix: playback reliably resumes after a phone call (stale interruption echo ignored, second resume-kick round, no next-song jump mid-call)',
+    '🔀 Play/pause button is now a pure transport control — voice mode is toggled by its own top button (on/off in any state)',
+    '🔧 Fix: pause actually pauses in voice mode — lock-screen/notification/mini-player pause no longer gets overridden by auto-recovery (kick loop, watchdogs)',
   ];
 
   static const List<String> supportedLanguages = [

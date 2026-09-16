@@ -44,9 +44,9 @@ if (flutterVersionName == null) {
           applicationId "com.lingotune.app"
           minSdkVersion flutter.minSdkVersion
           targetSdkVersion 35
-          versionCode 233
+          versionCode 234
                     versionName flutterVersionName
-                            archivesBaseName = "LingoTune-v5.8.5"
+                            archivesBaseName = "LingoTune-v5.8.6"
       }
 
      buildTypes {

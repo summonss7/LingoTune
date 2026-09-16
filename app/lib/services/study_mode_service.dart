@@ -786,7 +786,7 @@ class StudyModeService extends ChangeNotifier {
       _phase = StudyPhase.speaking;
       notifyListeners();
       try {
-        await _audio.pause();
+        await _audio.systemPause();
       } catch (_) {}
       try {
         await _speak(text);
@@ -817,7 +817,7 @@ class StudyModeService extends ChangeNotifier {
       _phase = StudyPhase.speaking;
       notifyListeners();
       try {
-        await _audio.pause();
+        await _audio.systemPause();
       } catch (_) {}
       try {
         await _speak(text);
@@ -1095,11 +1095,26 @@ class StudyModeService extends ChangeNotifier {
         : 5.0;
     _segmentWatchdog =
         Timer(Duration(seconds: (segLenSec + 10).round()), () {
-      if (!completer.isCompleted) {
-        debugPrint(
-            '⏰ StudyMode segment[$index]: WATCHDOG (zombie just_audio?) — forcing advance');
-        _cancelSegmentAwait(true);
+      if (completer.isCompleted) return;
+      // Страховка внешней паузы (v5.8.6): плеер стоит, kick не активен,
+      // звонковой паузы нет — значит, воспроизведение остановили мимо всех
+      // известных путей (ROM-специфичный media-button и т.п.). Это НЕ зомби:
+      // форсировать advance и перезапускать песню значило бы перебить паузу
+      // пользователя («нажимаю паузу — само играет дальше»). Ставим сессию на
+      // паузу честным путём. Зомби-случай (playing=true, позиция замерла)
+      // форсирует advance как раньше.
+      if (!_audio.player.playing &&
+          !_debugResuming &&
+          !(_audio.backgroundHandler?.isPausedForCall ?? false)) {
+        debugPrint('⏰ StudyMode segment[$index]: WATCHDOG — player paused '
+            'externally (no kick, no call) → pauseSession');
+        _cancelSegmentAwait(false);
+        pauseSession();
+        return;
       }
+      debugPrint(
+          '⏰ StudyMode segment[$index]: WATCHDOG (zombie just_audio?) — forcing advance');
+      _cancelSegmentAwait(true);
     });
 
     return completer.future;
@@ -1145,8 +1160,13 @@ class StudyModeService extends ChangeNotifier {
       } catch (e) {
         debugPrint('⚠ StudyMode: session setActive error (attempt $attempt): $e');
       }
+      // Проверка НЕПОСРЕДСТВЕННО перед play(): от верхней проверки цикла до
+      // этого места проходит до ~1.4с, и pauseSession мог выставить
+      // _isUserPaused уже после неё — запущенный сейчас play() приземлился бы
+      // ПОСЛЕ паузы и воскресил бы песню (гонка kick vs пауза, v5.8.6).
+      if (!_isActive || _isUserPaused || _disposed) break;
       try {
-        await _audio.play().timeout(stepTimeout);
+        await _audio.systemPlay().timeout(stepTimeout);
       } catch (e) {
         debugPrint('✗ StudyMode: play() error/timeout (attempt $attempt): $e');
       }
@@ -1224,10 +1244,14 @@ class StudyModeService extends ChangeNotifier {
     _cancelSegmentAwait(false);
     // Drain kick-цикла аналогично stop(): _isUserPaused=true заставит цикл
     // выйти на ближайшей проверке, но дождёмся его чтобы не осталось зомби.
+    // Таймаут 3с (v5.8.6): одна попытка kick'а живёт до ~2.4с (setActive 1с +
+    // play 1с + delay 400мс) — старого 2с не хватало, «хвостовой» play()
+    // приземлялся уже после нашей паузы и воскрешал песню (гонка kick vs
+    // пауза: FAB-пауза «не срабатывала»).
     final kick = _kickPlaybackFuture;
     if (kick != null) {
       try {
-        await kick.timeout(const Duration(seconds: 2));
+        await kick.timeout(const Duration(seconds: 3));
       } catch (_) {}
       _kickPlaybackFuture = null;
     }
@@ -1250,9 +1274,30 @@ class StudyModeService extends ChangeNotifier {
         await _audio.player.pause();
       } catch (_) {}
     } else {
+      // Служебная пауза (не пользовательская): systemPause не дёргает
+      // onUserPause-хендофф и не трогает user-pause-бухгалтерию handler'а —
+      // намерение пользователя уже зафиксировано тем путём, который вызвал
+      // pauseSession (FAB/lock-screen → handler.pause, onUserPause и т.п.)
+      // (v5.8.6). Уведомление обновляется как обычно.
       try {
-        await _audio.pause();
+        await _audio.systemPause();
       } catch (_) {}
+    }
+    // Контрольный re-pause (гонка kick vs пауза, v5.8.6): drain мог не
+    // дождаться последнего in-flight play() kick'а — тот приземлился уже
+    // ПОСЛЕ паузы, и песня продолжала бы играть на «запаузненной» сессии.
+    // Даём ему мгновение проявиться в player.playing и паузим сырой паузой;
+    // только пока хвост актуален (после resume gen не совпадает и новый
+    // runner мы не трогаем).
+    if (gen == _pauseGen && _audio.player.playing) {
+      await Future.delayed(const Duration(milliseconds: 250));
+      if (gen == _pauseGen && _audio.player.playing) {
+        debugPrint('⏸ StudyModeService: post-pause re-check — player still '
+            'playing, raw re-pause');
+        try {
+          await _audio.player.pause();
+        } catch (_) {}
+      }
     }
     await _restoreVolume();
     _isSpeaking = false;
@@ -1332,7 +1377,7 @@ class StudyModeService extends ChangeNotifier {
       _kickPlaybackFuture = null;
     }
     try {
-      await _audio.pause();
+      await _audio.systemPause();
     } catch (_) {}
     await _restoreVolume();
     if (userRequested) await _persistEnabled(false);

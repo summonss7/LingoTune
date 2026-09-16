@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.5** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.6** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -307,8 +307,10 @@ void main() {
   detector. A completion watchdog in `PlayerScreen` (`_armCompletionWatchdog`) breaks the
   deadlock when study fails to advance after a call: if the song hasn't changed within ~4 s,
   it forces `_playNextSong()`. While a call/interruption pause is active
-  (`isPausedForCall` / `_studyPausedForCall`) the watchdog re-arms instead of firing —
-  `!player.playing` is legitimate during a call pause, not a deadlock (v5.8.5).
+  (`isPausedForCall` / `_studyPausedForCall`) OR the study session is user-paused
+  (`StudyModeService.isUserPaused`) the watchdog re-arms instead of firing —
+  `!player.playing` is legitimate during a pause, not a deadlock (v5.8.5 calls, v5.8.6 user
+  pause).
 - **Phone calls**: `becomingNoisy` (headphone unplug) is ignored while a call pause is active
   (`_pausedForCall`) — some ROMs fire it on the in-call audio-route change, and it would
   otherwise set `_userPausedDuringCall` and block the legitimate post-call auto-resume.
@@ -327,6 +329,22 @@ void main() {
 
 - Speaks the translation (TTS) and plays the corresponding song segment per lyric line,
   in the order defined by `StudyModeOrder` (`translationFirst` / `originalFirst` / `overlay`).
+- **Pause routing** (v5.8.6): the player-screen FAB is a PURE transport button — it always
+  calls `AudioService.pause()/play()` (one shared path for FAB, mini-player, lock-screen,
+  notification, media buttons). `BackgroundAudioHandler.pause()/play()` hand off to the
+  `onUserPause`/`onUserPlay` callbacks (wired by `PlayerScreen` to
+  `StudyModeService.pauseSession()/resumeSession()`) whenever a study session is active —
+  a pause that skips `pauseSession()` leaves the session "active, not paused" and gets
+  overridden by the kick loop / watchdogs within seconds. Study's OWN pauses/plays (TTS
+  phases, kick loop, `pauseSession` tail, `stop`) go through the service variants
+  `BackgroundAudioHandler.pauseFromStudy()/playFromStudy()`
+  (`AudioService.systemPause()/systemPlay()`) so internal bookkeeping is never mistaken
+  for user intent. The kick loop re-checks `_isUserPaused` immediately before `play()`,
+  `pauseSession` drains the kick with a 3 s timeout and re-pauses 250 ms later if an
+  in-flight `play()` still won. The segment watchdog distinguishes an external pause
+  (player not playing, no kick, no call → `pauseSession()`) from a just_audio zombie
+  (playing=true, position frozen → force-advance). The top study button is a pure
+  on/off toggle in ANY session state (including user-paused).
 - Overlay mode runs continuously: TTS is triggered over the ducked song at line boundaries
   according to `OverlayTiming` (`start` / `end` / `both`). `ttsOffset` (−5..+5 s, plus =
   later, minus = earlier) shifts the boundary detection in the 150 ms position poll;
