@@ -94,6 +94,18 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// при создании экрана и не обновляется при переходе между плейлистами).
   List<Song>? _activePlaybackList;
 
+  /// Глобальная перемешанная очередь для `allPlaylists` + shuffle (v5.8.7):
+  /// ВСЕ песни библиотеки (объединение всех плейлистов, дедуп по song.id) в
+  /// случайном порядке — «случайный по плейлистам» больше не прогоняет папку
+  /// подряд, а тянет почти каждую песню со всей библиотеки. Строится лениво
+  /// при первом next и пересобирается после исчерпания цикла. `null` — не
+  /// построена (или шаффл выключен).
+  List<Song>? _globalShuffleQueue;
+
+  /// Позиция в [_globalShuffleQueue] последней запущенной песни (-1 — ещё
+  /// ничего из очереди не играли).
+  int _globalShufflePos = -1;
+
   bool _cachedShowTranscription = false;
   int _lastProcessedIndex = -1;
   int _lastProcessedLanguageIndex = -1;
@@ -460,6 +472,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (!mounted) return;
     final newLoop = widget.audioService.loopMode;
     final newShuffle = widget.audioService.isShuffleEnabled;
+    // Шаффл выключили (кнопкой на экране или из уведомления) — глобальная
+    // перемешанная очередь больше неактуальна (v5.8.7).
+    if (!newShuffle) {
+      _globalShuffleQueue = null;
+      _globalShufflePos = -1;
+    }
     if (newLoop != _loopMode || newShuffle != _isShuffleEnabled) {
       setState(() {
         _loopMode = newLoop;
@@ -583,7 +601,22 @@ class _PlayerScreenState extends State<PlayerScreen>
     // выключается в любом состоянии, в т.ч. с пользовательской паузы (раньше
     // пауза + нажатие кнопки молча перезапускали сессию — неинтуитивно).
     if (_studyModeService.isActive) {
+      // Выключение режима НЕ должно трогать транспорт (v5.8.7): stop()
+      // безусловно паузит плеер — в «Поверх» это глушило непрерывно игравшую
+      // песню. Кнопка управляет только голосовым слоем. Запоминаем, звучало
+      // ли что-то (озвучка / сегмент / играло недавно), и после остановки
+      // сессии продолжаем обычное воспроизведение с текущей позиции.
+      final wasAudible = !_studyModeService.isUserPaused &&
+          (_studyModeService.isSpeaking ||
+              widget.audioService.player.playing ||
+              (widget.audioService.backgroundHandler?.wasPlayingRecently ??
+                  false));
       await _studyModeService.stop(userRequested: true);
+      if (wasAudible) {
+        // ensurePlaybackAdvancing сам реактивирует аудиосессию после
+        // TTS-хендоффа и лечит зомби just_audio; no-op, если всё здорово.
+        await widget.audioService.ensurePlaybackAdvancing();
+      }
       if (mounted) setState(() {});
       return;
     }
@@ -988,6 +1021,13 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Future<void> _playNextSong() async {
     if (_loopMode == LoopMode.allPlaylists) {
+      // Shuffle ВКЛ (v5.8.7): «случайный по плейлистам» тянет почти каждую
+      // песню из перемешанного массива ВСЕЙ библиотеки (все папки, без
+      // повторов внутри цикла), а не прогоняет текущую папку подряд до конца.
+      if (_isShuffleEnabled) {
+        await _playNextFromShuffledLibrary();
+        return;
+      }
       await _playNextFromAllPlaylists();
       return;
     }
@@ -1003,17 +1043,15 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  /// Логика режима `LoopMode.allPlaylists`: играет активный плейлист целиком,
-  /// затем переходит к ДРУГОМУ плейлисту (а не прыгает обратно в начало
-  /// текущего, как было раньше). Источник очереди — ЖИВОЙ [_activePlaybackList]
-  /// (он сам обновляется при смене плейлиста), а НЕ устаревший
-  /// [widget.playlistSongs].
+  /// Логика режима `LoopMode.allPlaylists` БЕЗ шаффла (v5.8.7: при включённом
+  /// шаффле см. [_playNextFromShuffledLibrary] — глобальная очередь по всей
+  /// библиотеке): играет активный плейлист целиком, затем переходит к ДРУГОМУ
+  /// плейлисту. Источник очереди — ЖИВОЙ [_activePlaybackList] (он сам
+  /// обновляется при смене плейлиста), а НЕ устаревший [widget.playlistSongs].
   ///
   /// Поведение при завершении текущего плейлиста:
-  ///   - shuffle ВЫКЛ: следующий плейлист по порядку (createdAt), wrap-around,
-  ///     пустые пропускаются;
-  ///   - shuffle ВКЛ: случайный плейлист (отличный от текущего, если есть),
-  ///     пустые пропускаются.
+  ///   - следующий плейлист по порядку (createdAt), wrap-around, пустые
+  ///     пропускаются.
   Future<void> _playNextFromAllPlaylists() async {
     final list = _activePlaybackList ?? widget.playlistSongs;
     if (list == null || list.isEmpty) {
@@ -1029,6 +1067,54 @@ class _PlayerScreenState extends State<PlayerScreen>
     } else {
       // Текущий плейлист доиграл до конца → переходим к другому.
       await _switchToNextPlaylist();
+    }
+  }
+
+  /// «Случайный по плейлистам» (v5.8.7): глобальная перемешанная очередь из
+  /// ВСЕХ песен библиотеки (объединение всех плейлистов). До этого шаффл в
+  /// allPlaylists не участвовал в выборе песни вообще: папка прогонялась
+  /// подряд до конца, случайной была только СЛЕДУЮЩАЯ папка (и та входила с
+  /// первой песни), а идентификация текущей папки по первой песне сбивалась
+  /// системным плейлистом «все песни» → «запрыгивало обратно в первую папку».
+  ///
+  /// Очередь строится лениво и пересобирается после исчерпания цикла (новый
+  /// случайный порядок). Активным списком становится сама очередь — тогда
+  /// [_playSong] находит корректные индексы, prev/уведомление/фоновая
+  /// очередь остаются консистентными.
+  Future<void> _playNextFromShuffledLibrary() async {
+    try {
+      final currentId = _currentSong.id;
+      if (_globalShuffleQueue == null ||
+          _globalShufflePos >= _globalShuffleQueue!.length - 1) {
+        final db = DatabaseService();
+        final playlists = await db.getAllPlaylists();
+        // Дедуп по song.id: песня живёт и в своей папке, и в системных
+        // «все песни»/«избранное» — без дедупа она играла бы по 2+ раза за
+        // цикл.
+        final byId = <String, Song>{};
+        for (final p in playlists) {
+          for (final s in await db.getSongsInPlaylist(p.id!)) {
+            byId.putIfAbsent(s.id, () => s);
+          }
+        }
+        if (byId.isEmpty) return;
+        final library = byId.values.toList();
+        // Только что игравшую песню не повторяем в новом цикле сразу же.
+        library.removeWhere((s) => s.id == currentId);
+        if (library.isEmpty) return;
+        library.shuffle(_random);
+        _globalShuffleQueue = library;
+        _globalShufflePos = -1;
+        if (!mounted) return;
+        setState(() => _activePlaybackList = library);
+        widget.audioService.setCurrentPlaylist(library);
+        debugPrint('🔀 allPlaylists+shuffle: built global queue '
+            '(${library.length} songs)');
+      }
+      _globalShufflePos++;
+      await _playSong(_globalShuffleQueue![_globalShufflePos]);
+    } catch (e, st) {
+      debugPrint('✗ Error playing next from shuffled library: $e\n$st');
     }
   }
 

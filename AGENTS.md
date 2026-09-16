@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.6** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.7** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -302,6 +302,12 @@ void main() {
   value is retained only for prefs backward-compat — it is NOT part of the cycle; favorites
   are played by opening the favorites playlist (behaves as `LoopMode.all`). The heart button
   only adds/removes the song from favorites and never changes the playback mode.
+  `allPlaylists` + shuffle builds a GLOBAL shuffled queue over the whole library
+  (`PlayerScreen._playNextFromShuffledLibrary`): union of all playlists' songs, deduped by
+  song id (a song lives both in its folder and in `all_songs`/`favorites`), current song
+  not repeated immediately, reshuffled each cycle; the queue itself becomes
+  `_activePlaybackList` so indices/prev/notification stay consistent. Without shuffle,
+  `allPlaylists` remains sequential (folder by folder, `_playNextFromAllPlaylists`).
 - **Track completion**: `AudioService.onSongComplete` (fired on `processingState == completed`)
   is guarded while study mode is active — advancement then depends on study's own completion
   detector. A completion watchdog in `PlayerScreen` (`_armCompletionWatchdog`) breaks the
@@ -344,7 +350,10 @@ void main() {
   in-flight `play()` still won. The segment watchdog distinguishes an external pause
   (player not playing, no kick, no call → `pauseSession()`) from a just_audio zombie
   (playing=true, position frozen → force-advance). The top study button is a pure
-  on/off toggle in ANY session state (including user-paused).
+  on/off toggle in ANY session state (including user-paused); turning the mode OFF
+  does NOT touch transport — if something was audible (TTS/segment/recently
+  playing) the song keeps playing from the current position via
+  `ensurePlaybackAdvancing()` (v5.8.7).
 - Overlay mode runs continuously: TTS is triggered over the ducked song at line boundaries
   according to `OverlayTiming` (`start` / `end` / `both`). `ttsOffset` (−5..+5 s, plus =
   later, minus = earlier) shifts the boundary detection in the 150 ms position poll;
