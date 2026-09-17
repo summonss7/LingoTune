@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.7** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.8** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -296,6 +296,11 @@ void main() {
   interruption-`begin` of an ALREADY-ENDED call used to trigger a fresh pause with no matching
   `end` → playback frozen forever. `BackgroundAudioHandler._handleCallPause` now ignores a
   `begin` arriving within 5 s after a resume when `PhoneCallService.current == idle`.
+  Since v5.8.8 a begin whose `end` never arrives at all (message-notification beep, echo older
+  than the window) is cleared by `BackgroundAudioHandler.clearStaleCallPause()`: after a
+  30 s stale threshold, confirmed by a LISTENING phone detector reporting `idle`, it runs the
+  regular `_handleCallResume` (→ `onPlaybackResumed` → `resumeSession`). Without a working
+  detector it refuses — a stuck beep is indistinguishable from a live call.
 - **Loop mode** — `AudioService` is the single source of truth (persisted, pushed to
   `BackgroundAudioHandler`, mirrored in `PlayerScreen` via a listener so lock-screen changes
   are reflected). Button cycle: `off → all → one → allPlaylists → off`. The `favorites` enum
@@ -316,7 +321,17 @@ void main() {
   (`isPausedForCall` / `_studyPausedForCall`) OR the study session is user-paused
   (`StudyModeService.isUserPaused`) the watchdog re-arms instead of firing —
   `!player.playing` is legitimate during a pause, not a deadlock (v5.8.5 calls, v5.8.6 user
-  pause).
+  pause). Since v5.8.8 that re-arm loop is BOUNDED and self-healing: after 5 dirty re-arms
+  (~20 s) in the call branch — or 8 (~32 s) in the user-pause branch, and only when the song
+  is already `completed` (a pause on a finished song is a race artifact, not intent) — with
+  the native phone detector listening and reporting `idle` (`_canSelfHealCompletion`),
+  `_selfHealStuckCompletion` clears the stuck flags (`clearStaleCallPause`, `_studyPausedForCall`)
+  and forces the next song. This covers the v5.8.7 field bug where a rejected call or a
+  notification beep left the session paused while the player kept playing, and each song then
+  needed manual pause+play to advance. The late-play race that created that state is also
+  plugged at the source: `StudyModeService._pauseSessionInner` re-checks `player.playing` at
+  ~1 s and ~3 s after the pause (generation-guarded) and raw-re-pauses if an in-flight kick
+  `play()` won.
 - **Phone calls**: `becomingNoisy` (headphone unplug) is ignored while a call pause is active
   (`_pausedForCall`) — some ROMs fire it on the in-call audio-route change, and it would
   otherwise set `_userPausedDuringCall` and block the legitimate post-call auto-resume.
@@ -372,6 +387,12 @@ void main() {
   beep). No probes when the language is genuinely unavailable — segments-only stays permanent.
   Engine `stop()` paths are time-boxed (2 s) so a wedged stop can't hang
   `TtsCoordinator._interruptCurrent` and cascade every following speak into a timeout.
+  Since v5.8.8 `SystemTtsEngine.speak()` also time-boxes (3 s) every speech-param platform call
+  (`setLanguage/setSpeechRate/setPitch/setVolume`, via `_safeParam`) and the `speak()` platform
+  call itself: after a call/notification the system TTS service rebinds, an un-timed call could
+  hang forever and burn the study watchdog TWICE from one incident → speech disabled for the
+  rest of the song. A timed-out param is skipped; a timed-out speak resolves as failure
+  (one fail-strike max per incident).
 - `pauseSession`/`resumeSession` re-entrancy (v5.8.5): `resumeSession` awaits the in-flight
   pause tail (`_pauseSessionFuture`, 3 s timeout) before starting the runner; a wedged tail is
   stopped by the `_pauseGen` generation token before its player re-pause. A short interruption

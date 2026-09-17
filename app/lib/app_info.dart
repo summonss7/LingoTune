@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.8.7';
+  static const String version = '5.8.8';
 
-  static const String versionCode = '235';
+  static const String versionCode = '236';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -59,6 +59,8 @@ class AppInfo {
     '🔧 Fix: pause actually pauses in voice mode — lock-screen/notification/mini-player pause no longer gets overridden by auto-recovery (kick loop, watchdogs)',
     '🔊 Turning voice mode OFF no longer pauses the song (overlay keeps playing, transport untouched)',
     '🔀 Shuffle + "all playlists" now draws almost every song from the whole library across all folders (no folder runs, no repeats per cycle)',
+    '🔧 Fix: next song now starts by itself after a rejected call or a message notification (stuck-pause self-healing instead of manual pause+play)',
+    '🗣️ Fix: voice translation recovers after a call/notification even when the system TTS service hangs (timed-out engine calls)',
   ];
 
   static const List<String> supportedLanguages = [

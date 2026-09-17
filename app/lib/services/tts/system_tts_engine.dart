@@ -158,26 +158,25 @@ class SystemTtsEngine extends TtsEngine {
       _lastVolume = volume.clamp(0.0, 1.0);
     }
 
-    // Применяем параметры речи прямо перед speak (как в координаторе 5.4.0).
-    try {
-      await _tts.setLanguage(_ttsLanguage);
-    } catch (_) {}
-    try {
-      await _tts.setSpeechRate(rate);
-    } catch (_) {}
+    // Применяем параметры речи прямо перед speak (как в координаторе 5.4.0),
+    // но с таймаутом (v5.8.8): после звонка/beep'а уведомления системный
+    // TTS-сервис переподключается, и platform-вызов может зависнуть НАВСЕГДА.
+    // Раньше speak вис на param-шаге до study-watchdog, и один инцидент
+    // дважды набивал _ttsFailStreak → перевод замолкал до конца песни.
+    // По таймауту просто идём дальше — следующий шаг либо заработает, либо
+    // честно засчитается одной ошибкой.
+    await _safeParam(_tts.setLanguage(_ttsLanguage), 'setLanguage');
+    await _safeParam(_tts.setSpeechRate(rate), 'setSpeechRate');
     if (pitch != null) {
-      try {
-        await _tts.setPitch(pitch);
-      } catch (_) {}
+      await _safeParam(_tts.setPitch(pitch), 'setPitch');
     }
-    try {
-      await _tts.setVolume(_lastVolume);
-    } catch (_) {}
+    await _safeParam(_tts.setVolume(_lastVolume), 'setVolume');
 
     final completer = Completer<void>();
     _speakCompleter = completer;
+    dynamic result;
     try {
-      final result = await _tts.speak(text);
+      result = await _tts.speak(text).timeout(const Duration(seconds: 3));
       // flutter_tts возвращает 1 при успехе, 0 при неудаче; при неудаче ни
       // completion-, ни error-handler не придёт → completer висел бы вечно.
       // Явной неудачей считаем ТОЛЬКО 0/false: нестандартные значения некоторых
@@ -189,6 +188,14 @@ class SystemTtsEngine extends TtsEngine {
         if (!completer.isCompleted) completer.complete();
         return;
       }
+    } on TimeoutException {
+      // Сам platform-вызов speak завис (переподключение TTS-сервиса после
+      // звонка) — не ждём completion-handler'а, завершаемся «неудачей»,
+      // чтобы study-watchdog не сжёг стрик ожиданием мёртвого запроса.
+      debugPrint('⚠ SystemTtsEngine: speak() platform call timed out');
+      _speakCompleter = null;
+      if (!completer.isCompleted) completer.complete();
+      return;
     } catch (e) {
       debugPrint('✗ SystemTtsEngine: speak() error: $e');
       _speakCompleter = null;
@@ -196,6 +203,17 @@ class SystemTtsEngine extends TtsEngine {
       return;
     }
     return completer.future;
+  }
+
+  /// Применяет параметр речи с таймаутом: зависший platform-вызов (TTS-сервис
+  /// переподключается после звонка/уведомления) не должен вешать speak()
+  /// целиком (v5.8.8).
+  Future<void> _safeParam(Future<dynamic> param, String what) async {
+    try {
+      await param.timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('⚠ SystemTtsEngine: $what timed out/failed: $e');
+    }
   }
 
   @override

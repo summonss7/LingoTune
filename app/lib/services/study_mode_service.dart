@@ -1299,6 +1299,28 @@ class StudyModeService extends ChangeNotifier {
         } catch (_) {}
       }
     }
+    // Отложенные контрольные re-pause-точки (v5.8.8): ин-флайтовый play()
+    // kick'а мог приземлиться и ПОСЛЕ 250-мс проверки (активная попытка kick'а
+    // живёт до ~2.4с, а drain ждёт максимум 3с от начала паузы). Песня,
+    // доигрывающая на «мёртвой» сессии — худший вариант: TTS молчит, детекторы
+    // завершения убиты, а по completed watchdog автоперехода реармится вечно
+    // (симптом «после звонка/сообщения следующая песня сама не включается»).
+    // Пока хвост паузы актуален, перепроверяем ещё дважды и глушим сырой
+    // паузой; после resume (gen не совпадает) выходим, не трогая новый runner.
+    for (final delay in const [
+      Duration(milliseconds: 750),
+      Duration(seconds: 2),
+    ]) {
+      await Future.delayed(delay);
+      if (gen != _pauseGen) break;
+      if (_audio.player.playing) {
+        debugPrint('🔒 StudyModeService: late play-race re-pause — player '
+            'playing on paused session, raw re-pause');
+        try {
+          await _audio.player.pause();
+        } catch (_) {}
+      }
+    }
     await _restoreVolume();
     _isSpeaking = false;
     _phase = StudyPhase.idle;

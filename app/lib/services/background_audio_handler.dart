@@ -65,6 +65,14 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   /// считается эхом отбоя и игнорируется.
   static const _staleEchoWindow = Duration(seconds: 5);
 
+  /// Время начала текущей call-паузы (для [clearStaleCallPause]).
+  DateTime? _callPauseStartedAt;
+
+  /// Сколько может висеть call-пауза без парного end, прежде чем
+  /// [clearStaleCallPause] сочтёт её залипшей (beep уведомления/сообщения,
+  /// эхо отбоя вне окна дебаунса) при подтверждённо свободной линии.
+  static const _staleCallPauseTimeout = Duration(seconds: 30);
+
   Function(bool)? onShuffleToggled;
   Function(LoopMode)? onLoopToggled;
   Function()? onSkipToNextRequested;
@@ -245,6 +253,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       }
     }
     _pausedForCall = true;
+    _callPauseStartedAt = DateTime.now();
     // Даём study mode корректно поставить сессию на паузу (стоп TTS +
     // drain kick-цикла). Если колбэк взял управление на себя — НЕ захватываем
     // wasPlaying и не делаем авто-resume песни, этим займётся resumeSession
@@ -265,6 +274,7 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       return;
     }
     _pausedForCall = false;
+    _callPauseStartedAt = null;
     // Момент resume — для дебаунса эха в [_handleCallPause] (см. там).
     _lastResumeAt = DateTime.now();
     final wasPlaying = _wasPlayingBeforeInterruption;
@@ -406,6 +416,35 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   /// Публичный гейт для study kick-цикла и watchdog'ов экрана: не бороться с
   /// легитимной паузой и не форсить смену песни посреди разговора (v5.8.5).
   bool get isPausedForCall => _pausedForCall;
+
+  /// Снимает ЗАЛИПШУЮ call-паузу (v5.8.8): interruption-begin пришёл, а
+  /// парный end — нет (beep уведомления/сообщения, запоздалое эхо отбоя вне
+  /// окна дебаунса [_staleEchoWindow]). Без этого `_pausedForCall` висел бы
+  /// вечно: kick-цикл study прерывался, play() не доходил до onUserPlay, а
+  /// watchdog автоперехода бесконечно реармился (симптом «после сообщения
+  /// песня доиграла — следующая сама не включилась»). Условия консервативны:
+  /// нативный детектор [PhoneCallService] слушает И подтверждает idle
+  /// (иначе нельзя отличить залипший beep от реального долгого разговора), и
+  /// пауза висит дольше [_staleCallPauseTimeout]. Снятие идёт штатным
+  /// [_handleCallResume] — он вызовет onPlaybackResumed (resumeSession).
+  /// Возвращает true, если пауза была снята.
+  bool clearStaleCallPause() {
+    if (!_pausedForCall) return false;
+    final startedAt = _callPauseStartedAt;
+    if (startedAt == null ||
+        DateTime.now().difference(startedAt) < _staleCallPauseTimeout) {
+      return false;
+    }
+    final phone = PhoneCallService.instance;
+    if (!(phone.isListening && phone.current == CallState.idle)) {
+      return false;
+    }
+    debugPrint('📞 BackgroundAudioHandler: stale call-pause cleared '
+        '(no end event for ${DateTime.now().difference(startedAt).inSeconds}s, '
+        'phone idle) — resuming');
+    _handleCallResume();
+    return true;
+  }
 
   void _initializeState() {
     playbackState.add(PlaybackState(

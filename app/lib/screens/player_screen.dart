@@ -136,6 +136,26 @@ class _PlayerScreenState extends State<PlayerScreen>
   Timer? _completionWatchdog;
   String? _watchdogSongId;
 
+  /// Сколько раз подряд watchdog дедлока завершения РЕАРМИЛСЯ из-за
+  /// «подозрительных» состояний (call-пауза / user-пауза study), не стреляя
+  /// (v5.8.8). Бесконечный реарм и был багом «после звонка/уведомления
+  /// следующая песня сама не включается»: залипший флаг паузы при ДОИГРАВШЕЙ
+  /// песне держал петлю вечно (лечилось только ручными пауза+play). После
+  /// [_callStuckRearmLimit] / [_userPauseStuckRearmLimit] реармов подряд при
+  /// подтверждённо свободной линии включается самолечение
+  /// ([_selfHealStuckCompletion]).
+  int _watchdogStuckRearms = 0;
+
+  /// Порог реармов для call-ветки (~20 с): begin без end (beep уведомления,
+  /// эхо отбоя вне окна дебаунса) — снимаем паузу и форсим next.
+  static const int _callStuckRearmLimit = 5;
+
+  /// Порог реармов для user-pause-ветки (~32 с): порог выше, чтобы у
+  /// настоящей пользовательской паузы был запас; самолечение дополнительно
+  /// требует `processingState == completed` (пауза при ДОИГРАВШЕЙ песне —
+  /// гонка прерывания, а не намерение «продолжить позже»).
+  static const int _userPauseStuckRearmLimit = 8;
+
   /// Была ли study-сессия паузнута ради входящего звонка/прерывания. Ставится
   /// в [onPlaybackInterrupted] (BackgroundAudioHandler) и снимается в
   /// [onPlaybackResumed], чтобы после звонка корректно возобновить озвучку.
@@ -496,6 +516,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       final player = widget.audioService.player;
       // Песня сменилась → study сам справился, форсить не нужно.
       if (_currentSong.id != _watchdogSongId) {
+        _watchdogStuckRearms = 0;
         _studyEvt('completion WATCHDOG: song already advanced, no-op');
         return;
       }
@@ -504,15 +525,26 @@ class _PlayerScreenState extends State<PlayerScreen>
         _studyEvt('completion WATCHDOG: song is loading, no-op');
         return;
       }
+      final completed = player.processingState == ProcessingState.completed;
       // Идёт звонок/прерывание — плеер ЛЕГИТИМНО на паузе (v5.8.5: раньше
       // «stuck = !playing» стрелял в call-паузе и запускал следующую песню
       // ПРЯМО посреди разговора). Переносим проверку, пока прерывание активно;
       // после отбоя study сам двинется (resumeSession) либо watchdog сработает
-      // по-настоящему.
+      // по-настоящему. НО (v5.8.8): если нативный детектор подтверждает, что
+      // линии свободна, а пауза «висит» уже несколько реармов — это begin без
+      // end (beep уведомления/сообщения, эхо отбоя) → самолечение.
       if ((widget.audioService.backgroundHandler?.isPausedForCall ?? false) ||
           _studyPausedForCall) {
+        if (_watchdogStuckRearms >= _callStuckRearmLimit &&
+            _canSelfHealCompletion()) {
+          _selfHealStuckCompletion(
+              'call/interruption pause stuck ${_watchdogStuckRearms + 1} '
+              're-arms, phone idle');
+          return;
+        }
+        _watchdogStuckRearms++;
         _studyEvt('completion WATCHDOG: call/interruption in progress '
-            '— re-arming');
+            '— re-arming (${_watchdogStuckRearms}/$_callStuckRearmLimit)');
         _armCompletionWatchdog();
         return;
       }
@@ -520,13 +552,25 @@ class _PlayerScreenState extends State<PlayerScreen>
       // это намерение, а не deadlock. Форсить следующую песню значило бы
       // перебить паузу (поставил паузу в конце песни → сама заиграла
       // следующая). Переносим проверку: после resume study двинется сам либо
-      // watchdog сработает по-настоящему.
+      // watchdog сработает по-настоящему. Исключение (v5.8.8): пауза при УЖЕ
+      // ДОИГРАВШЕЙ песне бессмысленна как «вернуться сюда позже» — completed
+      // при паузе означает гонку прерывания (pauseSession не остановила
+      // плеер, ин-флайтовый play() kick-цикла его воскресил) → после
+      // [_userPauseStuckRearmLimit] реармов самолечимся.
       if (_studyModeService.isActive && _studyModeService.isUserPaused) {
-        _studyEvt('completion WATCHDOG: study user-paused — re-arming');
+        if (completed &&
+            _watchdogStuckRearms >= _userPauseStuckRearmLimit &&
+            _canSelfHealCompletion()) {
+          _selfHealStuckCompletion('study paused but song completed '
+              '${_watchdogStuckRearms + 1} re-arms');
+          return;
+        }
+        _watchdogStuckRearms++;
+        _studyEvt('completion WATCHDOG: study user-paused — re-arming '
+            '(${_watchdogStuckRearms}/$_userPauseStuckRearmLimit)');
         _armCompletionWatchdog();
         return;
       }
-      final completed = player.processingState == ProcessingState.completed;
       final stuck = !player.playing;
       if (completed || stuck) {
         _studyEvt('completion WATCHDOG FIRED — study did not advance, '
@@ -540,9 +584,39 @@ class _PlayerScreenState extends State<PlayerScreen>
     });
   }
 
+  /// Можно ли самолечить залипший watchdog: нативный детектор звонка
+  /// ([PhoneCallService]) работает И подтверждает, что линии свободна.
+  /// Без работающего детектора отличить «залипший beep» от реального
+  /// разговора невозможно — не форсим музыку посреди звонка.
+  bool _canSelfHealCompletion() {
+    if (!mounted || _isSongLoading) return false;
+    final phone = PhoneCallService.instance;
+    return phone.isListening && phone.current == CallState.idle;
+  }
+
+  /// Самолечение залипшего автоперехода (v5.8.8). Симптом: после звонка или
+  /// beep'а уведомления песня доиграла до конца, а следующая сама не
+  /// включилась (спасали только ручные пауза+play — play доходил до
+  /// resumeSession). Причина: study-сессия залипла в паузе при играющем
+  /// плеере (гонка kick vs pauseSession) либо call-пауза осталась без
+  /// парного end → watchdog реармился вечно. Лечение: снять залипшие флаги и
+  /// форснуть следующую песню — [_playSong] чисто остановит и перезапустит
+  /// study на новой песне (TTS вернётся через _ensureTtsReady).
+  void _selfHealStuckCompletion(String reason) {
+    _studyEvt('completion WATCHDOG SELF-HEAL — $reason');
+    debugPrint('🔧 PlayerScreen: completion watchdog SELF-HEAL ($reason)');
+    // Залипший begin без end (beep уведомления): снимаем call-паузу —
+    // _handleCallResume сам вызовет onPlaybackResumed (дренирует хвосты).
+    widget.audioService.backgroundHandler?.clearStaleCallPause();
+    _studyPausedForCall = false;
+    _studyWasAudibleBeforeCall = false;
+    _playNextSong();
+  }
+
   /// Отменяет watchdog. Вызывается при начале [_playSong] (любая смена песни)
   /// и когда обычный путь завершения сам запускает next (study не активен).
   void _cancelCompletionWatchdog() {
+    _watchdogStuckRearms = 0;
     _completionWatchdog?.cancel();
     _completionWatchdog = null;
   }
