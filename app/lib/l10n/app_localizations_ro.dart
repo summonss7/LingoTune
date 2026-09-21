@@ -601,6 +601,9 @@ class AppLocalizationsRo extends AppLocalizations {
   String get colorTheme => 'Temă culori';
 
   @override
+  String get themeNameAmethyst => 'Ametist';
+
+  @override
   String get themeColorPurple => 'Violet';
 
   @override
@@ -1950,7 +1953,11 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => 'Volumul originalului';
+
+  @override
   String get studyModeTtsOffset => 'Decalajul vocii';
+
+  @override
   String get studyModeTtsOffsetHint => 'Minus — mai devreme, plus — mai târziu (sec). Doar modul suprapus';
 
   @override
@@ -2189,28 +2196,40 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get lyricColors => 'Culorile liniilor';
+
   @override
   String get lyricColorsTitle => 'Culorile liniilor';
+
   @override
   String get lyricColorsUseCustom => 'Culori personalizate';
+
   @override
   String get lyricColorsPresets => 'Presetări';
+
   @override
   String get lyricColorsOriginal => 'Original';
+
   @override
   String get lyricColorsTranslation => 'Traducere';
+
   @override
   String get lyricColorsPreview => 'Previzualizare';
+
   @override
   String get lyricColorsDone => 'Gata';
+
   @override
   String get lyricPresetDefault => 'Implicit';
+
   @override
   String get lyricPresetBlueRed => 'Original albastru / Traducere roșu';
+
   @override
   String get lyricPresetRedBlue => 'Original roșu / Traducere albastru';
+
   @override
   String get lyricPresetGreenOrange => 'Original verde / Traducere portocaliu';
+
   @override
   String get lyricPresetContrast => 'Contrast ridicat';
 }

@@ -10,8 +10,15 @@ class ThemeProvider with ChangeNotifier {
   ThemeMode get themeMode => _isDarkMode ? ThemeMode.dark : ThemeMode.light;
   Color get seedColor => _seedColorValue;
 
+  /// Тема «Аметист» (v5.8.9): фиолетовый градиентный скин. Строится не из
+  /// seed-цвета, а из фиксированной палитры AmethystPalette — сид ниже лишь
+  /// фолбэк для кода, который читает seedColor напрямую.
+  bool get isAmethystSkin => _themeColorName == 'amethyst';
+
   Color _getSeedColor(String colorName) {
     switch (colorName) {
+      case 'amethyst':
+        return Colors.deepPurple;
       case 'purple':
         return Colors.purple;
       case 'blue':
@@ -44,7 +51,10 @@ class ThemeProvider with ChangeNotifier {
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     _isDarkMode = prefs.getBool('isDarkMode') ?? false;
-    _themeColorName = prefs.getString('themeColor') ?? 'default';
+    // «Аметист» — тема по умолчанию (v5.8.9). Ключ отсутствует только у тех,
+    // кто ни разу не выбирал цвет — они и получают новый дефолт; ранее
+    // выбранный цвет не трогаем.
+    _themeColorName = prefs.getString('themeColor') ?? 'amethyst';
     _seedColorValue = _getSeedColor(_themeColorName);
     notifyListeners();
   }

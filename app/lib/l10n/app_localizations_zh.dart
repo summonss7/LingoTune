@@ -601,6 +601,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get colorTheme => '颜色主题';
 
   @override
+  String get themeNameAmethyst => '紫水晶';
+
+  @override
   String get themeColorPurple => '紫色';
 
   @override
@@ -1950,7 +1953,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => '原声音量';
+
+  @override
   String get studyModeTtsOffset => '语音时序偏移';
+
+  @override
   String get studyModeTtsOffsetHint => '负值 — 提前，正值 — 延后（秒）。仅限叠加模式';
 
   @override
@@ -2189,28 +2196,40 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get lyricColors => '歌词颜色';
+
   @override
   String get lyricColorsTitle => '歌词颜色';
+
   @override
   String get lyricColorsUseCustom => '自定义颜色';
+
   @override
   String get lyricColorsPresets => '预设';
+
   @override
   String get lyricColorsOriginal => '原文';
+
   @override
   String get lyricColorsTranslation => '翻译';
+
   @override
   String get lyricColorsPreview => '预览';
+
   @override
   String get lyricColorsDone => '完成';
+
   @override
   String get lyricPresetDefault => '默认';
+
   @override
   String get lyricPresetBlueRed => '原文蓝 / 翻译红';
+
   @override
   String get lyricPresetRedBlue => '原文红 / 翻译蓝';
+
   @override
   String get lyricPresetGreenOrange => '原文绿 / 翻译橙';
+
   @override
   String get lyricPresetContrast => '高对比度';
 }

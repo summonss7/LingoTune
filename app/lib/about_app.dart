@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_info.dart';
+import 'theme/app_gradients.dart';
 
 class AboutApp extends StatelessWidget {
   const AboutApp({super.key});
@@ -9,24 +10,24 @@ class AboutApp extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('About LingoTune'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: context.appBarColor(Theme.of(context).colorScheme.inversePrimary),
       ),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.music_note,
               size: 80,
-              color: Colors.deepPurple,
+              color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(height: 32),
-            const Text(
+            Text(
               'LingoTune',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 16),
@@ -34,7 +35,7 @@ class AboutApp extends StatelessWidget {
               'v${AppInfo.version}',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 32),
@@ -42,7 +43,7 @@ class AboutApp extends StatelessWidget {
               'Learn languages through music with synchronized lyrics',
               style: TextStyle(
                 fontSize: 18,
-                color: Colors.grey[700],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 16),
@@ -50,7 +51,7 @@ class AboutApp extends StatelessWidget {
               'Features include audio playback, synchronized lyrics, translations,',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[700],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 48),
@@ -58,7 +59,7 @@ class AboutApp extends StatelessWidget {
               'Features:',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[700],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 8),
@@ -115,7 +116,7 @@ class AboutApp extends StatelessWidget {
               'New in v1.1.0:',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.deepPurple,
+                color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -124,7 +125,7 @@ class AboutApp extends StatelessWidget {
               '✅ Dark mode & theme',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.deepPurple,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 16),
@@ -132,7 +133,7 @@ class AboutApp extends StatelessWidget {
               '✅ Font size control',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.deepPurple,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 16),
@@ -140,7 +141,7 @@ class AboutApp extends StatelessWidget {
               '✅ Import/Export settings',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.deepPurple,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 16),
@@ -148,7 +149,7 @@ class AboutApp extends StatelessWidget {
               '✅ Translation editor',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.deepPurple,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 16),
@@ -156,7 +157,7 @@ class AboutApp extends StatelessWidget {
               '✅ Lyrics search (Lyrics.ovh API)',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.deepPurple,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 24),
@@ -164,7 +165,7 @@ class AboutApp extends StatelessWidget {
               '✅ AI translation (MyMemory API)',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.deepPurple,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 48),
@@ -174,7 +175,7 @@ class AboutApp extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const Padding(
@@ -213,7 +214,7 @@ class AboutApp extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const Padding(
@@ -242,7 +243,7 @@ class AboutApp extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 16),
@@ -250,7 +251,7 @@ class AboutApp extends StatelessWidget {
               'Developed with ❤️ for language learners',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[700],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 8),
@@ -258,7 +259,7 @@ class AboutApp extends StatelessWidget {
               '© 2026 Z.AI GLM & Цимбалов Артем',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],

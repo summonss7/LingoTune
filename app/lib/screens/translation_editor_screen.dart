@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart' as p;
 import '../models/song.dart';
+import '../theme/app_gradients.dart';
 import '../models/lyric_line.dart';
 import '../models/translation.dart';
 import '../services/translation_api_service.dart';
@@ -647,7 +648,7 @@ class _TranslationEditorScreenState extends State<TranslationEditorScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Translation Editor'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: context.appBarColor(Theme.of(context).colorScheme.inversePrimary),
         actions: [
           if (_isTranslating)
             const Padding(

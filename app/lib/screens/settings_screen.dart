@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import '../services/settings_provider.dart';
+import '../theme/app_gradients.dart';
 import '../services/settings_dialogs.dart';
 import '../app_info.dart';
 import 'package:lingotune/l10n/app_localizations.dart';
@@ -139,7 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.settings),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: context.appBarColor(Theme.of(context).colorScheme.inversePrimary),
       ),
       body: ListView(
         children: [

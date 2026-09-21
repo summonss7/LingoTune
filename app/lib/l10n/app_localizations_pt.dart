@@ -601,6 +601,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get colorTheme => 'Tema de cor';
 
   @override
+  String get themeNameAmethyst => 'Ametista';
+
+  @override
   String get themeColorPurple => 'Roxo';
 
   @override
@@ -1950,7 +1953,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => 'Volume do original';
+
+  @override
   String get studyModeTtsOffset => 'Ajuste de tempo da fala';
+
+  @override
   String get studyModeTtsOffsetHint => 'Menos — antes, mais — depois (s). Somente no modo sobreposição';
 
   @override
@@ -2189,28 +2196,40 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get lyricColors => 'Cores das linhas';
+
   @override
   String get lyricColorsTitle => 'Cores das linhas';
+
   @override
   String get lyricColorsUseCustom => 'Cores personalizadas';
+
   @override
   String get lyricColorsPresets => 'Predefinições';
+
   @override
   String get lyricColorsOriginal => 'Original';
+
   @override
   String get lyricColorsTranslation => 'Tradução';
+
   @override
   String get lyricColorsPreview => 'Pré-visualização';
+
   @override
   String get lyricColorsDone => 'Concluído';
+
   @override
   String get lyricPresetDefault => 'Padrão';
+
   @override
   String get lyricPresetBlueRed => 'Original azul / Tradução vermelho';
+
   @override
   String get lyricPresetRedBlue => 'Original vermelho / Tradução azul';
+
   @override
   String get lyricPresetGreenOrange => 'Original verde / Tradução laranja';
+
   @override
   String get lyricPresetContrast => 'Alto contraste';
 }

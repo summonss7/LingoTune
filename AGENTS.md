@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.8** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.9** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -249,6 +249,31 @@ void main() {
 
 ---
 
+## Theming (theme «Аметист» + seed themes)
+
+- All `ThemeData` is built in exactly ONE place — `main.dart`
+  (`_buildTextTheme` / `_seededTheme` / `AmethystPalette.buildTheme`).
+  Never construct `ThemeData` in screens.
+- **«Аметист»** (`'amethyst'`, key of `themeColor` prefs; default since v5.8.9):
+  full-screen vertical gradient behind all screens (via `MaterialApp.builder`
+  → `DecoratedBox`), transparent Scaffolds/AppBars, darker gradient cards.
+  Light mode = vivid purple `#5E3FE6→#4125C2`, dark = purple-black
+  `#1A1428→#0F0B19`; both are dark-brightness schemes (light text).
+  Core: `app/lib/theme/app_gradients.dart` — `ThemeExtension<AppGradients>`
+  (backdrop / card / transcriptAccent), `AmethystPalette` (hex tables +
+  `buildTheme`), context helpers.
+- **Skin gate**: `context.isAmethystSkin` is true iff the theme carries the
+  `AppGradients` extension — use it (or `context.appBarColor(fallback)` /
+  `amethystCardDecoration(context, {radius})`) for any screen-level styling
+  that must differ on «Аметист»; all other themes must keep their old look.
+- `themeColor` is persisted TWICE (ThemeProvider + SettingsProvider) — always
+  write both (see `ColorThemeTile.onChanged`). Default when the key is absent:
+  `'amethyst'` (chosen colors are never overridden).
+- Semantic status colors (green/red/orange SnackBars, delete buttons, orange
+  edit-mode) are intentional — do NOT rebrand them.
+
+---
+
 ## State Management
 
 - Use `Provider` package for state management
@@ -492,6 +517,7 @@ Run `flutter pub get` after modifying `app/pubspec.yaml`
 - **screens/**: UI screens (SongLibraryScreen, PlayerScreen, PlaylistScreen, PlaylistSongsScreen, SettingsScreen, LyricGeneratorDialog, TextLoaderDialog, TranslationEditorScreen, VoicePackagesScreen, CarCalibrationScreen)
 - **screens/helpers/**: Helper classes for complex screens (SongImportHelper, PlayerImportHelper, PlayerPlaylistHelper, PlayerTranslationHelper, SongTranslationLoader, CoverArtHelper, PlaylistImportHelper)
 - **widgets/**: Reusable components (SongListTile, EmptyLibraryWidget, MiniPlayerWidget, LyricLineWidget, GenerationOptionsWidget, GenerationProgressWidget, LibraryManagerWidget, BatchSelectionWidget, LoadingWidget, LyricsSearchDialog, SongSortWidget, SelectionModeActions) + `widgets/settings/` (ApiSettingsTile, TextSettingsSection, DefaultAutoScrollFocusOffsetControl)
+- **theme/**: Amethyst gradient skin — `AppGradients` ThemeExtension, `AmethystPalette`, context helpers (`isAmethystSkin`, `appBarColor`, `amethystCardDecoration`)
 - **utils/**: Utility functions (SnackBarHelper, LrcFormatter, LanguageHelpers, TtsEngineHelper, Fft, LyricColors — palette + presets for custom lyric-line text colors, see `SettingsProvider.useCustomLyricColors` / `originalTextColor` / `translationTextColor`)
 - **constants/**: Constants and configuration (DeepSeekPrompts, GenerationConstants)
 - **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 667 keys each; ARB sources + generated `app_localizations*.dart`

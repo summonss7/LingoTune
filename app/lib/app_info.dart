@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.8.8';
+  static const String version = '5.8.9';
 
-  static const String versionCode = '236';
+  static const String versionCode = '237';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -61,6 +61,8 @@ class AppInfo {
     '🔀 Shuffle + "all playlists" now draws almost every song from the whole library across all folders (no folder runs, no repeats per cycle)',
     '🔧 Fix: next song now starts by itself after a rejected call or a message notification (stuck-pause self-healing instead of manual pause+play)',
     '🗣️ Fix: voice translation recovers after a call/notification even when the system TTS service hangs (timed-out engine calls)',
+    '💜 New "Amethyst" theme: purple gradient design — one full-screen gradient, darker gradient cards, transparent app bars (light = vivid purple, dark = deep purple-black)',
+    '🎨 Inactive lyric lines, transcripts and the About screen now follow the theme colors (readable in dark mode and on the gradient)',
   ];
 
   static const List<String> supportedLanguages = [

@@ -601,6 +601,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get colorTheme => 'سمة اللون';
 
   @override
+  String get themeNameAmethyst => 'جمشت';
+
+  @override
   String get themeColorPurple => 'بنفسجي';
 
   @override
@@ -1950,7 +1953,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => 'مستوى صوت الأصل';
+
+  @override
   String get studyModeTtsOffset => 'إزاحة توقيت الصوت';
+
+  @override
   String get studyModeTtsOffsetHint => 'سالب — أبكر، موجب — متأخر (ث). وضع التراكب فقط';
 
   @override
@@ -2189,28 +2196,40 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get lyricColors => 'ألوان الأسطر';
+
   @override
   String get lyricColorsTitle => 'ألوان الأسطر';
+
   @override
   String get lyricColorsUseCustom => 'ألوان مخصصة';
+
   @override
   String get lyricColorsPresets => 'إعدادات مسبقة';
+
   @override
   String get lyricColorsOriginal => 'الأصلي';
+
   @override
   String get lyricColorsTranslation => 'الترجمة';
+
   @override
   String get lyricColorsPreview => 'معاينة';
+
   @override
   String get lyricColorsDone => 'تم';
+
   @override
   String get lyricPresetDefault => 'افتراضي';
+
   @override
   String get lyricPresetBlueRed => 'الأصلي أزرق / الترجمة أحمر';
+
   @override
   String get lyricPresetRedBlue => 'الأصلي أحمر / الترجمة أزرق';
+
   @override
   String get lyricPresetGreenOrange => 'الأصلي أخضر / الترجمة برتقالي';
+
   @override
   String get lyricPresetContrast => 'تباين عالٍ';
 }

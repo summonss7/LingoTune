@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/lyric_line.dart';
 import '../services/settings_provider.dart';
+import '../theme/app_gradients.dart';
 
 class LyricLineWidget extends StatelessWidget {
   final LyricLine line;
@@ -76,7 +77,7 @@ class LyricLineWidget extends StatelessWidget {
                                   ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8)
                                   : isNext
                                       ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
-                                      : Colors.grey[600],
+                                  : Theme.of(context).colorScheme.onSurfaceVariant,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -99,7 +100,7 @@ class LyricLineWidget extends StatelessWidget {
                                   ? Theme.of(context).colorScheme.primary
                                   : isNext
                                       ? Theme.of(context).colorScheme.primary.withOpacity(0.6)
-                                      : Colors.black87,
+                                      : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   if (!settingsProvider.showTranslationFirst && line.translatedText != null)
@@ -117,7 +118,7 @@ class LyricLineWidget extends StatelessWidget {
                                   ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8)
                                   : isNext
                                       ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
-                                      : Colors.grey[600],
+                                  : Theme.of(context).colorScheme.onSurfaceVariant,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -131,7 +132,11 @@ class LyricLineWidget extends StatelessWidget {
                          fontSize: transcriptFontSize - 2,
                          fontWeight: transcriptBold ? FontWeight.bold : FontWeight.normal,
                          fontFamily: fontFamily,
-                         color: Colors.blue[600],
+                         // Синий Flutter не читается на фиолетовом градиенте —
+                         // на «Аметисте» транскрипция мятная.
+                         color: context.isAmethystSkin
+                             ? context.appGradients!.transcriptAccent
+                             : Colors.blue[600],
                          fontStyle: FontStyle.italic,
                        ),
                      ),

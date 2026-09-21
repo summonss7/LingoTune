@@ -14,7 +14,7 @@ class SettingsProvider with ChangeNotifier {
   bool _showTranslationFirst = false;
   bool _showTranslationMessages = false;
   bool _showServiceData = false;
-  String _themeColor = 'default';
+  String _themeColor = 'amethyst';
   String _defaultStartScreen = 'playlists';
 
   double _lyricsFontSize = 19.0;
@@ -167,7 +167,7 @@ class SettingsProvider with ChangeNotifier {
       _translationBold = prefs.getBool('translationBold') ?? false;
       _transcriptBold = prefs.getBool('transcriptBold') ?? false;
       _fontFamily = prefs.getString('fontFamily') ?? '';
-      _themeColor = prefs.getString('themeColor') ?? 'default';
+      _themeColor = prefs.getString('themeColor') ?? 'amethyst';
       _deepseekApiKey = prefs.getString('deepseekApiKey') ?? '';
       _deepseekPrompt = prefs.getString('deepseekPrompt') ?? '';
       _deepseekTimeout = prefs.getInt('deepseekTimeout') ?? 180;

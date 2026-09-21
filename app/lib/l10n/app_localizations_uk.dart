@@ -601,6 +601,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get colorTheme => 'Колір теми';
 
   @override
+  String get themeNameAmethyst => 'Аметист';
+
+  @override
   String get themeColorPurple => 'Фиолетовий';
 
   @override
@@ -1950,7 +1953,11 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => 'Гучність оригіналу';
+
+  @override
   String get studyModeTtsOffset => 'Зсув озвучення';
+
+  @override
   String get studyModeTtsOffsetHint => 'Мінус — раніше, плюс — пізніше (с). Лише режим «Поверх»';
 
   @override
@@ -2189,28 +2196,40 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get lyricColors => 'Кольори рядків';
+
   @override
   String get lyricColorsTitle => 'Кольори рядків';
+
   @override
   String get lyricColorsUseCustom => 'Свої кольори';
+
   @override
   String get lyricColorsPresets => 'Пресети';
+
   @override
   String get lyricColorsOriginal => 'Оригінал';
+
   @override
   String get lyricColorsTranslation => 'Переклад';
+
   @override
   String get lyricColorsPreview => 'Попередній перегляд';
+
   @override
   String get lyricColorsDone => 'Готово';
+
   @override
   String get lyricPresetDefault => 'Типово';
+
   @override
   String get lyricPresetBlueRed => 'Оригінал синій / Переклад червоний';
+
   @override
   String get lyricPresetRedBlue => 'Оригінал червоний / Переклад синій';
+
   @override
   String get lyricPresetGreenOrange => 'Оригінал зелений / Переклад помаранчевий';
+
   @override
   String get lyricPresetContrast => 'Високий контраст';
 }

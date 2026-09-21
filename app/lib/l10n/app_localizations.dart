@@ -1265,6 +1265,12 @@ abstract class AppLocalizations {
   /// **'Color Theme'**
   String get colorTheme;
 
+  /// No description provided for @themeNameAmethyst.
+  ///
+  /// In en, this message translates to:
+  /// **'Amethyst'**
+  String get themeNameAmethyst;
+
   /// No description provided for @themeColorPurple.
   ///
   /// In en, this message translates to:
@@ -4132,61 +4138,73 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Line colors'**
   String get lyricColors;
+
   /// No description provided for @lyricColorsTitle.
   ///
   /// In en, this message translates to:
   /// **'Line colors'**
   String get lyricColorsTitle;
+
   /// No description provided for @lyricColorsUseCustom.
   ///
   /// In en, this message translates to:
   /// **'Custom colors'**
   String get lyricColorsUseCustom;
+
   /// No description provided for @lyricColorsPresets.
   ///
   /// In en, this message translates to:
   /// **'Presets'**
   String get lyricColorsPresets;
+
   /// No description provided for @lyricColorsOriginal.
   ///
   /// In en, this message translates to:
   /// **'Original'**
   String get lyricColorsOriginal;
+
   /// No description provided for @lyricColorsTranslation.
   ///
   /// In en, this message translates to:
   /// **'Translation'**
   String get lyricColorsTranslation;
+
   /// No description provided for @lyricColorsPreview.
   ///
   /// In en, this message translates to:
   /// **'Preview'**
   String get lyricColorsPreview;
+
   /// No description provided for @lyricColorsDone.
   ///
   /// In en, this message translates to:
   /// **'Done'**
   String get lyricColorsDone;
+
   /// No description provided for @lyricPresetDefault.
   ///
   /// In en, this message translates to:
   /// **'Default'**
   String get lyricPresetDefault;
+
   /// No description provided for @lyricPresetBlueRed.
   ///
   /// In en, this message translates to:
   /// **'Original blue / Translation red'**
   String get lyricPresetBlueRed;
+
   /// No description provided for @lyricPresetRedBlue.
   ///
   /// In en, this message translates to:
   /// **'Original red / Translation blue'**
   String get lyricPresetRedBlue;
+
   /// No description provided for @lyricPresetGreenOrange.
   ///
   /// In en, this message translates to:
   /// **'Original green / Translation orange'**
   String get lyricPresetGreenOrange;
+
   /// No description provided for @lyricPresetContrast.
   ///
   /// In en, this message translates to:

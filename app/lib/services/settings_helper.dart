@@ -65,6 +65,8 @@ class SettingsHelper {
   static String getThemeColorName(BuildContext context, String colorCode) {
     final l10n = AppLocalizations.of(context)!;
     switch (colorCode) {
+      case 'amethyst':
+        return l10n.themeNameAmethyst;
       case 'default':
         return 'Default';
       case 'purple':

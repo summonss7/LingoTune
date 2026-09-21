@@ -19,7 +19,7 @@ class EmptyLibraryWidget extends StatelessWidget {
             Icon(
               Icons.library_music_outlined,
               size: 80,
-              color: Colors.grey[400],
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 24),
             Text(
@@ -27,7 +27,7 @@ class EmptyLibraryWidget extends StatelessWidget {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 8),
@@ -35,7 +35,7 @@ class EmptyLibraryWidget extends StatelessWidget {
               'Import your first song to start learning!',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),

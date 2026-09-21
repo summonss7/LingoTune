@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/song.dart';
+import '../theme/app_gradients.dart';
 import '../models/playlist.dart';
 import '../models/lyric_line.dart';
 import '../models/translation.dart';
@@ -2192,8 +2193,8 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
             ? Text(l10n.selectedSongsCount(_selectedSongs.length))
             : const Icon(Icons.library_music, size: 28),
         backgroundColor: _isSelectionMode
-            ? Theme.of(context).colorScheme.secondaryContainer
-            : Theme.of(context).colorScheme.inversePrimary,
+            ? context.appBarColor(Theme.of(context).colorScheme.secondaryContainer)
+            : context.appBarColor(Theme.of(context).colorScheme.inversePrimary),
         actions: _isSelectionMode
             ? [
                 TextButton.icon(

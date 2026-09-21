@@ -21,11 +21,49 @@ import 'screens/player_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/playlist_screen.dart';
 import 'widgets/mini_player_widget.dart';
+import 'theme/app_gradients.dart';
 import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const LingoTuneApp());
+}
+
+/// Масштаб типографики от пользовательского размера шрифта (бывший
+/// дублировавшийся inline-TextTheme в light/dark темах).
+TextTheme _buildTextTheme(double fontSize, String? fontFamily) {
+  return TextTheme(
+    bodyLarge: TextStyle(fontSize: fontSize, fontFamily: fontFamily),
+    bodyMedium: TextStyle(fontSize: fontSize, fontFamily: fontFamily),
+    bodySmall: TextStyle(fontSize: fontSize - 2, fontFamily: fontFamily),
+    displayLarge: TextStyle(fontSize: fontSize + 8, fontFamily: fontFamily),
+    displayMedium: TextStyle(fontSize: fontSize + 6, fontFamily: fontFamily),
+    displaySmall: TextStyle(fontSize: fontSize + 4, fontFamily: fontFamily),
+    headlineLarge: TextStyle(fontSize: fontSize + 6, fontFamily: fontFamily),
+    headlineMedium: TextStyle(fontSize: fontSize + 4, fontFamily: fontFamily),
+    headlineSmall: TextStyle(fontSize: fontSize + 2, fontFamily: fontFamily),
+    titleLarge: TextStyle(fontSize: fontSize + 4, fontFamily: fontFamily),
+    titleMedium: TextStyle(fontSize: fontSize + 2, fontFamily: fontFamily),
+    titleSmall: TextStyle(fontSize: fontSize, fontFamily: fontFamily),
+    labelLarge: TextStyle(fontSize: fontSize, fontFamily: fontFamily),
+    labelMedium: TextStyle(fontSize: fontSize - 2, fontFamily: fontFamily),
+    labelSmall: TextStyle(fontSize: fontSize - 4, fontFamily: fontFamily),
+  );
+}
+
+/// Обычная seed-тема (13 цветовых пресетов настроек).
+ThemeData _seededTheme(
+  Color seed,
+  Brightness brightness,
+  TextTheme textTheme,
+  String? fontFamily,
+) {
+  return ThemeData(
+    colorScheme: ColorScheme.fromSeed(seedColor: seed, brightness: brightness),
+    useMaterial3: true,
+    fontFamily: fontFamily,
+    textTheme: textTheme,
+  );
 }
 
 class LingoTuneApp extends StatelessWidget {
@@ -41,60 +79,31 @@ class LingoTuneApp extends StatelessWidget {
       child: Consumer2<ThemeProvider, SettingsProvider>(
         builder: (context, themeProvider, settingsProvider, _) {
           final fontFamily = settingsProvider.fontFamily.isEmpty ? null : settingsProvider.fontFamily;
+          final textTheme = _buildTextTheme(settingsProvider.fontSize, fontFamily);
+          final isAmethyst = themeProvider.isAmethystSkin;
 
           return MaterialApp(
             key: const ValueKey('LingoTune'),
             title: AppInfo.appName,
-            theme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: themeProvider.seedColor,
-                brightness: Brightness.light,
-              ),
-              useMaterial3: true,
-              fontFamily: fontFamily,
-              textTheme: TextTheme(
-                bodyLarge: TextStyle(fontSize: settingsProvider.fontSize, fontFamily: fontFamily),
-                bodyMedium: TextStyle(fontSize: settingsProvider.fontSize, fontFamily: fontFamily),
-                bodySmall: TextStyle(fontSize: settingsProvider.fontSize - 2, fontFamily: fontFamily),
-                displayLarge: TextStyle(fontSize: settingsProvider.fontSize + 8, fontFamily: fontFamily),
-                displayMedium: TextStyle(fontSize: settingsProvider.fontSize + 6, fontFamily: fontFamily),
-                displaySmall: TextStyle(fontSize: settingsProvider.fontSize + 4, fontFamily: fontFamily),
-                headlineLarge: TextStyle(fontSize: settingsProvider.fontSize + 6, fontFamily: fontFamily),
-                headlineMedium: TextStyle(fontSize: settingsProvider.fontSize + 4, fontFamily: fontFamily),
-                headlineSmall: TextStyle(fontSize: settingsProvider.fontSize + 2, fontFamily: fontFamily),
-                titleLarge: TextStyle(fontSize: settingsProvider.fontSize + 4, fontFamily: fontFamily),
-                titleMedium: TextStyle(fontSize: settingsProvider.fontSize + 2, fontFamily: fontFamily),
-                titleSmall: TextStyle(fontSize: settingsProvider.fontSize, fontFamily: fontFamily),
-                labelLarge: TextStyle(fontSize: settingsProvider.fontSize, fontFamily: fontFamily),
-                labelMedium: TextStyle(fontSize: settingsProvider.fontSize - 2, fontFamily: fontFamily),
-                labelSmall: TextStyle(fontSize: settingsProvider.fontSize - 4, fontFamily: fontFamily),
-              ),
-            ),
-            darkTheme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: themeProvider.seedColor,
-                brightness: Brightness.dark,
-              ),
-              useMaterial3: true,
-              fontFamily: fontFamily,
-              textTheme: TextTheme(
-                bodyLarge: TextStyle(fontSize: settingsProvider.fontSize, fontFamily: fontFamily),
-                bodyMedium: TextStyle(fontSize: settingsProvider.fontSize, fontFamily: fontFamily),
-                bodySmall: TextStyle(fontSize: settingsProvider.fontSize - 2, fontFamily: fontFamily),
-                displayLarge: TextStyle(fontSize: settingsProvider.fontSize + 8, fontFamily: fontFamily),
-                displayMedium: TextStyle(fontSize: settingsProvider.fontSize + 6, fontFamily: fontFamily),
-                displaySmall: TextStyle(fontSize: settingsProvider.fontSize + 4, fontFamily: fontFamily),
-                headlineLarge: TextStyle(fontSize: settingsProvider.fontSize + 6, fontFamily: fontFamily),
-                headlineMedium: TextStyle(fontSize: settingsProvider.fontSize + 4, fontFamily: fontFamily),
-                headlineSmall: TextStyle(fontSize: settingsProvider.fontSize + 2, fontFamily: fontFamily),
-                titleLarge: TextStyle(fontSize: settingsProvider.fontSize + 4, fontFamily: fontFamily),
-                titleMedium: TextStyle(fontSize: settingsProvider.fontSize + 2, fontFamily: fontFamily),
-                titleSmall: TextStyle(fontSize: settingsProvider.fontSize, fontFamily: fontFamily),
-                labelLarge: TextStyle(fontSize: settingsProvider.fontSize, fontFamily: fontFamily),
-                labelMedium: TextStyle(fontSize: settingsProvider.fontSize - 2, fontFamily: fontFamily),
-                labelSmall: TextStyle(fontSize: settingsProvider.fontSize - 4, fontFamily: fontFamily),
-              ),
-            ),
+            theme: isAmethyst
+                ? AmethystPalette.buildTheme(
+                    darkVariant: false, textTheme: textTheme, fontFamily: fontFamily)
+                : _seededTheme(themeProvider.seedColor, Brightness.light, textTheme, fontFamily),
+            darkTheme: isAmethyst
+                ? AmethystPalette.buildTheme(
+                    darkVariant: true, textTheme: textTheme, fontFamily: fontFamily)
+                : _seededTheme(themeProvider.seedColor, Brightness.dark, textTheme, fontFamily),
+            // Тема «Аметист»: один полноэкранный градиент за всеми экранами —
+            // Scaffold'ы прозрачны, фон течёт от статус-бара до нав-бара
+            // (как full-screen Box в Ai-LeCards). Остальные темы — без обёртки.
+            builder: (context, child) {
+              final gradients = Theme.of(context).extension<AppGradients>();
+              if (gradients == null) return child ?? const SizedBox.shrink();
+              return DecoratedBox(
+                decoration: BoxDecoration(gradient: gradients.backdrop),
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
             themeMode: themeProvider.themeMode,
             locale: Locale(settingsProvider.appLanguage),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -328,6 +337,8 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _currentIndex == index;
+    // «Аметист»: выбранный пункт — градиентная карточка темнее фона.
+    final skinCard = isSelected ? amethystCardDecoration(context, radius: 20) : null;
     return InkWell(
       onTap: () {
         setState(() {
@@ -336,10 +347,11 @@ class _MainScreenState extends State<MainScreen> {
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.5) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
+        decoration: skinCard ??
+            BoxDecoration(
+              color: isSelected ? Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.5) : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+            ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

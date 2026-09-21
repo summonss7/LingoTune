@@ -11,6 +11,7 @@ import 'package:just_audio/just_audio.dart' show ProcessingState;
 import 'package:audio_service/audio_service.dart' as audio_pkg;
 import 'package:permission_handler/permission_handler.dart';
 import '../models/song.dart';
+import '../theme/app_gradients.dart';
 import '../models/lyric_line.dart';
 import '../models/translation.dart' show Translation;
 import '../models/loop_mode.dart';
@@ -3533,7 +3534,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       appBar: AppBar(
         backgroundColor: _isEditMode
             ? Colors.orange
-            : Theme.of(context).colorScheme.inversePrimary,
+            : context.appBarColor(Theme.of(context).colorScheme.inversePrimary),
         titleSpacing: 0,
         leadingWidth: 40,
         centerTitle: false,
@@ -3730,18 +3731,21 @@ class _PlayerScreenState extends State<PlayerScreen>
               ],
             ),
           ),
+          // «Аметист»: панель управления — градиентная карточка темнее фона
+          // (без бордера/тени — панель полноширинная, прижата к низу).
           Container(
             padding: EdgeInsets.all(isLandscape ? 8.0 : 16.0),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
+            decoration: amethystCardDecoration(context) ??
+                BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
                 ),
-              ],
-            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

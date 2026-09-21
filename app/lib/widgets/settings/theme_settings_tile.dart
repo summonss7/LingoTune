@@ -45,20 +45,21 @@ class ColorThemeTile extends StatelessWidget {
         value: settingsProvider.themeColor.isEmpty
             ? 'default'
             : settingsProvider.themeColor,
-        items: const [
-          DropdownMenuItem(value: 'default', child: Text('Default')),
-          DropdownMenuItem(value: 'purple', child: Text('🟣')),
-          DropdownMenuItem(value: 'blue', child: Text('🔵')),
-          DropdownMenuItem(value: 'green', child: Text('🟢')),
-          DropdownMenuItem(value: 'orange', child: Text('🟠')),
-          DropdownMenuItem(value: 'red', child: Text('🔴')),
-          DropdownMenuItem(value: 'pink', child: Text('🩷')),
-          DropdownMenuItem(value: 'deepOrange', child: Text('🟧')),
-          DropdownMenuItem(value: 'darkRed', child: Text('🟥')),
-          DropdownMenuItem(value: 'teal', child: Text('💠')),
-          DropdownMenuItem(value: 'cyan', child: Text('🔷')),
-          DropdownMenuItem(value: 'amber', child: Text('🟨')),
-          DropdownMenuItem(value: 'lime', child: Text('🟩')),
+        items: [
+          DropdownMenuItem(value: 'amethyst', child: Text('💜 ${l10n.themeNameAmethyst}')),
+          const DropdownMenuItem(value: 'default', child: Text('Default')),
+          const DropdownMenuItem(value: 'purple', child: Text('🟣')),
+          const DropdownMenuItem(value: 'blue', child: Text('🔵')),
+          const DropdownMenuItem(value: 'green', child: Text('🟢')),
+          const DropdownMenuItem(value: 'orange', child: Text('🟠')),
+          const DropdownMenuItem(value: 'red', child: Text('🔴')),
+          const DropdownMenuItem(value: 'pink', child: Text('🩷')),
+          const DropdownMenuItem(value: 'deepOrange', child: Text('🟧')),
+          const DropdownMenuItem(value: 'darkRed', child: Text('🟥')),
+          const DropdownMenuItem(value: 'teal', child: Text('💠')),
+          const DropdownMenuItem(value: 'cyan', child: Text('🔷')),
+          const DropdownMenuItem(value: 'amber', child: Text('🟨')),
+          const DropdownMenuItem(value: 'lime', child: Text('🟩')),
         ],
         onChanged: (value) {
           if (value != null) {

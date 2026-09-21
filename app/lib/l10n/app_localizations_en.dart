@@ -601,6 +601,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get colorTheme => 'Color Theme';
 
   @override
+  String get themeNameAmethyst => 'Amethyst';
+
+  @override
   String get themeColorPurple => 'Purple';
 
   @override
@@ -1950,7 +1953,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get studyModeDuckVolume => 'Original volume';
+
+  @override
   String get studyModeTtsOffset => 'Speech timing offset';
+
+  @override
   String get studyModeTtsOffsetHint => 'Negative — speak earlier, positive — later (sec). Overlay mode only';
 
   @override
@@ -2189,28 +2196,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lyricColors => 'Line colors';
+
   @override
   String get lyricColorsTitle => 'Line colors';
+
   @override
   String get lyricColorsUseCustom => 'Custom colors';
+
   @override
   String get lyricColorsPresets => 'Presets';
+
   @override
   String get lyricColorsOriginal => 'Original';
+
   @override
   String get lyricColorsTranslation => 'Translation';
+
   @override
   String get lyricColorsPreview => 'Preview';
+
   @override
   String get lyricColorsDone => 'Done';
+
   @override
   String get lyricPresetDefault => 'Default';
+
   @override
   String get lyricPresetBlueRed => 'Original blue / Translation red';
+
   @override
   String get lyricPresetRedBlue => 'Original red / Translation blue';
+
   @override
   String get lyricPresetGreenOrange => 'Original green / Translation orange';
+
   @override
   String get lyricPresetContrast => 'High contrast';
 }
