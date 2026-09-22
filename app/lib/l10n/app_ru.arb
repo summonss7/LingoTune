@@ -708,6 +708,7 @@
       "lyricColorsPresets": "Пресеты",
       "lyricColorsOriginal": "Оригинал",
       "lyricColorsTranslation": "Перевод",
+      "lyricColorsActive": "Активная строка",
       "lyricColorsPreview": "Предпросмотр",
       "lyricColorsDone": "Готово",
       "lyricPresetDefault": "По умолчанию",

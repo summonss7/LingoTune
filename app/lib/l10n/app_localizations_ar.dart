@@ -2213,6 +2213,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get lyricColorsTranslation => 'الترجمة';
 
   @override
+  String get lyricColorsActive => 'السطر النشط';
+
+  @override
   String get lyricColorsPreview => 'معاينة';
 
   @override

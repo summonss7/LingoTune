@@ -30,14 +30,26 @@ class LyricLineWidget extends StatelessWidget {
         final lyricsBold = settingsProvider.lyricsBold;
         final translationBold = settingsProvider.translationBold;
         final transcriptBold = settingsProvider.transcriptBold;
-        final fontFamily = settingsProvider.fontFamily.isEmpty ? null : settingsProvider.fontFamily;
+        final fontFamily = settingsProvider.fontFamily.isEmpty
+            ? null
+            : settingsProvider.fontFamily;
         // Пользовательская подсветка строк цветами. Когда useCustomLyricColors
         // включён и цвет задан (!= null), он перекрывает цвет темы для оригинала
         // и/или перевода (с прозрачностью для неактивных строк). null = «авто».
-        final origCustom =
-            settingsProvider.useCustomLyricColors ? settingsProvider.originalTextColor : null;
-        final transCustom =
-            settingsProvider.useCustomLyricColors ? settingsProvider.translationTextColor : null;
+        final origCustom = settingsProvider.useCustomLyricColors
+            ? settingsProvider.originalTextColor
+            : null;
+        final transCustom = settingsProvider.useCustomLyricColors
+            ? settingsProvider.translationTextColor
+            : null;
+        // Фон активной строки — независимая настройка (без тумблера
+        // useCustomLyricColors): выбор пользователя → дефолт скина «Аметист»
+        // (затемнение поверх градиента) → primaryContainer прочих тем.
+        final activeCustom = settingsProvider.activeLineColor;
+        final activeBase = activeCustom ??
+            (context.isAmethystSkin
+                ? context.appGradients!.activeLineHighlight
+                : Theme.of(context).colorScheme.primaryContainer);
 
         return InkWell(
           onTap: onTap,
@@ -46,112 +58,171 @@ class LyricLineWidget extends StatelessWidget {
               color: isEditMode
                   ? Colors.orange.withOpacity(0.2)
                   : isCurrent
-                      ? Theme.of(context).colorScheme.primaryContainer
+                      ? activeBase
                       : isNext
-                          ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+                          ? activeBase.withOpacity(0.3)
                           : Colors.transparent,
               borderRadius: BorderRadius.circular(8.0),
               border: isEditMode
                   ? Border.all(color: Colors.orange, width: 1)
                   : null,
             ),
-             padding: const EdgeInsets.symmetric(
-               vertical: 8.0,
-               horizontal: 12.0,
-             ),
-             child: Column(
-               crossAxisAlignment: CrossAxisAlignment.start,
-               children: [
-                  if (settingsProvider.showTranslationFirst && line.translatedText != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0),
-                      child: Text(
-                        line.translatedText!,
-                        style: TextStyle(
-                          fontSize: isCurrent ? settingsProvider.translationFontSize + 2 : isNext ? settingsProvider.translationFontSize : settingsProvider.translationFontSize - 2,
-                          fontWeight: translationBold ? FontWeight.bold : FontWeight.normal,
-                          fontFamily: fontFamily,
-                          color: transCustom != null
-                              ? transCustom.withOpacity(isCurrent ? 1.0 : isNext ? 0.75 : 0.65)
-                              : isCurrent
-                                  ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8)
-                                  : isNext
-                                      ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
-                                  : Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontStyle: FontStyle.italic,
-                        ),
+            padding: const EdgeInsets.symmetric(
+              vertical: 8.0,
+              horizontal: 12.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (settingsProvider.showTranslationFirst &&
+                    line.translatedText != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: Text(
+                      line.translatedText!,
+                      style: TextStyle(
+                        fontSize: isCurrent
+                            ? settingsProvider.translationFontSize + 2
+                            : isNext
+                                ? settingsProvider.translationFontSize
+                                : settingsProvider.translationFontSize - 2,
+                        fontWeight: translationBold
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        fontFamily: fontFamily,
+                        color: transCustom != null
+                            ? transCustom.withOpacity(isCurrent
+                                ? 1.0
+                                : isNext
+                                    ? 0.75
+                                    : 0.65)
+                            : isCurrent
+                                ? Theme.of(context)
+                                    .colorScheme
+                                    .onPrimaryContainer
+                                    .withOpacity(0.8)
+                                : isNext
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer
+                                        .withOpacity(0.5)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
                       ),
-                    ),
-                  Text(
-                    line.text,
-                    style: TextStyle(
-                      fontSize: isCurrent ? lyricsFontSize + 4 : isNext ? lyricsFontSize + 2 : lyricsFontSize,
-                      fontWeight: (lyricsBold && isCurrent) ? FontWeight.bold :
-                                   (lyricsBold && isNext) ? FontWeight.w500 :
-                                   isCurrent ? FontWeight.bold :
-                                   isNext ? FontWeight.w500 :
-                                   lyricsBold ? FontWeight.bold : FontWeight.normal,
-                      fontFamily: fontFamily,
-                      color: isEditMode
-                          ? Colors.orange[900]
-                          : origCustom != null
-                              ? origCustom.withOpacity(isCurrent ? 1.0 : isNext ? 0.75 : 0.65)
-                              : isCurrent
-                                  ? Theme.of(context).colorScheme.primary
-                                  : isNext
-                                      ? Theme.of(context).colorScheme.primary.withOpacity(0.6)
-                                      : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  if (!settingsProvider.showTranslationFirst && line.translatedText != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
-                      child: Text(
-                        line.translatedText!,
-                        style: TextStyle(
-                          fontSize: isCurrent ? settingsProvider.translationFontSize + 2 : isNext ? settingsProvider.translationFontSize : settingsProvider.translationFontSize - 2,
-                          fontWeight: translationBold ? FontWeight.bold : FontWeight.normal,
-                          fontFamily: fontFamily,
-                          color: transCustom != null
-                              ? transCustom.withOpacity(isCurrent ? 1.0 : isNext ? 0.75 : 0.65)
-                              : isCurrent
-                                  ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8)
-                                  : isNext
-                                      ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
-                                  : Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontStyle: FontStyle.italic,
-                        ),
+                Text(
+                  line.text,
+                  style: TextStyle(
+                    fontSize: isCurrent
+                        ? lyricsFontSize + 4
+                        : isNext
+                            ? lyricsFontSize + 2
+                            : lyricsFontSize,
+                    fontWeight: (lyricsBold && isCurrent)
+                        ? FontWeight.bold
+                        : (lyricsBold && isNext)
+                            ? FontWeight.w500
+                            : isCurrent
+                                ? FontWeight.bold
+                                : isNext
+                                    ? FontWeight.w500
+                                    : lyricsBold
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                    fontFamily: fontFamily,
+                    color: isEditMode
+                        ? Colors.orange[900]
+                        : origCustom != null
+                            ? origCustom.withOpacity(isCurrent
+                                ? 1.0
+                                : isNext
+                                    ? 0.75
+                                    : 0.65)
+                            : isCurrent
+                                ? Theme.of(context).colorScheme.primary
+                                : isNext
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withOpacity(0.6)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                  ),
+                ),
+                if (!settingsProvider.showTranslationFirst &&
+                    line.translatedText != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Text(
+                      line.translatedText!,
+                      style: TextStyle(
+                        fontSize: isCurrent
+                            ? settingsProvider.translationFontSize + 2
+                            : isNext
+                                ? settingsProvider.translationFontSize
+                                : settingsProvider.translationFontSize - 2,
+                        fontWeight: translationBold
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        fontFamily: fontFamily,
+                        color: transCustom != null
+                            ? transCustom.withOpacity(isCurrent
+                                ? 1.0
+                                : isNext
+                                    ? 0.75
+                                    : 0.65)
+                            : isCurrent
+                                ? Theme.of(context)
+                                    .colorScheme
+                                    .onPrimaryContainer
+                                    .withOpacity(0.8)
+                                : isNext
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer
+                                        .withOpacity(0.5)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
                       ),
                     ),
-                  if (settingsProvider.showTranscript && line.transcript != null)
-                   Padding(
-                     padding: const EdgeInsets.only(top: 2.0),
-                     child: Text(
-                       line.transcript!,
-                       style: TextStyle(
-                         fontSize: transcriptFontSize - 2,
-                         fontWeight: transcriptBold ? FontWeight.bold : FontWeight.normal,
-                         fontFamily: fontFamily,
-                         // Синий Flutter не читается на фиолетовом градиенте —
-                         // на «Аметисте» транскрипция мятная.
-                         color: context.isAmethystSkin
-                             ? context.appGradients!.transcriptAccent
-                             : Colors.blue[600],
-                         fontStyle: FontStyle.italic,
-                       ),
-                     ),
-                   ),
+                  ),
+                if (settingsProvider.showTranscript && line.transcript != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2.0),
+                    child: Text(
+                      line.transcript!,
+                      style: TextStyle(
+                        fontSize: transcriptFontSize - 2,
+                        fontWeight: transcriptBold
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        fontFamily: fontFamily,
+                        // Синий Flutter не читается на фиолетовом градиенте —
+                        // на «Аметисте» транскрипция мятная.
+                        color: context.isAmethystSkin
+                            ? context.appGradients!.transcriptAccent
+                            : Colors.blue[600],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
                 if (isEditMode)
-                   Padding(
-                     padding: const EdgeInsets.only(top: 2.0),
-                     child: Text(
-                       _formatTimestamp(line.startTime),
-                       style: TextStyle(
-                         fontSize: lyricsFontSize - 3,
-                         color: Colors.orange[700],
-                       ),
-                     ),
-                   ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2.0),
+                    child: Text(
+                      _formatTimestamp(line.startTime),
+                      style: TextStyle(
+                        fontSize: lyricsFontSize - 3,
+                        color: Colors.orange[700],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

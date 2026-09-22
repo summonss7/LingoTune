@@ -708,6 +708,7 @@
       "lyricColorsPresets": "Пресети",
       "lyricColorsOriginal": "Оригінал",
       "lyricColorsTranslation": "Переклад",
+      "lyricColorsActive": "Активний рядок",
       "lyricColorsPreview": "Попередній перегляд",
       "lyricColorsDone": "Готово",
       "lyricPresetDefault": "Типово",

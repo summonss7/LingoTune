@@ -2730,6 +2730,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         bool useCustom = settings.useCustomLyricColors;
         int origVal = settings.originalTextColorValue;
         int transVal = settings.translationTextColorValue;
+        int activeVal = settings.activeLineColorValue;
 
         // Свотч одного цвета. Если выбран (currentValue == color.value) — рамка
         // и галочка. color == null означает «Авто» (цвет темы).
@@ -2832,10 +2833,21 @@ class _PlayerScreenState extends State<PlayerScreen>
                   LyricColorPalette.colorFromValue(transVal));
             }
 
+            // Фон активной строки — независимая настройка: тумблер «Свои
+            // цвета» (цвета текста) на неё не влияет и не включается.
+            void setActive(int? v) {
+              setState(() {
+                activeVal = v ?? LyricColorPalette.autoValue;
+              });
+              settings.setActiveLineColor(
+                  LyricColorPalette.colorFromValue(activeVal));
+            }
+
             final origColor =
                 useCustom ? LyricColorPalette.colorFromValue(origVal) : null;
             final transColor =
                 useCustom ? LyricColorPalette.colorFromValue(transVal) : null;
+            final activeColor = LyricColorPalette.colorFromValue(activeVal);
 
             return AlertDialog(
               title: Text(l10n.lyricColorsTitle),
@@ -2852,6 +2864,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                         settings.setUseCustomLyricColors(v);
                       },
                     ),
+                    // Фон подсвеченной при воспроизведении строки — отдельная
+                    // настройка, доступна и без включённых «Своих цветов».
+                    swatchRow(l10n.lyricColorsActive, activeVal, setActive),
                     if (useCustom) ...[
                       Padding(
                         padding: const EdgeInsets.only(top: 4, bottom: 6),
@@ -2875,52 +2890,56 @@ class _PlayerScreenState extends State<PlayerScreen>
                       swatchRow(l10n.lyricColorsOriginal, origVal, setOriginal),
                       swatchRow(l10n.lyricColorsTranslation, transVal,
                           setTranslation),
-                      // Живой preview: как будет выглядеть строка.
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16, bottom: 6),
-                        child: Text(l10n.lyricColorsPreview,
-                            style:
-                                Theme.of(dialogContext).textTheme.titleSmall),
-                      ),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Theme.of(dialogContext)
-                              .colorScheme
-                              .primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Hello, how are you?',
-                              style: TextStyle(
-                                fontSize: 19,
-                                fontWeight: FontWeight.bold,
-                                color: origColor ??
-                                    Theme.of(dialogContext).colorScheme.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Привет, как дела?',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontStyle: FontStyle.italic,
-                                color: transColor ??
-                                    Theme.of(dialogContext)
-                                        .colorScheme
-                                        .onPrimaryContainer
-                                        .withOpacity(0.8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
+                    // Живой preview: как будет выглядеть активная строка
+                    // (тот же приоритет цвета, что и в LyricLineWidget).
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 6),
+                      child: Text(l10n.lyricColorsPreview,
+                          style: Theme.of(dialogContext).textTheme.titleSmall),
+                    ),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: activeColor ??
+                            (dialogContext.isAmethystSkin
+                                ? dialogContext
+                                    .appGradients!.activeLineHighlight
+                                : Theme.of(dialogContext)
+                                    .colorScheme
+                                    .primaryContainer),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hello, how are you?',
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                              color: origColor ??
+                                  Theme.of(dialogContext).colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Привет, как дела?',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontStyle: FontStyle.italic,
+                              color: transColor ??
+                                  Theme.of(dialogContext)
+                                      .colorScheme
+                                      .onPrimaryContainer
+                                      .withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -3979,9 +3998,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                                   final running =
                                       (studyActive && !studyPaused) ||
                                           isPlaying;
-                                  final IconData fabIconData = running
-                                      ? Icons.pause
-                                      : Icons.play_arrow;
+                                  final IconData fabIconData =
+                                      running ? Icons.pause : Icons.play_arrow;
                                   return FloatingActionButton(
                                     onPressed: () {
                                       _studyEvt('FAB: pressed '

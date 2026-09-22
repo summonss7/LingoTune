@@ -17,6 +17,7 @@ class AppGradients extends ThemeExtension<AppGradients> {
     required this.backdrop,
     required this.card,
     required this.transcriptAccent,
+    required this.activeLineHighlight,
   });
 
   /// Градиент фона приложения (вертикальный, сверху вниз).
@@ -27,6 +28,12 @@ class AppGradients extends ThemeExtension<AppGradients> {
 
   /// Акцент для транскрипции: синий Flutter на фиолетовом не читается.
   final Color transcriptAccent;
+
+  /// Фон активной (подсвеченной) строки текста песни. На ярком flood
+  /// `primaryContainer` сливается с градиентом фона — активная строка
+  /// затемняется полупрозрачным чёрным (всегда темнее фона в любой точке
+  /// градиента); в тёмном варианте виден и прежний `primaryContainer`.
+  final Color activeLineHighlight;
 
   /// Яркий фиолетовый flood (светлый режим).
   static const AppGradients light = AppGradients(
@@ -41,6 +48,7 @@ class AppGradients extends ThemeExtension<AppGradients> {
       colors: [Color(0xFF4A2AD1), Color(0xFF331FA8)],
     ),
     transcriptAccent: Color(0xFFA5F3E2),
+    activeLineHighlight: Color(0x4D000000),
   );
 
   /// Глубокий фиолетово-чёрный (тёмный режим).
@@ -56,6 +64,7 @@ class AppGradients extends ThemeExtension<AppGradients> {
       colors: [Color(0xFF251C3B), Color(0xFF1B1430)],
     ),
     transcriptAccent: Color(0xFF9BD8C9),
+    activeLineHighlight: Color(0xFF522DDB),
   );
 
   @override
@@ -63,16 +72,19 @@ class AppGradients extends ThemeExtension<AppGradients> {
     LinearGradient? backdrop,
     LinearGradient? card,
     Color? transcriptAccent,
+    Color? activeLineHighlight,
   }) {
     return AppGradients(
       backdrop: backdrop ?? this.backdrop,
       card: card ?? this.card,
       transcriptAccent: transcriptAccent ?? this.transcriptAccent,
+      activeLineHighlight: activeLineHighlight ?? this.activeLineHighlight,
     );
   }
 
   @override
-  ThemeExtension<AppGradients> lerp(ThemeExtension<AppGradients>? other, double t) {
+  ThemeExtension<AppGradients> lerp(
+      ThemeExtension<AppGradients>? other, double t) {
     if (other is! AppGradients) return this;
     // Тема переключается целиком (цвет/режим), промежуточные состояния не нужны.
     return t < 0.5 ? this : other;
@@ -284,7 +296,8 @@ class AmethystPalette {
         fillColor: fieldFill,
         hintStyle: TextStyle(color: scheme.onSurfaceVariant),
         labelStyle: TextStyle(color: scheme.onSurfaceVariant),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: scheme.outlineVariant),

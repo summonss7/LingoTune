@@ -2213,6 +2213,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get lyricColorsTranslation => 'Переклад';
 
   @override
+  String get lyricColorsActive => 'Активний рядок';
+
+  @override
   String get lyricColorsPreview => 'Попередній перегляд';
 
   @override

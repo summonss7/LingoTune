@@ -4169,6 +4169,12 @@ abstract class AppLocalizations {
   /// **'Translation'**
   String get lyricColorsTranslation;
 
+  /// No description provided for @lyricColorsActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active line'**
+  String get lyricColorsActive;
+
   /// No description provided for @lyricColorsPreview.
   ///
   /// In en, this message translates to:

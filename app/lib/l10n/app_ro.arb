@@ -708,6 +708,7 @@
       "lyricColorsPresets": "Presetări",
       "lyricColorsOriginal": "Original",
       "lyricColorsTranslation": "Traducere",
+      "lyricColorsActive": "Rând activ",
       "lyricColorsPreview": "Previzualizare",
       "lyricColorsDone": "Gata",
       "lyricPresetDefault": "Implicit",

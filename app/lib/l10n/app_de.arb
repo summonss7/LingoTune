@@ -708,6 +708,7 @@
       "lyricColorsPresets": "Vorlagen",
       "lyricColorsOriginal": "Original",
       "lyricColorsTranslation": "Übersetzung",
+      "lyricColorsActive": "Aktive Zeile",
       "lyricColorsPreview": "Vorschau",
       "lyricColorsDone": "Fertig",
       "lyricPresetDefault": "Standard",

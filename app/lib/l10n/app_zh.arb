@@ -708,6 +708,7 @@
       "lyricColorsPresets": "预设",
       "lyricColorsOriginal": "原文",
       "lyricColorsTranslation": "翻译",
+      "lyricColorsActive": "当前行",
       "lyricColorsPreview": "预览",
       "lyricColorsDone": "完成",
       "lyricPresetDefault": "默认",

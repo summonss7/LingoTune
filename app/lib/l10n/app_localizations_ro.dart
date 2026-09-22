@@ -2213,6 +2213,9 @@ class AppLocalizationsRo extends AppLocalizations {
   String get lyricColorsTranslation => 'Traducere';
 
   @override
+  String get lyricColorsActive => 'Rând activ';
+
+  @override
   String get lyricColorsPreview => 'Previzualizare';
 
   @override

@@ -2213,6 +2213,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get lyricColorsTranslation => 'Übersetzung';
 
   @override
+  String get lyricColorsActive => 'Aktive Zeile';
+
+  @override
   String get lyricColorsPreview => 'Vorschau';
 
   @override

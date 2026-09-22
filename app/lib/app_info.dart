@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.8.9';
+  static const String version = '5.8.10';
 
-  static const String versionCode = '237';
+  static const String versionCode = '238';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -51,6 +51,7 @@ class AppInfo {
     '📐 Highlight timing correction for VBR MP3 (wall-clock interpolation)',
     '❤ Favorites playlist + play-favorites-only loop mode',
     '🎨 Custom line colors (original & translation): presets + per-type palette',
+    '🖍️ Custom highlight color for the active (currently playing) line + clearly visible dark-glass default on the Amethyst theme',
     '⏱️ TTS translation timing offset (speak earlier/later than the lyric timestamp)',
     '🔧 Fix: lyric highlight no longer switches early after manual re-timestamping (corrector heals phantom lead, marks share the highlight time base)',
     '🔧 Fix: study-mode voice recovers by itself after a notification sound (cooldown + retry instead of silence till song end)',

@@ -61,6 +61,11 @@ class SettingsProvider with ChangeNotifier {
   int _originalTextColorValue = LyricColorPalette.autoValue;
   int _translationTextColorValue = LyricColorPalette.autoValue;
 
+  /// Цвет фона активной (подсвеченной при воспроизведении) строки. В отличие
+  /// от цветов текста применяется БЕЗ тумблера [useCustomLyricColors] — это
+  /// независимая настройка. -1 = «авто» (цвет темы / скина «Аметист»).
+  int _activeLineColorValue = LyricColorPalette.autoValue;
+
   double get fontSize => _fontSize;
   String get defaultTranslationLanguage => _defaultTranslationLanguage;
   String get defaultSourceLanguage => _defaultSourceLanguage;
@@ -87,7 +92,8 @@ class SettingsProvider with ChangeNotifier {
   int get deepseekMaxTokensRegular => _deepseekMaxTokensRegular;
   int get deepseekMaxTokensJson => _deepseekMaxTokensJson;
   String get selectedPromptPreset => _selectedPromptPreset;
-  bool get addToLibraryWhenAddingToPlaylist => _addToLibraryWhenAddingToPlaylist;
+  bool get addToLibraryWhenAddingToPlaylist =>
+      _addToLibraryWhenAddingToPlaylist;
   bool get showVerticalSlider => _showVerticalSlider;
   double get defaultTimestampOffset => _defaultTimestampOffset;
   double get lyricsPositionOffset => _lyricsPositionOffset;
@@ -100,54 +106,73 @@ class SettingsProvider with ChangeNotifier {
   bool get carAlertVibration => _carAlertVibration;
   bool get carAlertVoice => _carAlertVoice;
   bool get useCustomLyricColors => _useCustomLyricColors;
+
   /// Цвет оригинала или `null` (= «авто», цвет темы).
   Color? get originalTextColor =>
       LyricColorPalette.colorFromValue(_originalTextColorValue);
+
   /// Цвет перевода или `null` (= «авто», цвет темы).
   Color? get translationTextColor =>
       LyricColorPalette.colorFromValue(_translationTextColorValue);
   int get originalTextColorValue => _originalTextColorValue;
   int get translationTextColorValue => _translationTextColorValue;
 
+  /// Цвет фона активной строки или `null` (= «авто», цвет темы/скина).
+  Color? get activeLineColor =>
+      LyricColorPalette.colorFromValue(_activeLineColorValue);
+  int get activeLineColorValue => _activeLineColorValue;
+
   Future<void> loadSettings() async {
     debugPrint('=== SettingsProvider: Loading settings ===');
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       _fontSize = prefs.getDouble('fontSize') ?? 16.0;
-      _defaultTranslationLanguage = prefs.getString('defaultTranslationLanguage') ?? 'ru';
+      _defaultTranslationLanguage =
+          prefs.getString('defaultTranslationLanguage') ?? 'ru';
       _defaultSourceLanguage = prefs.getString('defaultSourceLanguage') ?? 'en';
       _autoScroll = prefs.getBool('autoScroll') ?? true;
       _highlightNextLine = prefs.getBool('highlightNextLine') ?? true;
       _appLanguage = prefs.getString('appLanguage') ?? 'en';
       _showTranscript = prefs.getBool('showTranscript') ?? true;
       _showTranslationFirst = prefs.getBool('showTranslationFirst') ?? false;
-      _showTranslationMessages = prefs.getBool('showTranslationMessages') ?? false;
+      _showTranslationMessages =
+          prefs.getBool('showTranslationMessages') ?? false;
       _showServiceData = prefs.getBool('showServiceData') ?? false;
-      _defaultStartScreen = prefs.getString('defaultStartScreen') ?? 'playlists';
+      _defaultStartScreen =
+          prefs.getString('defaultStartScreen') ?? 'playlists';
 
       final String? savedSettingsVersion = prefs.getString('settingsVersion');
       const String currentSettingsVersion = '4.2.1';
 
-      if (savedSettingsVersion == null || savedSettingsVersion != currentSettingsVersion) {
-        debugPrint('=== Settings migration needed: $savedSettingsVersion -> $currentSettingsVersion ===');
+      if (savedSettingsVersion == null ||
+          savedSettingsVersion != currentSettingsVersion) {
+        debugPrint(
+            '=== Settings migration needed: $savedSettingsVersion -> $currentSettingsVersion ===');
 
-        if (savedSettingsVersion == null || _versionLessThan(savedSettingsVersion, '4.2.1')) {
-          final double currentLyricsFontSize = prefs.getDouble('lyricsFontSize') ?? 19.0;
-          final double currentTranslationFontSize = prefs.getDouble('translationFontSize') ?? 18.0;
-          final double currentTranscriptFontSize = prefs.getDouble('transcriptFontSize') ?? 16.0;
+        if (savedSettingsVersion == null ||
+            _versionLessThan(savedSettingsVersion, '4.2.1')) {
+          final double currentLyricsFontSize =
+              prefs.getDouble('lyricsFontSize') ?? 19.0;
+          final double currentTranslationFontSize =
+              prefs.getDouble('translationFontSize') ?? 18.0;
+          final double currentTranscriptFontSize =
+              prefs.getDouble('transcriptFontSize') ?? 16.0;
 
           if (currentLyricsFontSize <= 17.0) {
             await prefs.setDouble('lyricsFontSize', 19.0);
-            debugPrint('Migrated lyricsFontSize: $currentLyricsFontSize -> 19.0');
+            debugPrint(
+                'Migrated lyricsFontSize: $currentLyricsFontSize -> 19.0');
           }
           if (currentTranslationFontSize <= 16.0) {
             await prefs.setDouble('translationFontSize', 18.0);
-            debugPrint('Migrated translationFontSize: $currentTranslationFontSize -> 18.0');
+            debugPrint(
+                'Migrated translationFontSize: $currentTranslationFontSize -> 18.0');
           }
           if (currentTranscriptFontSize <= 14.0) {
             await prefs.setDouble('transcriptFontSize', 16.0);
-            debugPrint('Migrated transcriptFontSize: $currentTranscriptFontSize -> 16.0');
+            debugPrint(
+                'Migrated transcriptFontSize: $currentTranscriptFontSize -> 16.0');
           }
         }
 
@@ -160,7 +185,8 @@ class SettingsProvider with ChangeNotifier {
       _transcriptFontSize = prefs.getDouble('transcriptFontSize') ?? 16.0;
 
       if (savedSettingsVersion != currentSettingsVersion) {
-        debugPrint('✓ Settings migrated from $savedSettingsVersion to $currentSettingsVersion');
+        debugPrint(
+            '✓ Settings migrated from $savedSettingsVersion to $currentSettingsVersion');
       }
 
       _lyricsBold = prefs.getBool('lyricsBold') ?? true;
@@ -172,18 +198,23 @@ class SettingsProvider with ChangeNotifier {
       _deepseekPrompt = prefs.getString('deepseekPrompt') ?? '';
       _deepseekTimeout = prefs.getInt('deepseekTimeout') ?? 180;
       _deepseekModel = prefs.getString('deepseekModel') ?? 'deepseek-chat';
-      _deepseekMaxTokensRegular = prefs.getInt('deepseekMaxTokensRegular') ?? 500;
+      _deepseekMaxTokensRegular =
+          prefs.getInt('deepseekMaxTokensRegular') ?? 500;
       _deepseekMaxTokensJson = prefs.getInt('deepseekMaxTokensJson') ?? 8000;
-      _selectedPromptPreset = prefs.getString('selectedPromptPreset') ?? 'balanced';
-      _addToLibraryWhenAddingToPlaylist = prefs.getBool('addToLibraryWhenAddingToPlaylist') ?? false;
+      _selectedPromptPreset =
+          prefs.getString('selectedPromptPreset') ?? 'balanced';
+      _addToLibraryWhenAddingToPlaylist =
+          prefs.getBool('addToLibraryWhenAddingToPlaylist') ?? false;
       _showVerticalSlider = prefs.getBool('showVerticalSlider') ?? false;
-      _defaultTimestampOffset = prefs.getDouble('defaultTimestampOffset') ?? 1800.0;
+      _defaultTimestampOffset =
+          prefs.getDouble('defaultTimestampOffset') ?? 1800.0;
       _lyricsPositionOffset = prefs.getDouble('lyricsPositionOffset') ?? 0.15;
       _ttsEngine = prefs.getString('ttsEngine') ?? '';
       _ttsSource = prefs.getString('ttsSource') ?? 'offline';
       _timingCorrection = prefs.getBool('timingCorrection') ?? true;
       _carDetectionEnabled = prefs.getBool('carDetectionEnabled') ?? false;
-      _carDetectionSensitivity = prefs.getDouble('carDetectionSensitivity') ?? 0.4;
+      _carDetectionSensitivity =
+          prefs.getDouble('carDetectionSensitivity') ?? 0.4;
       _carAlertSound = prefs.getBool('carAlertSound') ?? true;
       _carAlertVibration = prefs.getBool('carAlertVibration') ?? true;
       _carAlertVoice = prefs.getBool('carAlertVoice') ?? false;
@@ -192,6 +223,8 @@ class SettingsProvider with ChangeNotifier {
           prefs.getInt('lyricOriginalColor') ?? LyricColorPalette.autoValue;
       _translationTextColorValue =
           prefs.getInt('lyricTranslationColor') ?? LyricColorPalette.autoValue;
+      _activeLineColorValue =
+          prefs.getInt('lyricActiveLineColor') ?? LyricColorPalette.autoValue;
 
       debugPrint('Font size: $_fontSize');
       debugPrint('Translation language: $_defaultTranslationLanguage');
@@ -204,20 +237,27 @@ class SettingsProvider with ChangeNotifier {
       debugPrint('Show translation messages: $_showTranslationMessages');
       debugPrint('Default start screen: $_defaultStartScreen');
       debugPrint('Lyrics font size: $_lyricsFontSize, bold: $_lyricsBold');
-      debugPrint('Translation font size: $_translationFontSize, bold: $_translationBold');
-      debugPrint('Transcript font size: $_transcriptFontSize, bold: $_transcriptBold');
-      debugPrint('Font family: ${_fontFamily.isEmpty ? "system" : _fontFamily}');
+      debugPrint(
+          'Translation font size: $_translationFontSize, bold: $_translationBold');
+      debugPrint(
+          'Transcript font size: $_transcriptFontSize, bold: $_transcriptBold');
+      debugPrint(
+          'Font family: ${_fontFamily.isEmpty ? "system" : _fontFamily}');
       debugPrint('Theme color: $_themeColor');
-      debugPrint('DeepSeek API key: ${_deepseekApiKey.isNotEmpty ? "configured" : "not configured"}');
-      debugPrint('DeepSeek prompt: ${_deepseekPrompt.isNotEmpty ? "custom" : "default"}');
+      debugPrint(
+          'DeepSeek API key: ${_deepseekApiKey.isNotEmpty ? "configured" : "not configured"}');
+      debugPrint(
+          'DeepSeek prompt: ${_deepseekPrompt.isNotEmpty ? "custom" : "default"}');
       debugPrint('DeepSeek timeout: $_deepseekTimeout sec');
       debugPrint('DeepSeek model: $_deepseekModel');
       debugPrint('DeepSeek max tokens (regular): $_deepseekMaxTokensRegular');
       debugPrint('DeepSeek max tokens (JSON): $_deepseekMaxTokensJson');
       debugPrint('DeepSeek prompt preset: $_selectedPromptPreset');
-      debugPrint('Add to library when adding to playlist: $_addToLibraryWhenAddingToPlaylist');
+      debugPrint(
+          'Add to library when adding to playlist: $_addToLibraryWhenAddingToPlaylist');
       debugPrint('Show vertical slider: $_showVerticalSlider');
-      debugPrint('Default timestamp offset: $_defaultTimestampOffset (${(_defaultTimestampOffset / 60).toInt()} min)');
+      debugPrint(
+          'Default timestamp offset: $_defaultTimestampOffset (${(_defaultTimestampOffset / 60).toInt()} min)');
       debugPrint('Lyrics position offset: $_lyricsPositionOffset s');
 
       notifyListeners();
@@ -230,77 +270,77 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setFontSize(double value) async {
     debugPrint('=== SettingsProvider: Setting font size ===');
     debugPrint('Old: $_fontSize, New: $value');
-    
+
     _fontSize = value;
     await _save();
     notifyListeners();
-    
+
     debugPrint('Font size updated and notified listeners');
   }
 
   Future<void> setDefaultTranslationLanguage(String value) async {
     debugPrint('=== SettingsProvider: Setting language ===');
     debugPrint('Old: $_defaultTranslationLanguage, New: $value');
-    
+
     _defaultTranslationLanguage = value;
     await _save();
     notifyListeners();
-    
+
     debugPrint('Language updated and notified listeners');
   }
 
   Future<void> setDefaultSourceLanguage(String value) async {
     debugPrint('=== SettingsProvider: Setting default source language ===');
     debugPrint('Old: $_defaultSourceLanguage, New: $value');
-    
+
     _defaultSourceLanguage = value;
     await _save();
     notifyListeners();
-    
+
     debugPrint('Default source language updated and notified listeners');
   }
 
   Future<void> setAutoScroll(bool value) async {
     debugPrint('=== SettingsProvider: Setting auto scroll ===');
     debugPrint('Old: $_autoScroll, New: $value');
-    
+
     _autoScroll = value;
     await _save();
     notifyListeners();
-    
+
     debugPrint('Auto scroll updated and notified listeners');
   }
 
   Future<void> setHighlightNextLine(bool value) async {
     debugPrint('=== SettingsProvider: Setting highlight next line ===');
     debugPrint('Old: $_highlightNextLine, New: $value');
-    
+
     _highlightNextLine = value;
     await _save();
     notifyListeners();
-    
+
     debugPrint('Highlight next line updated and notified listeners');
   }
 
   Future<void> setAppLanguage(String value) async {
     debugPrint('=== SettingsProvider: Setting app language ===');
     debugPrint('Old: $_appLanguage, New: $value');
-    
+
     _appLanguage = value;
     await _save();
     notifyListeners();
-    
+
     debugPrint('App language updated and notified listeners');
   }
 
   Future<void> setShowTranscript(bool value) async {
     debugPrint('=== SettingsProvider: Setting show transcript ===');
     debugPrint('Old: $_showTranscript, New: $value');
-    
+
     _showTranscript = value;
     await _save();
     notifyListeners();
-    
+
     debugPrint('Show transcript updated and notified listeners');
   }
 
@@ -480,7 +520,8 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setDeepseekMaxTokensRegular(int value) async {
-    debugPrint('=== SettingsProvider: Setting DeepSeek max tokens (regular) ===');
+    debugPrint(
+        '=== SettingsProvider: Setting DeepSeek max tokens (regular) ===');
     debugPrint('New max tokens (regular): $value');
 
     _deepseekMaxTokensRegular = value;
@@ -513,14 +554,16 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setAddToLibraryWhenAddingToPlaylist(bool value) async {
-    debugPrint('=== SettingsProvider: Setting add to library when adding to playlist ===');
+    debugPrint(
+        '=== SettingsProvider: Setting add to library when adding to playlist ===');
     debugPrint('Old: $_addToLibraryWhenAddingToPlaylist, New: $value');
 
     _addToLibraryWhenAddingToPlaylist = value;
     await _save();
     notifyListeners();
 
-    debugPrint('Add to library when adding to playlist updated and notified listeners');
+    debugPrint(
+        'Add to library when adding to playlist updated and notified listeners');
   }
 
   Future<void> setShowVerticalSlider(bool value) async {
@@ -531,7 +574,8 @@ class SettingsProvider with ChangeNotifier {
 
   Future<void> setDefaultTimestampOffset(double value) async {
     debugPrint('=== SettingsProvider: Setting default timestamp offset ===');
-    debugPrint('Old: $_defaultTimestampOffset (${(_defaultTimestampOffset / 60).toInt()} min), New: $value (${(value / 60).toInt()} min)');
+    debugPrint(
+        'Old: $_defaultTimestampOffset (${(_defaultTimestampOffset / 60).toInt()} min), New: $value (${(value / 60).toInt()} min)');
 
     _defaultTimestampOffset = value;
     await _save();
@@ -579,7 +623,8 @@ class SettingsProvider with ChangeNotifier {
   /// Включает/выключает коррекцию позиции для подсветки строк (VBR MP3).
   Future<void> setTimingCorrection(bool value) async {
     if (_timingCorrection == value) return;
-    debugPrint('🎯 SettingsProvider: timingCorrection $_timingCorrection → $value');
+    debugPrint(
+        '🎯 SettingsProvider: timingCorrection $_timingCorrection → $value');
     _timingCorrection = value;
     await _save();
     notifyListeners();
@@ -650,16 +695,22 @@ class SettingsProvider with ChangeNotifier {
 
   /// Устанавливает цвет оригинала. `null` = «авто» (цвет темы).
   Future<void> setOriginalTextColor(Color? value) async {
-    _originalTextColorValue =
-        value?.value ?? LyricColorPalette.autoValue;
+    _originalTextColorValue = value?.value ?? LyricColorPalette.autoValue;
     await _save();
     notifyListeners();
   }
 
   /// Устанавливает цвет перевода. `null` = «авто» (цвет темы).
   Future<void> setTranslationTextColor(Color? value) async {
-    _translationTextColorValue =
-        value?.value ?? LyricColorPalette.autoValue;
+    _translationTextColorValue = value?.value ?? LyricColorPalette.autoValue;
+    await _save();
+    notifyListeners();
+  }
+
+  /// Устанавливает цвет фона активной строки. `null` = «авто». Применяется
+  /// независимо от тумблера [useCustomLyricColors].
+  Future<void> setActiveLineColor(Color? value) async {
+    _activeLineColorValue = value?.value ?? LyricColorPalette.autoValue;
     await _save();
     notifyListeners();
   }
@@ -668,7 +719,8 @@ class SettingsProvider with ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble('fontSize', _fontSize);
-      await prefs.setString('defaultTranslationLanguage', _defaultTranslationLanguage);
+      await prefs.setString(
+          'defaultTranslationLanguage', _defaultTranslationLanguage);
       await prefs.setString('defaultSourceLanguage', _defaultSourceLanguage);
       await prefs.setBool('autoScroll', _autoScroll);
       await prefs.setBool('highlightNextLine', _highlightNextLine);
@@ -693,7 +745,8 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setInt('deepseekMaxTokensRegular', _deepseekMaxTokensRegular);
       await prefs.setInt('deepseekMaxTokensJson', _deepseekMaxTokensJson);
       await prefs.setString('selectedPromptPreset', _selectedPromptPreset);
-      await prefs.setBool('addToLibraryWhenAddingToPlaylist', _addToLibraryWhenAddingToPlaylist);
+      await prefs.setBool('addToLibraryWhenAddingToPlaylist',
+          _addToLibraryWhenAddingToPlaylist);
       await prefs.setBool('showVerticalSlider', _showVerticalSlider);
       await prefs.setDouble('defaultTimestampOffset', _defaultTimestampOffset);
       await prefs.setDouble('lyricsPositionOffset', _lyricsPositionOffset);
@@ -701,13 +754,15 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setString('ttsSource', _ttsSource);
       await prefs.setBool('timingCorrection', _timingCorrection);
       await prefs.setBool('carDetectionEnabled', _carDetectionEnabled);
-      await prefs.setDouble('carDetectionSensitivity', _carDetectionSensitivity);
+      await prefs.setDouble(
+          'carDetectionSensitivity', _carDetectionSensitivity);
       await prefs.setBool('carAlertSound', _carAlertSound);
       await prefs.setBool('carAlertVibration', _carAlertVibration);
       await prefs.setBool('carAlertVoice', _carAlertVoice);
       await prefs.setBool('useCustomLyricColors', _useCustomLyricColors);
       await prefs.setInt('lyricOriginalColor', _originalTextColorValue);
       await prefs.setInt('lyricTranslationColor', _translationTextColorValue);
+      await prefs.setInt('lyricActiveLineColor', _activeLineColorValue);
       await prefs.setString('settingsVersion', '4.2.1');
       debugPrint('Settings saved to SharedPreferences');
     } catch (e) {

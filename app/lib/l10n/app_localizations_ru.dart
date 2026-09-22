@@ -2213,6 +2213,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get lyricColorsTranslation => 'Перевод';
 
   @override
+  String get lyricColorsActive => 'Активная строка';
+
+  @override
   String get lyricColorsPreview => 'Предпросмотр';
 
   @override

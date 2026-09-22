@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.9** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.10** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -260,8 +260,10 @@ void main() {
   Light mode = vivid purple `#5E3FE6→#4125C2`, dark = purple-black
   `#1A1428→#0F0B19`; both are dark-brightness schemes (light text).
   Core: `app/lib/theme/app_gradients.dart` — `ThemeExtension<AppGradients>`
-  (backdrop / card / transcriptAccent), `AmethystPalette` (hex tables +
-  `buildTheme`), context helpers.
+  (backdrop / card / transcriptAccent / activeLineHighlight — the active lyric
+  line's highlight: dark glass `0x4D000000` on light flood, where
+  `primaryContainer` blends into the gradient; `0xFF522DDB` on dark),
+  `AmethystPalette` (hex tables + `buildTheme`), context helpers.
 - **Skin gate**: `context.isAmethystSkin` is true iff the theme carries the
   `AppGradients` extension — use it (or `context.appBarColor(fallback)` /
   `amethystCardDecoration(context, {radius})`) for any screen-level styling
@@ -518,6 +520,6 @@ Run `flutter pub get` after modifying `app/pubspec.yaml`
 - **screens/helpers/**: Helper classes for complex screens (SongImportHelper, PlayerImportHelper, PlayerPlaylistHelper, PlayerTranslationHelper, SongTranslationLoader, CoverArtHelper, PlaylistImportHelper)
 - **widgets/**: Reusable components (SongListTile, EmptyLibraryWidget, MiniPlayerWidget, LyricLineWidget, GenerationOptionsWidget, GenerationProgressWidget, LibraryManagerWidget, BatchSelectionWidget, LoadingWidget, LyricsSearchDialog, SongSortWidget, SelectionModeActions) + `widgets/settings/` (ApiSettingsTile, TextSettingsSection, DefaultAutoScrollFocusOffsetControl)
 - **theme/**: Amethyst gradient skin — `AppGradients` ThemeExtension, `AmethystPalette`, context helpers (`isAmethystSkin`, `appBarColor`, `amethystCardDecoration`)
-- **utils/**: Utility functions (SnackBarHelper, LrcFormatter, LanguageHelpers, TtsEngineHelper, Fft, LyricColors — palette + presets for custom lyric-line text colors, see `SettingsProvider.useCustomLyricColors` / `originalTextColor` / `translationTextColor`)
+- **utils/**: Utility functions (SnackBarHelper, LrcFormatter, LanguageHelpers, TtsEngineHelper, Fft, LyricColors — palette + presets for custom lyric-line text colors, see `SettingsProvider.useCustomLyricColors` / `originalTextColor` / `translationTextColor`; since v5.8.10 also the ACTIVE line's highlight color `SettingsProvider.activeLineColor` — applied WITHOUT the `useCustomLyricColors` toggle, overriding the theme default incl. Amethyst's `activeLineHighlight`)
 - **constants/**: Constants and configuration (DeepSeekPrompts, GenerationConstants)
-- **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 667 keys each; ARB sources + generated `app_localizations*.dart`
+- **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 684 keys each; ARB sources + generated `app_localizations*.dart`

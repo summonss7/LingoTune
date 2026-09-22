@@ -2213,6 +2213,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get lyricColorsTranslation => '翻译';
 
   @override
+  String get lyricColorsActive => '当前行';
+
+  @override
   String get lyricColorsPreview => '预览';
 
   @override
