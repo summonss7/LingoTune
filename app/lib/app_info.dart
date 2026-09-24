@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.8.10';
+  static const String version = '5.8.11';
 
-  static const String versionCode = '238';
+  static const String versionCode = '239';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -64,6 +64,8 @@ class AppInfo {
     '🗣️ Fix: voice translation recovers after a call/notification even when the system TTS service hangs (timed-out engine calls)',
     '💜 New "Amethyst" theme: purple gradient design — one full-screen gradient, darker gradient cards, transparent app bars (light = vivid purple, dark = deep purple-black)',
     '🎨 Inactive lyric lines, transcripts and the About screen now follow the theme colors (readable in dark mode and on the gradient)',
+    '🔧 Fix: app kept in memory for a long time no longer glitches on next listen (stale TTS connection rebuilt, stuck call-pause cleared before play)',
+    '🔧 Fix: stuck notification-beep pause heals even without phone permission (AudioManager audio-mode check) and no longer kills the voice on the next song',
   ];
 
   static const List<String> supportedLanguages = [

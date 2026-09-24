@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart' hide LoopMode;
 import '../models/song.dart';
 import '../models/loop_mode.dart';
+import 'audio_mode_service.dart';
 import 'becoming_noisy_service.dart';
 import 'phone_call_service.dart';
 
@@ -71,12 +72,26 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   /// Сколько может висеть call-пауза без парного end, прежде чем
   /// [clearStaleCallPause] сочтёт её залипшей (beep уведомления/сообщения,
   /// эхо отбоя вне окна дебаунса) при подтверждённо свободной линии.
-  static const _staleCallPauseTimeout = Duration(seconds: 30);
+  /// 20 с (v5.8.11, было 30): watchdog автоперехода самолечится после
+  /// ~5 реармов ≈ 24 с — порог обязан быть НИЖЕ, иначе clearStaleCallPause
+  /// отказывал (пауза «недостаточно старая»), флаг оставался висеть, и
+  /// следующая песня играла без голоса (kick study прерывался по
+  /// isPausedForCall).
+  static const _staleCallPauseTimeout = Duration(seconds: 20);
 
   Function(bool)? onShuffleToggled;
   Function(LoopMode)? onLoopToggled;
   Function()? onSkipToNextRequested;
   Function()? onSkipToPreviousRequested;
+
+  /// Вызывается, когда перезапуск трека в LoopMode.one исчерпал все попытки
+  /// (v5.8.11): зомби-состояние just_audio не раскачалось seek+play+nudge.
+  /// Раньше здесь просто писался лог — в loop-one НЕ вооружается completion
+  /// watchdog экрана ([AudioService._onSongCompleted] при loop-one делает
+  /// ранний return), так что «сдался» означал вечную заморозку без всякой
+  /// страховки. Экран по колбэку форсит полную перезагрузку песни
+  /// (`_playSong`) — она же чисто перезапустит study-сессию.
+  Function()? onLoopOneRestartFailed;
 
   /// Вызывается в начале прерывания аудиосессии (входящий звонок, будильник,
   /// другой плеер). Возвращает `true` если колбэк взял управление паузой на себя
@@ -240,13 +255,19 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     // Дебаунс эха (v5.8.5): нативный детектор (TelephonyManager) уже дал idle,
     // мы возобновились — а сейчас пришёл ЗАПОЗДАЛЫЙ audio_session begin того
     // же звонка. Принять его = новая пауза без парного end → плеер замрёт.
-    // Эхо игнорируем ТОЛЬКО при подтверждении детектором, что линия свободна;
-    // без детектора (нет permission / не Android) событие принимаем как раньше.
+    // Эхо игнорируем ТОЛЬКО при подтверждении, что линии свободна; без
+    // данных (нет permission, кэш аудио-линии холодный) событие принимаем
+    // как раньше (v5.8.11: добавлен fallback на AudioManager.getMode() —
+    // детектора звонка может не быть, а эхо всё равно надо отличить).
     final lastResume = _lastResumeAt;
     if (lastResume != null &&
         DateTime.now().difference(lastResume) < _staleEchoWindow) {
       final phone = PhoneCallService.instance;
-      if (phone.isListening && phone.current == CallState.idle) {
+      final detectorIdle =
+          phone.isListening && phone.current == CallState.idle;
+      final noCall =
+          detectorIdle || AudioModeService.instance.lastKnownLineIdle == true;
+      if (noCall) {
         debugPrint('📞 BackgroundAudioHandler: stale interruption echo '
             'after recent resume — ignored');
         return;
@@ -277,6 +298,10 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     _callPauseStartedAt = null;
     // Момент resume — для дебаунса эха в [_handleCallPause] (см. там).
     _lastResumeAt = DateTime.now();
+    // Греем кэш аудио-линии (v5.8.11): запоздалое эхо-начало этого же
+    // прерывания должно корректно дебаунситься даже на устройствах без
+    // READ_PHONE_STATE — свежий ответ «линия свободна» будет в кэше.
+    unawaited(AudioModeService.instance.isLineIdle());
     final wasPlaying = _wasPlayingBeforeInterruption;
     _wasPlayingBeforeInterruption = false;
     // Пользователь вручную нажал паузу во время прерывания (lock-screen / FAB)
@@ -302,6 +327,21 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       _ensureAdvancingAfterResume();
     }
     onPlaybackResumed?.call(false);
+  }
+
+  /// Снимает флаги call-паузы БЕЗ побочных эффектов resume (v5.8.11).
+  /// В отличие от [_handleCallResume] не дёргает onPlaybackResumed и не
+  /// играет сам — для путей, где запуск делает вызывающий (pre-flight в
+  /// [play]: дальнейший onUserPlay корректно возобновит study). Штамп
+  /// [_lastResumeAt] обязателен: запаздывающее эхо-начало того же
+  /// прерывания не должно создать НОВУЮ залипшую паузу.
+  void _clearCallPauseFlags() {
+    _pausedForCall = false;
+    _callPauseStartedAt = null;
+    _userPausedDuringCall = false;
+    _wasPlayingBeforeInterruption = false;
+    _lastResumeAt = DateTime.now();
+    unawaited(AudioModeService.instance.isLineIdle());
   }
 
   /// Пауза при отключении наушников. Основной путь — нативный
@@ -423,27 +463,58 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   /// вечно: kick-цикл study прерывался, play() не доходил до onUserPlay, а
   /// watchdog автоперехода бесконечно реармился (симптом «после сообщения
   /// песня доиграла — следующая сама не включилась»). Условия консервативны:
-  /// нативный детектор [PhoneCallService] слушает И подтверждает idle
-  /// (иначе нельзя отличить залипший beep от реального долгого разговора), и
-  /// пауза висит дольше [_staleCallPauseTimeout]. Снятие идёт штатным
+  /// подтверждение [_confirmedNoCall], что линии свободна (иначе нельзя
+  /// отличить залипший beep от реального долгого разговора), и пауза висит
+  /// дольше [_staleCallPauseTimeout]. Снятие идёт штатным
   /// [_handleCallResume] — он вызовет onPlaybackResumed (resumeSession).
   /// Возвращает true, если пауза была снята.
-  bool clearStaleCallPause() {
+  Future<bool> clearStaleCallPause() async {
     if (!_pausedForCall) return false;
     final startedAt = _callPauseStartedAt;
     if (startedAt == null ||
         DateTime.now().difference(startedAt) < _staleCallPauseTimeout) {
       return false;
     }
-    final phone = PhoneCallService.instance;
-    if (!(phone.isListening && phone.current == CallState.idle)) {
+    if (!await _confirmedNoCall()) {
       return false;
     }
     debugPrint('📞 BackgroundAudioHandler: stale call-pause cleared '
         '(no end event for ${DateTime.now().difference(startedAt).inSeconds}s, '
-        'phone idle) — resuming');
+        'no call confirmed) — resuming');
     _handleCallResume();
     return true;
+  }
+
+  /// Принудительное снятие call-паузы при подтверждённо свободной линии —
+  /// БЕЗ порога [_staleCallPauseTimeout] (v5.8.11). Нужно самолечению
+  /// watchdog'а автоперехода: оно срабатывает через ~24 с после завершения
+  /// песни, а пауза могла начаться лишь на секунды раньше конца — старый
+  /// clearStaleCallPause отказывал по возрасту, флаг оставался висеть, и
+  /// следующая песня играла без голоса (kick study прерывался).
+  Future<bool> forceClearCallPauseIfNoCall() async {
+    if (!_pausedForCall) return true; // уже снята — не ошибка
+    if (!await _confirmedNoCall()) {
+      return false;
+    }
+    debugPrint('📞 BackgroundAudioHandler: call-pause force-cleared '
+        '(no call confirmed, watchdog self-heal) — resuming');
+    _handleCallResume();
+    return true;
+  }
+
+  /// Подтверждено ли независимыми источниками, что звонка НЕТ (v5.8.11):
+  /// работающий TelephonyManager-детектор ([PhoneCallService], idle) ИЛИ
+  /// режим аудио-линии NORMAL ([AudioModeService] → AudioManager.getMode(),
+  /// без всяких разрешений). До v5.8.11 требовался ТОЛЬКО детектор: нет
+  /// READ_PHONE_STATE / детектор молча умер (заморозка приложения ROM-ом,
+  /// async-ошибка канала) — и залипший beep нельзя было отличить от
+  /// разговора, самолечение отключалось навсегда («замерло — спасал только
+  /// стоп+плей»). AudioManager.getMode() видит и VoIP-звонки, которые
+  /// TelephonyManager не видит.
+  Future<bool> _confirmedNoCall() async {
+    final phone = PhoneCallService.instance;
+    if (phone.isListening && phone.current == CallState.idle) return true;
+    return await AudioModeService.instance.isLineIdle() == true;
   }
 
   void _initializeState() {
@@ -568,8 +639,12 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
       }
       debugPrint('✗ BackgroundAudioHandler: LoopMode.one restart — '
           'position not advancing after retries');
+      // v5.8.11: loop-one — единственный режим БЕЗ completion watchdog'а
+      // экрана, сдаться молча = вечная заморозка. Отдаём проблему экрану.
+      onLoopOneRestartFailed?.call();
     } catch (e) {
       debugPrint('⚠ BackgroundAudioHandler: LoopMode.one restart error: $e');
+      onLoopOneRestartFailed?.call();
     } finally {
       _isHandlingCompletion = false;
     }
@@ -749,6 +824,18 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   @override
   Future<void> play() async {
+    // v5.8.11 pre-flight: залипшая call-пауза (beep уведомления, чей парный
+    // end не дошёл — в т.ч. пришедший, пока приложение висело в памяти)
+    // блокировала ВСЁ: onUserPlay не вызывался → resumeSession недостижим →
+    // «включаю прослушивание — глючит». Прежде чем играть, спрашиваем линию:
+    // реального звонка нет ([_confirmedNoCall]) → снимаем только флаги (без
+    // onPlaybackResumed!) — единый resumeSession запустит штатный onUserPlay
+    // ниже; двойной вызов запустил бы два study-runner'а.
+    if (_pausedForCall && await _confirmedNoCall()) {
+      debugPrint('📞 BackgroundAudioHandler: stale call-pause cleared '
+          'at play() (no call confirmed)');
+      _clearCallPauseFlags();
+    }
     // Пользователь (lock-screen / FAB / media button) явно нажал play. Если это
     // произошло во время прерывания звонка — отменяем «хочу паузу», чтобы по
     // окончании звонка корректно возобновиться.

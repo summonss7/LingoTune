@@ -255,6 +255,34 @@ class TtsCoordinator extends ChangeNotifier {
     }
   }
 
+  /// Health-probe активного движка после долгого простоя приложения в памяти
+  /// (v5.8.11). За время простоя Android отвязывает системный TTS-сервис, а
+  /// ROM может заморозить приложение: ленивый [ensureInitialized] не чинит
+  /// протухшую связь (первые speaks «успешно молчали» до конца песни). Probe
+  /// — повторная установка языка (быстрый platform-раундтрип с таймаутом);
+  /// завис/упал → пересобираем движок ([TtsEngine.reset]) и считаем итог по
+  /// нему. Офлайн-движок от системного сервиса не зависит — сразу true.
+  Future<bool> revalidateAfterIdle() async {
+    final engine = _engine;
+    if (engine == null) return true; // лениво инициализируется при speak
+    if (engine.source != TtsSource.system) return true;
+    try {
+      // Координаторный setLanguage сериализован через _sourceLock.
+      await setLanguage(_languageCode).timeout(const Duration(seconds: 4));
+      return true;
+    } catch (e) {
+      debugPrint('⚠ TtsCoordinator: idle health-probe failed '
+          '(TTS service stale?), resetting engine: $e');
+    }
+    try {
+      await engine.reset().timeout(const Duration(seconds: 15));
+      return true;
+    } catch (e) {
+      debugPrint('✗ TtsCoordinator: engine reset failed: $e');
+      return false;
+    }
+  }
+
   // -------------------------------------------------------------------
   // Speak / Stop — приоритетная очередь
   // -------------------------------------------------------------------
@@ -331,7 +359,12 @@ class TtsCoordinator extends ChangeNotifier {
       debugPrint('✗ TtsCoordinator: engine.speak() error: $e');
       if (identical(_current, req)) {
         _current = null;
-        if (!completer.isCompleted) completer.complete();
+        // v5.8.11: genuine-сбой движка прокидываем ОШИБКОЙ (раньше —
+        // успехом, из-за чего study сбрасывал стринг и перевод после
+        // звонка/уведомления/долгого простоя молчал «успешно» до конца
+        // песни). Наши собственные прерывания идут через
+        // _interruptCurrent и завершаются НОРМАЛЬНО — false strike не дают.
+        if (!completer.isCompleted) completer.completeError(e);
       }
     });
 

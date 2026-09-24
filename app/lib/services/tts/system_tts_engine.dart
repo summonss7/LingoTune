@@ -16,8 +16,18 @@ import 'tts_engine.dart';
 /// speak-via-completer) и `study_mode_service.dart:370-534` (init, setLanguage,
 /// voice-fallback, locale mapping).
 class SystemTtsEngine extends TtsEngine {
-  final FlutterTts _tts = FlutterTts();
+  /// НЕ final (v5.8.11): после долгого простоя приложения Android отвязывает
+  /// TTS-сервис, и единственный способ перебиндиться — создать НОВЫЙ
+  /// FlutterTts (см. [reset]).
+  FlutterTts _tts = FlutterTts();
   Completer<void>? _speakCompleter;
+
+  /// v5.8.11: после таймаута platform-вызова speak() выговор «брошен», но
+  /// flutter_tts об этом не знает — его поздний completion/cancel может
+  /// прийти, когда `_speakCompleter` уже принадлежит СЛЕДУЮЩЕЙ фразе →
+  /// фальшивый успех и ранний переход строки. По таймауту вызываем _tts.stop()
+  /// и выставляем флаг: ровно одно ближайшее событие съедается.
+  bool _dropNextCompletion = false;
 
   bool _isReady = false;
   bool _langAvailable = true;
@@ -125,8 +135,13 @@ class SystemTtsEngine extends TtsEngine {
         }
       }
     } catch (e) {
-      available = false;
-      debugPrint('⚠ SystemTtsEngine: setLanguage($locale) error: $e');
+      // v5.8.11: исключение платформенного вызова ≠ «язык недоступен». После
+      // звонка/beep'а уведомления/долгого простоя TTS-сервис переподключается
+      // и вызовы падают/висят — раньше это лочило available=false, и study
+      // молчал до конца песни («пробы бессмысленны»). Лочим недоступность
+      // ТОЛЬКО при честном ответе «нет голосов» (ветки выше).
+      debugPrint('⚠ SystemTtsEngine: setLanguage($locale) transient error '
+          '(service rebinding?), keeping availability: $e');
     }
     final changed = _langAvailable != available;
     _langAvailable = available;
@@ -181,28 +196,68 @@ class SystemTtsEngine extends TtsEngine {
       // completion-, ни error-handler не придёт → completer висел бы вечно.
       // Явной неудачей считаем ТОЛЬКО 0/false: нестандартные значения некоторых
       // ROM не должны завершать ожидание раньше конца фразы (речь бы
-      // обрывалась следующим stop).
+      // обрывалась следующим stop). v5.8.11: неудача завершает completer
+      // ОШИБКОЙ — study должен засчитать сбой в стринг, иначе перевод после
+      // переподключения TTS-сервиса молчал бы «успешно» до конца песни.
       if (result == 0 || result == '0' || result == false) {
         debugPrint('⚠ SystemTtsEngine: speak() returned $result (failure)');
         _speakCompleter = null;
-        if (!completer.isCompleted) completer.complete();
+        if (!completer.isCompleted) {
+          completer.completeError(StateError('tts speak refused (result=$result)'));
+        }
         return;
       }
     } on TimeoutException {
       // Сам platform-вызов speak завис (переподключение TTS-сервиса после
-      // звонка) — не ждём completion-handler'а, завершаемся «неудачей»,
-      // чтобы study-watchdog не сжёг стрик ожиданием мёртвого запроса.
+      // звонка/уведомления/долгого простоя приложения). v5.8.11: завершаем
+      // ОШИБКОЙ, а не «успехом» (раньше study сбрасывал стринг — тишина без
+      // единого сбоя жила вечно); отменяем брошенный выговор и съедаем его
+      // поздний completion (см. [_dropNextCompletion]).
       debugPrint('⚠ SystemTtsEngine: speak() platform call timed out');
       _speakCompleter = null;
-      if (!completer.isCompleted) completer.complete();
+      _dropNextCompletion = true;
+      try {
+        await _tts.stop().timeout(const Duration(seconds: 2));
+      } catch (_) {}
+      if (!completer.isCompleted) {
+        completer.completeError(
+            TimeoutException('tts speak platform call hung',
+                const Duration(seconds: 3)));
+      }
       return;
     } catch (e) {
       debugPrint('✗ SystemTtsEngine: speak() error: $e');
       _speakCompleter = null;
-      if (!completer.isCompleted) completer.complete();
+      if (!completer.isCompleted) {
+        completer.completeError(StateError('tts speak error: $e'));
+      }
       return;
     }
     return completer.future;
+  }
+
+  /// Полный пересбор подключения к системному TTS-сервису (v5.8.11). После
+  /// долгого простоя приложения в памяти Android отвязывает сервис, а
+  /// идемпотентный [initialize] (_isReady залип) связь не чинит — вызовы
+  /// виснут до таймаутов. Создаём НОВЫЙ FlutterTts (свежий bind), заново
+  /// ставим handlers/движок/язык. Поздние события СТАРОГО инстанса до нового
+  /// completer не дотягиваются (handlers — per-instance).
+  @override
+  Future<void> reset() async {
+    debugPrint('🎧 SystemTtsEngine: reset (rebinding system TTS service)');
+    final c = _speakCompleter;
+    _speakCompleter = null;
+    if (c != null && !c.isCompleted) c.complete();
+    final lang = _ttsLanguage;
+    try {
+      await _tts.stop().timeout(const Duration(seconds: 2));
+    } catch (_) {}
+    _tts = FlutterTts();
+    _dropNextCompletion = false;
+    _isReady = false;
+    await initialize();
+    await setLanguage(lang);
+    notifyListeners();
   }
 
   /// Применяет параметр речи с таймаутом: зависший platform-вызов (TTS-сервис
@@ -292,16 +347,36 @@ class SystemTtsEngine extends TtsEngine {
   // -------------------------------------------------------------------
 
   void _handleCompletion() {
+    if (_dropNextCompletion) {
+      // Позднее событие брошенного по таймауту выговора (v5.8.11): без этого
+      // оно закрывало бы completer СЛЕДУЮЩЕЙ фразы → фальшивый успех и
+      // ранний переход строки.
+      _dropNextCompletion = false;
+      debugPrint('🎧 SystemTtsEngine: stale completion of abandoned '
+          'utterance dropped');
+      return;
+    }
     final c = _speakCompleter;
     _speakCompleter = null;
     if (c != null && !c.isCompleted) c.complete();
   }
 
   void _handleError(Object e) {
+    if (_dropNextCompletion) {
+      _dropNextCompletion = false;
+      debugPrint('🎧 SystemTtsEngine: stale error of abandoned '
+          'utterance dropped');
+      return;
+    }
     debugPrint('✗ SystemTtsEngine error: $e');
     final c = _speakCompleter;
     _speakCompleter = null;
-    if (c != null && !c.isCompleted) c.complete();
+    // Ошибка движка — genuine-сбой (v5.8.11): завершаем ОШИБКОЙ, чтобы study
+    // засчитал стринг и запустил cooldown-восстановление, а не молчал
+    // «успешно» до конца песни.
+    if (c != null && !c.isCompleted) {
+      c.completeError(StateError('tts engine error: $e'));
+    }
   }
 
   // -------------------------------------------------------------------

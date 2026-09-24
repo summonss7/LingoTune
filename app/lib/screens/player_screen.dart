@@ -17,6 +17,7 @@ import '../models/translation.dart' show Translation;
 import '../models/loop_mode.dart';
 import '../models/playlist.dart';
 import '../services/audio_service.dart';
+import '../services/audio_mode_service.dart';
 import '../services/audio_position_corrector.dart';
 import '../services/lyrics_service.dart';
 import '../services/translation_service.dart';
@@ -126,6 +127,15 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isReloading = false;
   bool _isSongLoading = false;
 
+  /// Когда приложение ушло в фон (первый из серии paused/inactive). На resumed
+  /// меряем простой: дольше [_idleRevalidateThreshold] → протухшие подключения
+  /// надо пересобрать ДО того, как пользователь нажмёт play (v5.8.11).
+  DateTime? _wentToBackgroundAt;
+
+  /// Порог «долгого простоя» для [_revalidateAfterIdle]: за меньшее время
+  /// TTS-сервис не отвязывается, а лишний probe только греет батарею.
+  static const _idleRevalidateThreshold = Duration(minutes: 5);
+
   /// Watchdog дедлока завершения трека в study-режиме. Когда песня доиграла
   /// (`processingState == completed`), обычный путь [onSongComplete] заблоки-
   /// рован (study активен), а продвижение зависит от того, что СВОЙ детектор
@@ -156,6 +166,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// требует `processingState == completed` (пауза при ДОИГРАВШЕЙ песне —
   /// гонка прерывания, а не намерение «продолжить позже»).
   static const int _userPauseStuckRearmLimit = 8;
+
+  /// Позиция плеера на предыдущем тике watchdog'а (мс) — детектор зомби
+  /// «playing=true, а позиция замерла» в финальной ветке watchdog'а (v5.8.11).
+  int? _watchdogLastPosMs;
 
   /// Была ли study-сессия паузнута ради входящего звонка/прерывания. Ставится
   /// в [onPlaybackInterrupted] (BackgroundAudioHandler) и снимается в
@@ -512,12 +526,13 @@ class _PlayerScreenState extends State<PlayerScreen>
   void _armCompletionWatchdog() {
     _completionWatchdog?.cancel();
     _watchdogSongId = _currentSong.id;
-    _completionWatchdog = Timer(const Duration(seconds: 4), () {
+    _completionWatchdog = Timer(const Duration(seconds: 4), () async {
       if (!mounted) return;
       final player = widget.audioService.player;
       // Песня сменилась → study сам справился, форсить не нужно.
       if (_currentSong.id != _watchdogSongId) {
         _watchdogStuckRearms = 0;
+        _watchdogLastPosMs = null;
         _studyEvt('completion WATCHDOG: song already advanced, no-op');
         return;
       }
@@ -537,10 +552,10 @@ class _PlayerScreenState extends State<PlayerScreen>
       if ((widget.audioService.backgroundHandler?.isPausedForCall ?? false) ||
           _studyPausedForCall) {
         if (_watchdogStuckRearms >= _callStuckRearmLimit &&
-            _canSelfHealCompletion()) {
-          _selfHealStuckCompletion(
+            await _canSelfHealCompletion()) {
+          await _selfHealStuckCompletion(
               'call/interruption pause stuck ${_watchdogStuckRearms + 1} '
-              're-arms, phone idle');
+              're-arms, no call confirmed');
           return;
         }
         _watchdogStuckRearms++;
@@ -561,8 +576,8 @@ class _PlayerScreenState extends State<PlayerScreen>
       if (_studyModeService.isActive && _studyModeService.isUserPaused) {
         if (completed &&
             _watchdogStuckRearms >= _userPauseStuckRearmLimit &&
-            _canSelfHealCompletion()) {
-          _selfHealStuckCompletion('study paused but song completed '
+            await _canSelfHealCompletion()) {
+          await _selfHealStuckCompletion('study paused but song completed '
               '${_watchdogStuckRearms + 1} re-arms');
           return;
         }
@@ -578,21 +593,47 @@ class _PlayerScreenState extends State<PlayerScreen>
             'forcing next (completed=$completed, stuck=$stuck)');
         debugPrint('⏰ PlayerScreen: completion watchdog — forcing next song '
             '(study did not handle completion after call/zombie)');
+        _watchdogLastPosMs = null;
         _playNextSong();
       } else {
-        _studyEvt('completion WATCHDOG: player still playing, no-op');
+        // Зомби-ветка (v5.8.11): playing=true, но позиция не двигается и
+        // completed не наступает (just_audio завис после прерывания). Раньше
+        // здесь был безусловный no-op БЕЗ реарма — такой зомби молча убивал
+        // watchdog навсегда. Теперь реармимся с контролем позиции: два
+        // подряд тика без движения (≈8с) → форсим следующую песню.
+        final posMs = player.position.inMilliseconds;
+        final lastMs = _watchdogLastPosMs;
+        _watchdogLastPosMs = posMs;
+        if (lastMs != null && posMs == lastMs) {
+          _studyEvt('completion WATCHDOG FIRED — zombie: playing but '
+              'position frozen at ${posMs}ms');
+          debugPrint('⏰ PlayerScreen: completion watchdog — zombie player '
+              '(playing, position frozen), forcing next song');
+          _watchdogLastPosMs = null;
+          _playNextSong();
+        } else {
+          _studyEvt('completion WATCHDOG: player still playing, re-arming '
+              '(zombie check, pos=$posMs ms)');
+          _armCompletionWatchdog();
+        }
       }
     });
   }
 
-  /// Можно ли самолечить залипший watchdog: нативный детектор звонка
-  /// ([PhoneCallService]) работает И подтверждает, что линии свободна.
-  /// Без работающего детектора отличить «залипший beep» от реального
-  /// разговора невозможно — не форсим музыку посреди звонка.
-  bool _canSelfHealCompletion() {
+  /// Можно ли самолечить залипший watchdog: подтверждено независимыми
+  /// источниками, что звонка НЕТ. Основной — нативный детектор звонка
+  /// ([PhoneCallService], TelephonyManager); fallback (v5.8.11) — режим
+  /// аудио-линии ([AudioModeService] → AudioManager.getMode(), без
+  /// разрешений): нет READ_PHONE_STATE / детектор молча умер после долгого
+  /// простоя приложения в памяти — раньше самолечение было выключено НАВСЕГДА
+  /// (залипший beep неотличим от разговора), теперь отвечает аудио-линия.
+  /// «Не знаем» (канал недоступен) — консервативный false: не форсим музыку
+  /// посреди возможного разговора.
+  Future<bool> _canSelfHealCompletion() async {
     if (!mounted || _isSongLoading) return false;
     final phone = PhoneCallService.instance;
-    return phone.isListening && phone.current == CallState.idle;
+    if (phone.isListening && phone.current == CallState.idle) return true;
+    return await AudioModeService.instance.isLineIdle() == true;
   }
 
   /// Самолечение залипшего автоперехода (v5.8.8). Симптом: после звонка или
@@ -603,14 +644,26 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// парного end → watchdog реармился вечно. Лечение: снять залипшие флаги и
   /// форснуть следующую песню — [_playSong] чисто остановит и перезапустит
   /// study на новой песне (TTS вернётся через _ensureTtsReady).
-  void _selfHealStuckCompletion(String reason) {
+  Future<void> _selfHealStuckCompletion(String reason) async {
     _studyEvt('completion WATCHDOG SELF-HEAL — $reason');
     debugPrint('🔧 PlayerScreen: completion watchdog SELF-HEAL ($reason)');
     // Залипший begin без end (beep уведомления): снимаем call-паузу —
     // _handleCallResume сам вызовет onPlaybackResumed (дренирует хвосты).
-    widget.audioService.backgroundHandler?.clearStaleCallPause();
+    // Гонка порогов (v5.8.11): самолечение watchdog'а срабатывает на ~24 с,
+    // а clearStaleCallPause требовал 30 с залипания — beep ближе конца песни
+    // оставлял флаг висеть, и СЛЕДУЮЩАЯ песня играла без голоса (kick study
+    // прерывался по isPausedForCall). Теперь при отказе по возрасту —
+    // форсируем снятие при подтверждённо свободной линии.
+    final handler = widget.audioService.backgroundHandler;
+    if (handler != null) {
+      final cleared = await handler.clearStaleCallPause();
+      if (!cleared) {
+        await handler.forceClearCallPauseIfNoCall();
+      }
+    }
     _studyPausedForCall = false;
     _studyWasAudibleBeforeCall = false;
+    _watchdogLastPosMs = null;
     _playNextSong();
   }
 
@@ -618,6 +671,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// и когда обычный путь завершения сам запускает next (study не активен).
   void _cancelCompletionWatchdog() {
     _watchdogStuckRearms = 0;
+    _watchdogLastPosMs = null;
     _completionWatchdog?.cancel();
     _completionWatchdog = null;
   }
@@ -630,7 +684,31 @@ class _PlayerScreenState extends State<PlayerScreen>
   Future<bool> _ensureTtsReady({required bool fromUser}) async {
     final lang = widget.translationService.currentTranslation?.language;
     if (lang == null) return true; // no translation -> nothing to speak anyway
-    final ok = await _studyModeService.checkLanguageAvailable(lang);
+    var ok = false;
+    try {
+      ok = await _studyModeService
+          .checkLanguageAvailable(lang)
+          .timeout(const Duration(seconds: 6));
+    } catch (e) {
+      debugPrint('⚠ ensureTts: language check hung — TTS service dead? $e');
+    }
+    if (!ok) {
+      // v5.8.11: «недоступен» могло получиться из transient-состояния
+      // (TTS-сервис переподключается после звонка/уведомления/долгого
+      // простоя приложения в памяти), а не из честного «нет голосов».
+      // Пересобираем движок и проверяем ещё раз — раньше молча лочили
+      // segments-only на всю сессию («включаю после простоя — тишина»).
+      _studyEvt('ensureTts: lang $lang check failed — resetting TTS '
+          'engine (engine=${_studyModeService.activeEngine}) and retrying');
+      final recovered = await TtsCoordinator.instance.revalidateAfterIdle();
+      if (recovered) {
+        try {
+          ok = await _studyModeService
+              .checkLanguageAvailable(lang)
+              .timeout(const Duration(seconds: 6));
+        } catch (_) {}
+      }
+    }
     if (ok) {
       _studyModeService.setSpeakDisabled(false);
       return true;
@@ -1624,6 +1702,19 @@ class _PlayerScreenState extends State<PlayerScreen>
         if (mounted) _playPreviousSong();
       };
 
+      // LoopMode.one — единственный режим без completion watchdog'а
+      // (AudioService._onSongCompleted при loop-one делает ранний return):
+      // если перезапуск трека в handler'е исчерпал попытки, единственная
+      // страховка от вечной заморозки — полная перезагрузка песни здесь,
+      // она же чисто перезапустит study-сессию (v5.8.11).
+      widget.audioService.backgroundHandler!.onLoopOneRestartFailed = () {
+        debugPrint('✓ PlayerScreen: loop-one restart failed → full reload');
+        if (mounted && !_isSongLoading) {
+          _cancelCompletionWatchdog();
+          _playSong(_currentSong);
+        }
+      };
+
       // Звонок/прерывание: паузим study-сессию (стоп TTS + drain kick-цикла),
       // чтобы озвучка перевода не звучала во время разговора. Обычный pause()
       // в BackgroundAudioHandler стопает только песню, а TTS играет на отдельном
@@ -1727,6 +1818,12 @@ class _PlayerScreenState extends State<PlayerScreen>
       // озвучка + kick плеера). true → handler не дублирует запуск.
       widget.audioService.backgroundHandler!.onUserPlay = () {
         if (!mounted) return false;
+        // Пользователь явно хочет слушать (v5.8.11): любая экранная
+        // бухгалтерия «пауза ради звонка» устарела — handler.play() к этому
+        // моменту уже снял залипший флаг (pre-flight), а stale-флаг экрана
+        // держал бы watchdog в ветке call-паузы ещё ~24 с.
+        _studyPausedForCall = false;
+        _studyWasAudibleBeforeCall = false;
         if (_studyModeService.isActive && _studyModeService.isUserPaused) {
           debugPrint('▶ PlayerScreen: external play → resumeSession (study)');
           _studyModeService.resumeSession();
@@ -2041,16 +2138,57 @@ class _PlayerScreenState extends State<PlayerScreen>
         _positionCorrector.reset();
         _startPositionUpdates();
         _syncWithActuallyPlayingSong();
+        // v5.8.11: после ДОЛГОГО простоя в памяти пересобираем протухшие
+        // подключения ДО нажатия play: системный TTS-сервис отвязывается
+        // (первые speaks «успешно молчали»), ROM мог заморозить нативные
+        // детекторы, beep уведомления оставил залипшую call-паузу. Симптом:
+        // «приложение висело в памяти, включаю прослушивание — глючит».
+        final bgAt = _wentToBackgroundAt;
+        if (bgAt != null &&
+            DateTime.now().difference(bgAt) > _idleRevalidateThreshold) {
+          unawaited(_revalidateAfterIdle());
+        }
+        _wentToBackgroundAt = null;
       }
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _isInBackground = true;
+      // Первый штамп серии (inactive стреляет и на транзиентные оверлеи —
+      // шторка уведомлений); важен момент РЕАЛЬНОГО ухода в фон.
+      _wentToBackgroundAt ??= DateTime.now();
       // Отменяем 50мс-таймер в фоне — там некого rebuild'ить, а лишние тики
       // будят UI-изолят и мешают doze. positionStream в AudioService продолжит
       // обновлять _position независимо. При resumed таймер перезапустится.
       _positionTimer?.cancel();
       _positionTimer = null;
     }
+  }
+
+  /// Пересбор протухших подключений после долгого простоя приложения в
+  /// памяти (v5.8.11). Вызывается из [didChangeAppLifecycleState] при
+  /// возобновлении после > [_idleRevalidateThreshold] в фоне.
+  Future<void> _revalidateAfterIdle() async {
+    debugPrint('=== PlayerScreen: revalidating after long idle ===');
+    _studyEvt('idle revalidate: TTS probe + phone detector + call-pause');
+    // 1) TTS: probe + при провале пересбор движка (см. TtsCoordinator).
+    await TtsCoordinator.instance.revalidateAfterIdle();
+    // 2) Нативный детектор звонка: подписка могла умереть, пока приложение
+    // было заморожено ROM-ом (ColorOS/MIUI) — без него самолечение прерываний
+    // деградирует (теперь есть fallback на аудио-линию, но детектор надёжнее).
+    final phone = PhoneCallService.instance;
+    if (!phone.isListening && Platform.isAndroid) {
+      debugPrint('📞 PlayerScreen: phone detector dead after idle — restarting');
+      phone.start();
+    }
+    // 3) Залипшая call-пауза от beep'а, пришедшего за время простоя: давнюю
+    // (> 20 с) снимаем сразу; свежую оставляем play()-pre-flight / watchdog'у.
+    final handler = widget.audioService.backgroundHandler;
+    if (handler != null && handler.isPausedForCall) {
+      await handler.clearStaleCallPause();
+    }
+    // 4) Кэш аудио-линии протух — сбрасываем и греем свежим ответом.
+    AudioModeService.instance.invalidateCache();
+    unawaited(AudioModeService.instance.isLineIdle());
   }
 
   Future<void> _syncWithActuallyPlayingSong() async {
@@ -2141,6 +2279,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       handler.onBecomingNoisy = null;
       handler.onUserPause = null;
       handler.onUserPlay = null;
+      handler.onLoopOneRestartFailed = null;
     }
 
     // Отписываемся от детектора звонка и глушим нативный слушатель — иначе

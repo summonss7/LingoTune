@@ -6,6 +6,7 @@ import io.flutter.embedding.engine.FlutterEngine
 class MainActivity : AudioServiceActivity() {
     private val phoneCallPlugin = PhoneCallPlugin()
     private val becomingNoisyPlugin = BecomingNoisyPlugin()
+    private val audioModePlugin = AudioModePlugin()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -20,5 +21,10 @@ class MainActivity : AudioServiceActivity() {
         // только при активном audio focus — в TTS-хендоффе режима обучения
         // событие терялось, и песня продолжала играть в динамике.
         flutterEngine.plugins.add(becomingNoisyPlugin)
+        // Точечный запрос «занята ли аудио-линия звонком» (MethodChannel
+        // "lingotune/audio_mode", AudioManager.getMode()). Без READ_PHONE_STATE:
+        // fallback-подтверждение «звонка нет» для самолечения залипших
+        // call-пауз, когда TelephonyManager-детектор недоступен (v5.8.11).
+        flutterEngine.plugins.add(audioModePlugin)
     }
 }

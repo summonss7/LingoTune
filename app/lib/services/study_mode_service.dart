@@ -532,6 +532,7 @@ class StudyModeService extends ChangeNotifier {
     final watchdogSeconds = (estSeconds + 3).clamp(5, 12);
 
     var timedOut = false;
+    var engineFailed = false;
     try {
       await _ttsCoordinator
           .speak(
@@ -549,15 +550,21 @@ class StudyModeService extends ChangeNotifier {
         _ttsCoordinator.stop();
       });
     } catch (e) {
+      // v5.8.11: genuine-сбой движка (platform-вызов speak завис и отменён
+      // по 3с-таймауту, движок отверг фразу, TTS-сервис умер после
+      // звонка/уведомления/долгого простоя). Раньше ошибка глоталась и
+      // считалась успехом → тишина без единого сбоя до конца песни.
+      engineFailed = true;
       debugPrint('✗ StudyMode TTS speak error: $e');
     }
-    if (timedOut) {
-      // Авто-отключение TTS на cooldown — но только после 2 ПОДРЯД зависаний,
-      // чтобы не висеть на каждой строке. Единичный сбой (типично первый speak
-      // после прерывания на деактивированной аудиосессии) не должен лишать
-      // перевода всю оставшуюся часть песни. Повторные неудачи — backoff
-      // (см. setSpeakDisabled), но не «до конца песни»: через cooldown _speak
-      // снова пробует заговорить (v5.8.5).
+    if (timedOut || engineFailed) {
+      // Авто-отключение TTS на cooldown — но только после 2 ПОДРЯД сбоев
+      // (зависание ИЛИ genuine-ошибка движка), чтобы не молчать на каждой
+      // строке. Единичный сбой (типично первый speak после прерывания на
+      // деактивированной аудиосессии / переподключении TTS-сервиса) не должен
+      // лишать перевода всю оставшуюся часть песни. Повторные неудачи —
+      // backoff (см. setSpeakDisabled), но не «до конца песни»: через
+      // cooldown _speak снова пробует заговорить (v5.8.5).
       _ttsFailStreak++;
       if (_ttsFailStreak >= 2) {
         debugPrint('⚠ StudyMode: TTS hung $_ttsFailStreak times in a row '
@@ -1374,6 +1381,9 @@ class StudyModeService extends ChangeNotifier {
     _isSpeaking = false;
     _phase = StudyPhase.idle;
     _currentIndex = -1;
+    // Стрик сбоев не переносится на следующую песню (v5.8.11): зависший
+    // стрик=1 мгновенно лочил _speakDisabled при ПЕРВОМ же сбое новой песни.
+    _ttsFailStreak = 0;
     // Инвалидируем все висящие _speakOver().then колбэки этой сессии —
     // иначе они доживут до нового start() (смена песни) и создадут зомби-kick.
     _sessionToken++;

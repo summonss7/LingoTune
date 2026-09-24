@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.10** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.11** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -322,12 +322,23 @@ void main() {
 - **Stale interruption echo** (v5.8.5): on ROMs where `audio_session` events lag, a delayed
   interruption-`begin` of an ALREADY-ENDED call used to trigger a fresh pause with no matching
   `end` → playback frozen forever. `BackgroundAudioHandler._handleCallPause` now ignores a
-  `begin` arriving within 5 s after a resume when `PhoneCallService.current == idle`.
+  `begin` arriving within 5 s after a resume when `PhoneCallService.current == idle`
+  (v5.8.11: OR the cached `AudioModeService.lastKnownLineIdle == true`, warmed on every
+  resume / watchdog check / play-pre-flight).
   Since v5.8.8 a begin whose `end` never arrives at all (message-notification beep, echo older
-  than the window) is cleared by `BackgroundAudioHandler.clearStaleCallPause()`: after a
-  30 s stale threshold, confirmed by a LISTENING phone detector reporting `idle`, it runs the
-  regular `_handleCallResume` (→ `onPlaybackResumed` → `resumeSession`). Without a working
-  detector it refuses — a stuck beep is indistinguishable from a live call.
+  than the window) is cleared by `BackgroundAudioHandler.clearStaleCallPause()` (async since
+  v5.8.11): after a **20 s** stale threshold (was 30 s — MUST stay below the ~24 s watchdog
+  self-heal, otherwise the flag survives and the NEXT song plays voiceless), confirmed by
+  `_confirmedNoCall()` — a LISTENING phone detector reporting `idle` OR the audio line in
+  MODE_NORMAL (`AudioManager.getMode()` via `AudioModeService` — permission-free, sees VoIP
+  calls too) — it runs the regular `_handleCallResume` (→ `onPlaybackResumed` →
+  `resumeSession`). `_selfHealStuckCompletion` additionally calls
+  `forceClearCallPauseIfNoCall()` (no age threshold) when the age-gated clear refused.
+  Since v5.8.11 `play()` opens with a pre-flight: a stuck `_pausedForCall` is cleared via
+  `_clearCallPauseFlags()` (flags only, NO `onPlaybackResumed` — the single `resumeSession`
+  comes from the regular `onUserPlay` handoff; a double resume could start two study
+  runners) whenever no call is confirmed — the «app idled in memory, user presses play,
+  everything glitched» scenario.
 - **Loop mode** — `AudioService` is the single source of truth (persisted, pushed to
   `BackgroundAudioHandler`, mirrored in `PlayerScreen` via a listener so lock-screen changes
   are reflected). Button cycle: `off → all → one → allPlaylists → off`. The `favorites` enum
@@ -351,14 +362,34 @@ void main() {
   pause). Since v5.8.8 that re-arm loop is BOUNDED and self-healing: after 5 dirty re-arms
   (~20 s) in the call branch — or 8 (~32 s) in the user-pause branch, and only when the song
   is already `completed` (a pause on a finished song is a race artifact, not intent) — with
-  the native phone detector listening and reporting `idle` (`_canSelfHealCompletion`),
-  `_selfHealStuckCompletion` clears the stuck flags (`clearStaleCallPause`, `_studyPausedForCall`)
-  and forces the next song. This covers the v5.8.7 field bug where a rejected call or a
-  notification beep left the session paused while the player kept playing, and each song then
-  needed manual pause+play to advance. The late-play race that created that state is also
-  plugged at the source: `StudyModeService._pauseSessionInner` re-checks `player.playing` at
-  ~1 s and ~3 s after the pause (generation-guarded) and raw-re-pauses if an in-flight kick
-  `play()` won.
+  «no call» confirmed (`_canSelfHealCompletion`, async since v5.8.11: phone detector
+  listening+idle OR audio line MODE_NORMAL via `AudioModeService` — self-healing no longer
+  dies forever when READ_PHONE_STATE is missing or the detector was frozen by the ROM),
+  `_selfHealStuckCompletion` clears the stuck flags (`clearStaleCallPause`, then
+  `forceClearCallPauseIfNoCall()` if the age gate refused, `_studyPausedForCall`) and forces
+  the next song. Since v5.8.11 the final watchdog branch (playing, not completed) also
+  re-arms with a POSITION-stall check (`_watchdogLastPosMs`): two consecutive 4 s ticks with
+  a frozen position → force `_playNextSong()` (previously a silent no-op without re-arm
+  killed the watchdog on a playing zombie). LoopMode.one has NO completion watchdog
+  (`_onSongCompleted` early-returns) — `BackgroundAudioHandler.onLoopOneRestartFailed`
+  (v5.8.11) lets PlayerScreen force a full `_playSong(_currentSong)` reload when
+  `_restartLoopOne` exhausts its retries. This covers the v5.8.7 field bug where a rejected
+  call or a notification beep left the session paused while the player kept playing, and each
+  song then needed manual pause+play to advance. The late-play race that created that state
+  is also plugged at the source: `StudyModeService._pauseSessionInner` re-checks
+  `player.playing` at ~1 s and ~3 s after the pause (generation-guarded) and raw-re-pauses
+  if an in-flight kick `play()` won.
+- **Idle revalidation** (v5.8.11): when the app resumes after >5 min in background
+  (`PlayerScreen._revalidateAfterIdle`, hooked in `didChangeAppLifecycleState`),
+  stale connections are rebuilt BEFORE the user presses play:
+  `TtsCoordinator.revalidateAfterIdle()` (health-probe `setLanguage` with a 4 s timeout;
+  on hang/failure → `SystemTtsEngine.reset()` recreates the `FlutterTts` instance — the
+  lazy idempotent `initialize` never healed a dead binding), `PhoneCallService.start()`
+  re-called if its subscription died, an aged stuck call-pause cleared, and the
+  `AudioModeService` cache invalidated and re-warmed. `_ensureTtsReady` distinguishes
+  «service unresponsive» (timeout → engine reset → re-check) from «language genuinely
+  unavailable» and no longer latches segments-only for the whole session on a transient
+  post-idle failure.
 - **Phone calls**: `becomingNoisy` (headphone unplug) is ignored while a call pause is active
   (`_pausedForCall`) — some ROMs fire it on the in-call audio-route change, and it would
   otherwise set `_userPausedDuringCall` and block the legitimate post-call auto-resume.
@@ -420,6 +451,18 @@ void main() {
   hang forever and burn the study watchdog TWICE from one incident → speech disabled for the
   rest of the song. A timed-out param is skipped; a timed-out speak resolves as failure
   (one fail-strike max per incident).
+  **Failure channel (v5.8.11)**: the `TtsEngine.speak` contract CHANGED — genuine engine
+  failures (platform call hung, `result==0`, engine error handler) now complete the future
+  with an ERROR; `StudyModeService._speak` counts them into `_ttsFailStreak` exactly like
+  its own watchdog timeout (previously every failure resolved "successfully", the streak
+  never grew and a post-beep/post-idle TTS rebinding meant silent segments until song end).
+  Own `stop()` interruptions still resolve normally (no false strikes; `CarAlertService`
+  already try-catches). `SystemTtsEngine` cancels the abandoned utterance (`_tts.stop()`)
+  and eats its late completion (`_dropNextCompletion`) so it can neither speak over the
+  next line nor complete the NEXT completer early. `setLanguage` no longer latches
+  `available=false` on a transient platform exception (only on an honest "no voices").
+  `stop()` resets `_ttsFailStreak` so a streak of 1 doesn't instantly latch silence on the
+  next song.
 - `pauseSession`/`resumeSession` re-entrancy (v5.8.5): `resumeSession` awaits the in-flight
   pause tail (`_pauseSessionFuture`, 3 s timeout) before starting the runner; a wedged tail is
   stopped by the `_pauseGen` generation token before its player re-pause. A short interruption
@@ -442,6 +485,14 @@ void main() {
   two concurrent calls created two engines (and two 63 MB models).
 - `OfflineTtsEngine` runs synthesis in a separate isolate (`OfflineTtsIsolate`) to keep the UI
   thread responsive; voice models are downloaded on-demand (`TtsModelManager`).
+- **`TtsEngine.reset()`** (v5.8.11): full rebinding — `SystemTtsEngine` recreates the
+  `FlutterTts` instance (the lazy idempotent `initialize` never healed a connection Android
+  dropped while the app idled in memory), re-applies handlers/engine/language; default no-op
+  for engines without a stateful binding. Called by `TtsCoordinator.revalidateAfterIdle()`
+  (health-probe `setLanguage` with a 4 s timeout; hang/failure → reset) which is invoked by
+  `PlayerScreen._revalidateAfterIdle()` on app resume after >5 min in background, and by
+  `_ensureTtsReady` when the language check fails/times out (retry once after reset before
+  ever latching segments-only).
 - `dispose()` releases the active engine and its native resources — called in
   `MainScreen.dispose()` to prevent a ~63 MB leak on hot-restart during development.
 
@@ -461,6 +512,14 @@ void main() {
   exposes the last known state (used by the stale-echo debounce in `BackgroundAudioHandler`).
 - Requires `READ_PHONE_STATE` permission, requested at runtime via `permission_handler`
   (`Permission.phone`).
+- **Audio-mode fallback** (v5.8.11): `AudioModeService` (Dart) + `AudioModePlugin` (Kotlin
+  MethodChannel `lingotune/audio_mode`) query `AudioManager.getMode()` on demand —
+  permission-free, real-time, sees VoIP calls `TelephonyManager` misses. Every "no call"
+  decision that used to hard-require the detector (`clearStaleCallPause`,
+  `_canSelfHealCompletion`, the stale-echo debounce, the `play()` pre-flight) now accepts
+  detector-idle OR MODE_NORMAL; "unknown" (channel unavailable) is treated conservatively
+  as "call possible". This keeps stuck-beep self-healing alive when the permission is
+  missing/revoked or the detector silently died while the ROM froze the app.
 
 ---
 
@@ -514,7 +573,8 @@ Run `flutter pub get` after modifying `app/pubspec.yaml`
   - **Study mode**: `StudyModeService` (line-by-line translation playback coordinator)
   - **TTS**: `TtsCoordinator` (singleton, polymorphic engine) → `services/tts/` (`TtsEngine`, `SystemTtsEngine`, `OfflineTtsEngine`, `OfflineTtsIsolate`, `TtsModelManager`, `TtsCatalog`)
   - **Car detection**: `CarDetectionService` (on-device FFT), `CarAlertService`, `CalibrationProfile`
-  - **Phone calls**: `PhoneCallService` (native TelephonyManager EventChannel wrapper)
+  - **Phone calls**: `PhoneCallService` (native TelephonyManager EventChannel wrapper),
+    `AudioModeService` (permission-free AudioManager.getMode() query — "no call" fallback)
   - **Settings**: `SettingsProvider`, `ThemeProvider`, `SettingsHelper`, `SettingsDialogs`, `SettingsExportService`
 - **screens/**: UI screens (SongLibraryScreen, PlayerScreen, PlaylistScreen, PlaylistSongsScreen, SettingsScreen, LyricGeneratorDialog, TextLoaderDialog, TranslationEditorScreen, VoicePackagesScreen, CarCalibrationScreen)
 - **screens/helpers/**: Helper classes for complex screens (SongImportHelper, PlayerImportHelper, PlayerPlaylistHelper, PlayerTranslationHelper, SongTranslationLoader, CoverArtHelper, PlaylistImportHelper)
