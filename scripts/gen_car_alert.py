@@ -4,7 +4,7 @@ import struct
 import wave
 from pathlib import Path
 
-OUT = Path(r"D:\Ai-LingoTune\app\assets\sounds\car_alert.wav")
+OUT = Path(r"D:\LingoTune\app\assets\sounds\car_alert.wav")
 SR = 44100
 FREQ = 880.0
 DUR_ON = 0.12   # секунды звучания

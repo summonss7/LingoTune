@@ -15,8 +15,8 @@ Write-Host "====================================" -ForegroundColor Cyan
 Write-Host "Building LingoTune-v5.3.0 APK (Car Detection)" -ForegroundColor Cyan
 Write-Host "====================================" -ForegroundColor Cyan
 
-$appDir = "D:\Ai-LingoTune\app"
-$buildsDir = "D:\Ai-LingoTune\builds"
+$appDir = "D:\LingoTune\app"
+$buildsDir = "D:\LingoTune\builds"
 $flutter = "C:\flutter\bin\flutter.bat"
 
 Set-Location $appDir

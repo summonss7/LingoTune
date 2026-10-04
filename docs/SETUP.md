@@ -90,7 +90,7 @@ python -m pip install --upgrade pip
 ### 1. Клонирование/распаковка проекта
 
 ```bash
-cd D:\Ai-LingoTune
+cd D:\LingoTune
 ```
 
 ### 2. Установка зависимостей Flutter
@@ -133,7 +133,7 @@ pip install pyyaml
 Создайте файл `.env` в корневой директории проекта:
 
 ```bash
-# В D:\Ai-LingoTune\
+# В D:\LingoTune\
 echo "DEEPSEEK_API_KEY=ваш_ключ_здесь" > .env
 ```
 
@@ -150,7 +150,7 @@ DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 Создайте необходимые директории:
 
 ```bash
-cd D:\Ai-LingoTune
+cd D:\LingoTune
 
 # Создание директорий для уроков
 mkdir lessons
@@ -194,7 +194,7 @@ flutter devices
 ## Запуск приложения в режиме разработки
 
 ```bash
-cd D:\Ai-LingoTune\app
+cd D:\LingoTune\app
 flutter run
 ```
 
@@ -250,8 +250,23 @@ android {
 
 ### Сборка release APK
 
+Рекомендуемый способ — канонический скрипт из корня проекта (версию и versionCode
+читает из `app/pubspec.yaml` / `build.gradle`, пути вычисляет от своего расположения):
+
 ```bash
-cd D:\Ai-LingoTune\app
+powershell -NoProfile -ExecutionPolicy Bypass -File D:\LingoTune\build_apk_v5.7.4.ps1
+# Готовый APK кладётся ТОЛЬКО в D:\LingoTune\builds\LingoTune-vX.Y.Z.apk
+```
+
+Все build-скрипты проекта (`build_apk_v5.7.4.ps1`, `build_apk_v5.3.0.ps1`,
+`build_apk_v4.6.12.ps1`, `build_v4.6.12.bat`, `scripts\build_apk.bat`) копируют
+итоговый APK в `D:\LingoTune\builds\` — не в корень проекта. Промежуточный вывод
+Flutter остаётся в `app\build\app\outputs\flutter-apk\`.
+
+Вручную (то же самое по шагам):
+
+```bash
+cd D:\LingoTune\app
 
 # Сборка APK
 flutter build apk --release
@@ -260,7 +275,7 @@ flutter build apk --release
 # build/app/outputs/flutter-apk/app-release.apk
 
 # Копирование в папку builds
-copy build\app\outputs\flutter-apk\app-release.apk ..\builds\LingoTune-v4.3.3.apk
+copy build\app\outputs\flutter-apk\app-release.apk ..\builds\LingoTune-vX.Y.Z.apk
 ```
 
 ### Сборка App Bundle (для Google Play)
@@ -392,14 +407,14 @@ pause
 1. Установите Flutter расширение
 2. Установите Dart расширение
 3. Установите Python расширение
-4. Откройте директорию `D:\Ai-LingoTune\app`
+4. Откройте директорию `D:\LingoTune\app`
 5. Установите кодек (codeLens) для Flutter
 
 ### Android Studio
 
 1. Установите Flutter плагин
 2. Установите Dart плагин
-3. Откройте директорию `D:\Ai-LingoTune\app`
+3. Откройте директорию `D:\LingoTune\app`
 4. Выберите "Open Android Studio Project in Android Studio"
 
 ## Решение проблем

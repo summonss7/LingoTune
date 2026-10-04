@@ -69,6 +69,15 @@ flutter build apk --release
 flutter run
 ```
 
+**Release APK destination**: built APKs are copied ONLY to `D:\LingoTune\builds\`
+(never the project root). Canonical build script (reads version from
+`app/pubspec.yaml`, portable paths, clean → pub get → build → copy):
+`powershell -NoProfile -ExecutionPolicy Bypass -File build_apk_v5.7.4.ps1`
+from the project root. All other build entry points (`build_apk_v5.3.0.ps1`,
+`build_apk_v4.6.12.ps1`, `build_v4.6.12.bat`, `scripts\build_apk.bat`) target the
+same `builds\` folder; Flutter's intermediate output stays in
+`app\build\app\outputs\flutter-apk\`.
+
 ### Python
 
 ```bash
@@ -583,3 +592,24 @@ Run `flutter pub get` after modifying `app/pubspec.yaml`
 - **utils/**: Utility functions (SnackBarHelper, LrcFormatter, LanguageHelpers, TtsEngineHelper, Fft, LyricColors — palette + presets for custom lyric-line text colors, see `SettingsProvider.useCustomLyricColors` / `originalTextColor` / `translationTextColor`; since v5.8.10 also the ACTIVE line's highlight color `SettingsProvider.activeLineColor` — applied WITHOUT the `useCustomLyricColors` toggle, overriding the theme default incl. Amethyst's `activeLineHighlight`)
 - **constants/**: Constants and configuration (DeepSeekPrompts, GenerationConstants)
 - **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 684 keys each; ARB sources + generated `app_localizations*.dart`
+
+<!-- ДИСПЕТЧЕР-ПРОТОКОЛ-КАРТОЧЕК -->
+## Система карточек задач (диспетчер)
+
+Этим проектом управляет диспетчер задач (D:\Sсheduler, scheduler.cjs). Задания лежат
+в папке CARDS/ в виде карточек-файлов NNN-название.md.
+
+Формат карточки: шапка между строк --- (id, title, status, priority, created,
+updated, session), затем разделы «Задача», «Критерии готовности» (чек-лист), «Журнал».
+Статусы: todo (в очереди) | in_progress (в работе) | review (на проверке человеком) |
+done (готово) | blocked (блокер).
+
+Правила работы с карточкой:
+1. Получив задание (ссылку на карточку) — прочитай её целиком.
+2. Поставь в шапке status: in_progress и обнови updated. Поля id и session не изменяй.
+3. Выполни задачу полностью; существенные шаги кратко фиксируй в «Журнале» (дата — что сделано).
+4. Перед завершением проверь КАЖДЫЙ критерий готовности по факту и отметь выполненные [x].
+5. Все критерии отмечены — поставь status: done. Упёрся в блокер — status: blocked и опиши причину в журнале.
+6. Не начинай других больших задач вне карточки. Выявленные новые работы оформляй отдельными
+   карточками в CARDS/ (status: todo, с конкретными критериями готовности).
+<!-- /ДИСПЕТЧЕР-ПРОТОКОЛ-КАРТОЧЕК -->

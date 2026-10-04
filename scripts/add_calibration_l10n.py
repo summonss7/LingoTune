@@ -26,7 +26,7 @@ from typing import Dict, List, Tuple
 # Конфигурация
 # ---------------------------------------------------------------------------
 
-L10N_DIR = Path(r"D:\Ai-LingoTune\app\lib\l10n")
+L10N_DIR = Path(r"D:\LingoTune\app\lib\l10n")
 LANGS: List[str] = ["en", "ru", "ro", "fr", "de", "es", "it", "pt", "zh", "ar", "uk"]
 
 

@@ -72,7 +72,7 @@ static const String versionCode = '226'   → '227';
 // ----------------------------------------------
 // Прежние скрипты (build_apk_v5.3.0.ps1 и пр.) устарели: таргетили 5.3.0 /
 // versionCode 210 при актуальном 5.7.x, содержали жёсткие пути
-// D:\Ai-LingoTune\app и C:\flutter\bin\flutter.bat.
+// D:\LingoTune\app и C:\flutter\bin\flutter.bat.
 // Создан новый актуальный скрипт build_apk_v5.7.4.ps1:
 //   - версия и versionCode читаются из pubspec.yaml и build.gradle;
 //   - пути вычисляются через $PSScriptRoot (переносим между машинами);

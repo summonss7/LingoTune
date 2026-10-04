@@ -3,7 +3,12 @@ echo ====================================
 echo Building LingoTune-v4.6.12 APK
 echo ====================================
 
-cd app
+cd /d "D:\LingoTune\app"
+if errorlevel 1 (
+    echo ERROR: cannot cd to D:\LingoTune\app
+    pause
+    exit /b 1
+)
 echo Running flutter pub get...
 C:\flutter\bin\flutter.bat pub get
 if errorlevel 1 (
@@ -40,6 +45,6 @@ copy /Y "build\app\outputs\flutter-apk\app-release.apk" "..\builds\LingoTune-v4.
 echo.
 echo ====================================
 echo BUILD SUCCESSFUL!
-echo APK: D:\Ai-LingoTune\builds\LingoTune-v4.6.12.apk
+echo APK: D:\LingoTune\builds\LingoTune-v4.6.12.apk
 echo ====================================
 pause

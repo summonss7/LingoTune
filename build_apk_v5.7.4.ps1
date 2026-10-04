@@ -55,6 +55,15 @@ Set-Location $appDir
 Write-Host ""
 Write-Host "Step 1: Clean..." -ForegroundColor Yellow
 & $flutter clean
+# flutter clean НЕ вычищает инкрементальный стейт Gradle/Kotlin в android/ —
+# закисший стейт роняет :app:packageRelease (IncrementalSplitterRunnable, 04.10.2026)
+foreach ($rel in @("android\.gradle", "android\.kotlin", "android\build", "android\app\build")) {
+    $stale = Join-Path $appDir $rel
+    if (Test-Path $stale) {
+        Write-Host "  removing stale $rel" -ForegroundColor DarkGray
+        Remove-Item -Recurse -Force $stale
+    }
+}
 
 Write-Host ""
 Write-Host "Step 2: Get dependencies..." -ForegroundColor Yellow

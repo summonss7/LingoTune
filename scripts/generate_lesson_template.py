@@ -182,7 +182,7 @@ def create_readme_file():
 
 ## 📁 Структура файлов
 
-### Основные файлы в `D:\\Ai-LingoTune\\lessons\\Arabic\\`:
+### Основные файлы в `D:\\LingoTune\\lessons\\Arabic\\`:
 
 1. **{LESSON_ID}-{LESSON_NAME.lower()}-arabic.txt** - Текст песни на арабском языке (египетский диалект)
 2. **{LESSON_ID}-{LESSON_NAME.lower()}-russian.txt** - Перевод на русский язык

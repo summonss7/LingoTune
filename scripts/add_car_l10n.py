@@ -9,7 +9,7 @@ import json
 import re
 from pathlib import Path
 
-L10N_DIR = Path(r"D:\Ai-LingoTune\app\lib\l10n")
+L10N_DIR = Path(r"D:\LingoTune\app\lib\l10n")
 INDENT = "      "  # 6 spaces, как в существующих .arb
 
 KEYS = {

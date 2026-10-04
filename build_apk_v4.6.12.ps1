@@ -6,7 +6,7 @@ Write-Host "Building LingoTune-v4.6.12 APK" -ForegroundColor Cyan
 Write-Host "====================================" -ForegroundColor Cyan
 
 # Change to app directory
-Set-Location "D:\Ai-LingoTune\app"
+Set-Location "D:\LingoTune\app"
 
 Write-Host ""
 Write-Host "Step 1: Clean..." -ForegroundColor Yellow
@@ -34,7 +34,7 @@ Copy-Item -Path "build\app\outputs\flutter-apk\app-release.apk" -Destination "..
 Write-Host ""
 Write-Host "====================================" -ForegroundColor Green
 Write-Host "BUILD SUCCESSFUL!" -ForegroundColor Green
-Write-Host "APK: D:\Ai-LingoTune\builds\LingoTune-v4.6.12.apk" -ForegroundColor Green
+Write-Host "APK: D:\LingoTune\builds\LingoTune-v4.6.12.apk" -ForegroundColor Green
 Write-Host "====================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Press any key to continue..."

@@ -80,7 +80,7 @@ python scripts/generate_lesson_template.py \
 Требуется API-ключ DeepSeek в `.env` (см. [SETUP.md](SETUP.md)).
 
 ```bash
-cd D:\Ai-LingoTune
+cd D:\LingoTune
 
 python scripts/deepseek_generator_v3.py \
   --text "أهلاً، ما اسمك؟\nاسمي [اسم]\n..." \

@@ -11,7 +11,7 @@ import json
 import re
 from pathlib import Path
 
-L10N_DIR = Path(r"D:\Ai-LingoTune\app\lib\l10n")
+L10N_DIR = Path(r"D:\LingoTune\app\lib\l10n")
 LANGS = ["en", "ru", "ro", "fr", "de", "es", "it", "pt", "zh", "ar", "uk"]
 CAR_KEYS = [
     "carDetectionTitle",

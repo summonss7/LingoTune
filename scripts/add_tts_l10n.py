@@ -15,7 +15,7 @@ and JSON validity.
 import json
 from pathlib import Path
 
-L10N_DIR = Path(r"D:\Ai-LingoTune\app\lib\l10n")
+L10N_DIR = Path(r"D:\LingoTune\app\lib\l10n")
 INDENT = "      "  # 6 spaces, как в существующих .arb
 LANGS = ("en", "ru", "ro", "fr", "de", "es", "it", "pt", "zh", "ar", "uk")
 
