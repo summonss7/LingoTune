@@ -604,6 +604,16 @@ Run `flutter pub get` after modifying `app/pubspec.yaml`
 - **constants/**: Constants and configuration (DeepSeekPrompts, GenerationConstants)
 - **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 684 keys each; ARB sources + generated `app_localizations*.dart`
 
+<!-- ОБЩИЙ-СТАНДАРТ-КОДИРОВАНИЯ -->
+## Общий стандарт программирования
+
+Правила кода и процесса — **CODING-STANDARD.md** в корне проекта (общий для всех 13 проектов,
+канонический источник — D:\Scheduler\CODING-STANDARD.md). Главное: копия проекта через
+backup.bat перед серьёзными изменениями; тесты после правок кода; сборки в builds/ (версия +
+debug/release); временные файлы удаляем; проблема — мгновенный фикс или карточка; идеи
+новшеств — на согласование в чат Aila; коммит → push в том же сеансе.
+<!-- /ОБЩИЙ-СТАНДАРТ-КОДИРОВАНИЯ -->
+
 <!-- ДИСПЕТЧЕР-ПРОТОКОЛ-КАРТОЧЕК -->
 ## Система карточек задач (диспетчер)
 
