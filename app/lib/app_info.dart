@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.8.11';
+  static const String version = '5.8.12';
 
-  static const String versionCode = '239';
+  static const String versionCode = '240';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -66,6 +66,7 @@ class AppInfo {
     '🎨 Inactive lyric lines, transcripts and the About screen now follow the theme colors (readable in dark mode and on the gradient)',
     '🔧 Fix: app kept in memory for a long time no longer glitches on next listen (stale TTS connection rebuilt, stuck call-pause cleared before play)',
     '🔧 Fix: stuck notification-beep pause heals even without phone permission (AudioManager audio-mode check) and no longer kills the voice on the next song',
+    '🔁 Fix: repeat-one mode reliably restarts the finished song (completion watchdog + full-reload fallback; play button on a finished song replays it instead of silence)',
   ];
 
   static const List<String> supportedLanguages = [

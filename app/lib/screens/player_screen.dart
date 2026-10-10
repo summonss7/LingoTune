@@ -171,6 +171,16 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// «playing=true, а позиция замерла» в финальной ветке watchdog'а (v5.8.11).
   int? _watchdogLastPosMs;
 
+  /// Сколько force-перезагрузок loop-one выполнил watchdog для ТЕКУЩЕГО
+  /// эпизода завершения (v5.8.12). Сбрасывается при каждом новом событии
+  /// завершения (арм из onSongComplete); реармы счётчик не трогают.
+  int _loopOneForceReloads = 0;
+
+  /// Лимит force-перезагрузок loop-one на один эпизод завершения: глубоко
+  /// заклинивший плеер не должен долбиться перезагрузками вечно (~5 попыток
+  /// ≈ 20+ с — дальше пользователь и так потянется к кнопкам).
+  static const int _loopOneForceReloadLimit = 5;
+
   /// Была ли study-сессия паузнута ради входящего звонка/прерывания. Ставится
   /// в [onPlaybackInterrupted] (BackgroundAudioHandler) и снимается в
   /// [onPlaybackResumed], чтобы после звонка корректно возобновить озвучку.
@@ -585,6 +595,106 @@ class _PlayerScreenState extends State<PlayerScreen>
         _studyEvt('completion WATCHDOG: study user-paused — re-arming '
             '(${_watchdogStuckRearms}/$_userPauseStuckRearmLimit)');
         _armCompletionWatchdog();
+        return;
+      }
+      // LoopMode.one (v5.8.12): у режима появился свой watchdog. Раньше
+      // AudioService._onSongCompleted при loop-one делал ранний return —
+      // onSongComplete не вызывался, watchdog не вооружался, и единственной
+      // страховкой был _restartLoopOne хендлера: любой его сбой (no-op trap
+      // just_audio: play() на completed — тихий no-op; зависший seek после
+      // TTS-хендоффа; гонка с study-перезагрузкой) означал вечную тишину
+      // («режим одной песни по кругу — а она не играет»). Логика ветки:
+      //   • не completed → рестарт/перезагрузка уже состоялись (seek снял
+      //     completed) — пост стихаем;
+      //   • completed и не играет → пауза на доигравшей песне (call-ветка
+      //     выше уже отработала звонки) — намерение пользователя, стихаем;
+      //   • хендлер ещё крутит свои ретраи (_restartLoopOne) — ждём;
+      //   • completed и играет → классический no-op trap (playing=true
+      //     переживает completed, звука нет) → полная перезагрузка песни.
+      if (_loopMode == LoopMode.one) {
+        final restarting =
+            widget.audioService.backgroundHandler?.isRestartingLoopOne ??
+                false;
+        if (!completed) {
+          // Рестарт снял completed. Либо всё играет (позиция двигается —
+          // стихаем), либо это пауза/зомби.
+          if (!player.playing) {
+            // Пауза на уже перезапущенной песне (call-ветка выше отработала
+            // звонки) — намерение пользователя, не боремся.
+            _studyEvt('completion WATCHDOG loop-one: paused after restart — '
+                'standing down');
+            _cancelCompletionWatchdog();
+            return;
+          }
+          final posMs = player.position.inMilliseconds;
+          final lastMs = _watchdogLastPosMs;
+          _watchdogLastPosMs = posMs;
+          if (lastMs == null || posMs != lastMs) {
+            _studyEvt('completion WATCHDOG loop-one: position advancing '
+              '(pos=$posMs ms) — restart took, standing down');
+            _cancelCompletionWatchdog();
+            return;
+          }
+          // Зомби: playing=true, позиция замерла (seek сбросил completed, но
+          // play не ожил звук). Хендлер ещё крутит ретраи — ждём его.
+          if (restarting) {
+            _studyEvt('completion WATCHDOG loop-one: handler still '
+                'restarting (zombie check) — re-arming');
+            _armCompletionWatchdog();
+            return;
+          }
+          if (_loopOneForceReloads < _loopOneForceReloadLimit) {
+            _loopOneForceReloads++;
+            _studyEvt('completion WATCHDOG loop-one FIRED — zombie after '
+                'restart (frozen at ${posMs}ms), full reload '
+                '${_loopOneForceReloads}/$_loopOneForceReloadLimit');
+            debugPrint('⏰ PlayerScreen: loop-one watchdog — zombie after '
+                'restart, forcing full reload of "${_currentSong.title}"');
+            _watchdogLastPosMs = null;
+            await _playSong(_currentSong);
+            // Перезагрузка не ожила — держим страховочную сеть до лимита.
+            if (mounted) {
+              _armCompletionWatchdog();
+            }
+            return;
+          }
+          _studyEvt('completion WATCHDOG loop-one: force-reload limit '
+              'reached (zombie) — giving up');
+          return;
+        }
+        if (!player.playing) {
+          _studyEvt('completion WATCHDOG loop-one: paused at completed — '
+              'respecting user intent, standing down');
+          _cancelCompletionWatchdog();
+          return;
+        }
+        if (restarting) {
+          _studyEvt('completion WATCHDOG loop-one: handler still restarting '
+              '— re-arming (${_watchdogStuckRearms + 1})');
+          _watchdogStuckRearms++;
+          _armCompletionWatchdog();
+          return;
+        }
+        if (_loopOneForceReloads < _loopOneForceReloadLimit) {
+          _loopOneForceReloads++;
+          _studyEvt('completion WATCHDOG loop-one FIRED — restart did not '
+              'take (playing at completed = just_audio no-op trap), full '
+              'reload ${_loopOneForceReloads}/$_loopOneForceReloadLimit');
+          debugPrint('⏰ PlayerScreen: loop-one watchdog — forcing full '
+              'reload of "${_currentSong.title}"');
+          _watchdogLastPosMs = null;
+          await _playSong(_currentSong);
+          // Перезагрузка не ожила (плеер снова/всё ещё completed) — держим
+          // страховочную сеть включённой до лимита попыток.
+          if (mounted &&
+              widget.audioService.player.processingState ==
+                  ProcessingState.completed) {
+            _armCompletionWatchdog();
+          }
+        } else {
+          _studyEvt('completion WATCHDOG loop-one: force-reload limit '
+              'reached — giving up (manual controls expected)');
+        }
         return;
       }
       final stuck = !player.playing;
@@ -1589,6 +1699,18 @@ class _PlayerScreenState extends State<PlayerScreen>
 
     widget.audioService.onSongComplete = () {
       if (!mounted) return;
+      // LoopMode.one (v5.8.12): сам рестарт делают `_restartLoopOne` хендлера
+      // (study неактивен) либо study-путь `onStudyCompleted` → `_playSong`.
+      // Здесь — только страховочная сеть: watchdog проверит через ~4с, что
+      // трек реально перезапустился, и при сбое форсит полную перезагрузку
+      // (раньше loop-one был единственным режимом вообще без страховки —
+      // «ставлю одну песню по кругу, а она не играет»).
+      if (_loopMode == LoopMode.one) {
+        _studyEvt('onSongComplete: loop-one — arming safety watchdog');
+        _loopOneForceReloads = 0;
+        _armCompletionWatchdog();
+        return;
+      }
       if (_studyModeService.isActive) {
         _studyEvt('onSongComplete: GUARDED (study active) — arming watchdog');
         debugPrint(
@@ -1709,10 +1831,35 @@ class _PlayerScreenState extends State<PlayerScreen>
       // она же чисто перезапустит study-сессию (v5.8.11).
       widget.audioService.backgroundHandler!.onLoopOneRestartFailed = () {
         debugPrint('✓ PlayerScreen: loop-one restart failed → full reload');
-        if (mounted && !_isSongLoading) {
-          _cancelCompletionWatchdog();
-          _playSong(_currentSong);
+        // v5.8.12: раньше при идущей загрузке (_isSongLoading) перезагрузка
+        // молча отбрасывалась без ретрая — loop-one замирал. Теперь короткий
+        // ретрай: завершившаяся загрузка сама запустит звук, а если она
+        // заглохла — перезагрузка догонит через 1.5с.
+        if (!mounted) return;
+        if (_isSongLoading) {
+          debugPrint('⏳ PlayerScreen: loop-one reload postponed '
+              '(song loading), retrying in 1.5s');
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (!mounted || _isSongLoading) return;
+            if (widget.audioService.player.processingState ==
+                ProcessingState.completed) {
+              debugPrint('✓ PlayerScreen: loop-one reload retry after load');
+              _cancelCompletionWatchdog();
+              _playSong(_currentSong);
+            }
+          });
+          return;
         }
+        _cancelCompletionWatchdog();
+        _playSong(_currentSong);
+      };
+
+      // LoopMode.one + study (v5.8.12): хендлер не делает сырой seek(0)+play
+      // поверх study-завершения — переходом владеет onStudyCompleted экрана
+      // (полная перезагрузка `_playSong` + чистый рестарт study). Снятие в
+      // dispose обязательно: замыкание держит этот State.
+      widget.audioService.backgroundHandler!.isStudySessionActive = () {
+        return mounted && _studyModeService.isActive;
       };
 
       // Звонок/прерывание: паузим study-сессию (стоп TTS + drain kick-цикла),
@@ -2280,6 +2427,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       handler.onUserPause = null;
       handler.onUserPlay = null;
       handler.onLoopOneRestartFailed = null;
+      handler.isStudySessionActive = null;
     }
 
     // Отписываемся от детектора звонка и глушим нативный слушатель — иначе

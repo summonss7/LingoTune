@@ -195,9 +195,14 @@ class AudioService extends ChangeNotifier {
   }
 
   void _onSongCompleted() {
-    if (_loopMode == LoopMode.one) {
-      return;
-    }
+    // LoopMode.one БОЛЬШЕ не делает ранний return (v5.8.12): раньше экран не
+    // получал событие завершения вообще → его completion watchdog никогда не
+    // вооружался, и любой сбой рестарта (no-op trap just_audio: play() на
+    // completed — тихий no-op; зависший seek после TTS-хендоффа) означал
+    // вечную тишину — единственный режим без страховки. Теперь onSongComplete
+    // вызывается ВСЕГДА: PlayerScreen в loop-one не делает _playNextSong, а
+    // вооружает watchdog-страховку (сам рестарт — `_restartLoopOne` хендлера
+    // либо study-путь `onStudyCompleted` → `_playSong`).
     onSongComplete?.call();
   }
 

@@ -86,12 +86,24 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
   /// Вызывается, когда перезапуск трека в LoopMode.one исчерпал все попытки
   /// (v5.8.11): зомби-состояние just_audio не раскачалось seek+play+nudge.
-  /// Раньше здесь просто писался лог — в loop-one НЕ вооружается completion
-  /// watchdog экрана ([AudioService._onSongCompleted] при loop-one делает
-  /// ранний return), так что «сдался» означал вечную заморозку без всякой
-  /// страховки. Экран по колбэку форсит полную перезагрузку песни
-  /// (`_playSong`) — она же чисто перезапустит study-сессию.
+  /// Экран по колбэку форсит полную перезагрузку песни (`_playSong`) — она же
+  /// чисто перезапустит study-сессию.
   Function()? onLoopOneRestartFailed;
+
+  /// Активна ли study-сессия экрана (v5.8.12). При завершении песни в
+  /// LoopMode.onestudy-сессия ВЛАДЕЕТ переходом: её детектор completed дёргает
+  /// `onStudyCompleted` → `_playSong(current)` (полная перезагрузка + чистый
+  /// рестарт study). Сырой seek(0)+play из [_restartLoopOne] в этой гонке
+  /// только мешает: он играет «голую» песню поверх остановленной study-сессии
+  /// и соревнуется с setFilePath перезагрузки. Если study-детектор умер —
+  /// страховка экрана (completion watchdog, loop-one ветка) форсит ту же
+  /// перезагрузку. Возвращает true → handler НЕ делает собственный рестарт.
+  bool Function()? isStudySessionActive;
+
+  /// Идёт ли прямо сейчас перезапуск трека LoopMode.one в [_restartLoopOne]
+  /// (v5.8.12). Используется completion watchdog'ом экрана: пока true —
+  /// ретраи хендлера ещё не закончились, форсить перезагрузку рано.
+  bool get isRestartingLoopOne => _isHandlingCompletion;
 
   /// Вызывается в начале прерывания аудиосессии (входящий звонок, будильник,
   /// другой плеер). Возвращает `true` если колбэк взял управление паузой на себя
@@ -536,15 +548,24 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     _playbackEventSubscription = _player.playbackEventStream.listen((event) {
       if (event.processingState == ProcessingState.completed) {
         if (_loopMode == LoopMode.one && !_isHandlingCompletion) {
-          _isHandlingCompletion = true;
-          debugPrint('✓ BackgroundAudioHandler: LoopMode.one - restarting song');
-          // Рестарт loop-one в async-функции с try/finally + timeout: цепочка
-          // seek().then(play().then(...)) БЕЗ обработки ошибок могла залипнуть
-          // _isHandlingCompletion=true навсегда, если seek/play бросал или висел
-          // (just_audio Futures виснут после деактивации сессии TTS/звонком) —
-          // тогда loop-one навсегда переставал перезапускать песню. Теперь флаг
-          // гарантированно сбрасывается в finally.
-          _restartLoopOne();
+          // Study-сессия активна → переходом владеет ЭКРАН (onStudyCompleted →
+          // _playSong: полная перезагрузка + чистый рестарт study). Сырой
+          // рестарт здесь конкурировал бы с перезагрузкой: играл «голую» песню
+          // поверх остановленной сессии и ломал setFilePath гонкой (v5.8.12).
+          if (isStudySessionActive?.call() ?? false) {
+            debugPrint('✓ BackgroundAudioHandler: LoopMode.one completion — '
+                'owned by study session, handler skips raw restart');
+          } else {
+            _isHandlingCompletion = true;
+            debugPrint('✓ BackgroundAudioHandler: LoopMode.one - restarting song');
+            // Рестарт loop-one в async-функции с try/finally + timeout: цепочка
+            // seek().then(play().then(...)) БЕЗ обработки ошибок могла залипнуть
+            // _isHandlingCompletion=true навсегда, если seek/play бросал или висел
+            // (just_audio Futures виснут после деактивации сессии TTS/звонком) —
+            // тогда loop-one навсегда переставал перезапускать песню. Теперь флаг
+            // гарантированно сбрасывается в finally.
+            _restartLoopOne();
+          }
         }
       } else {
         _isHandlingCompletion = false;
@@ -598,6 +619,17 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   Future<void> _restartLoopOne() async {
     const stepTimeout = Duration(seconds: 1);
     try {
+      // Активная call-пауза (звонок или залипший beep уведомления) — НЕ
+      // боремся с ней сырым play() (музыка поверх рингтона), это дело
+      // call-машины: после отбоя `_handleCallResume` → `play()` (а v5.8.12
+      // play() сам делает seek при completed — no-op trap закрыт). Если пауза
+      // залипла без парного end — её снимет clearStaleCallPause, а переход
+      // догонит completion watchdog экрана (v5.8.12).
+      if (_pausedForCall) {
+        debugPrint('📞 BackgroundAudioHandler: LoopMode.one restart aborted '
+            '(call/interruption pause active)');
+        return;
+      }
       for (int attempt = 1; attempt <= 4; attempt++) {
         try {
           await _player.seek(Duration.zero).timeout(stepTimeout);
@@ -822,6 +854,21 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     ));
   }
 
+  /// just_audio trap: `play()` на плеере в состоянии `completed` — тихий no-op
+  /// («нажимаю плей — тишина, спасает только стоп+плей»). Если трек доиграл —
+  /// сначала seek в начало, потом play (v5.8.12). Ошибки/таймауты глотаем:
+  /// seek здесь — best-effort assistance, следом идёт обычный play().
+  Future<void> _seekToStartIfCompleted() async {
+    if (_player.processingState != ProcessingState.completed) return;
+    debugPrint('▶ BackgroundAudioHandler: play() at completed — seeking to '
+        'start first (just_audio no-op trap)');
+    try {
+      await _player.seek(Duration.zero).timeout(const Duration(seconds: 1));
+    } catch (e) {
+      debugPrint('⚠ BackgroundAudioHandler: completed-seek error: $e');
+    }
+  }
+
   @override
   Future<void> play() async {
     // v5.8.11 pre-flight: залипшая call-пауза (beep уведомления, чей парный
@@ -859,6 +906,8 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         processingState: AudioProcessingState.ready,
       ));
 
+      // Доигравший трек: голый play() — no-op (v5.8.12), сначала seek(0).
+      await _seekToStartIfCompleted();
       await _player.play();
       _syncPlaybackState();
     } catch (e) {
@@ -910,6 +959,9 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
         processingState: AudioProcessingState.ready,
       ));
 
+      // Kick по доигравшему треку: голый play() — no-op, study навсегда
+      // молчал на completed (v5.8.12 — тот же guard, что и в play()).
+      await _seekToStartIfCompleted();
       await _player.play();
       _syncPlaybackState();
     } catch (e) {

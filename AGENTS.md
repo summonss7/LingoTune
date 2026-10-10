@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.11** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.8.12** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -379,10 +379,21 @@ void main() {
   the next song. Since v5.8.11 the final watchdog branch (playing, not completed) also
   re-arms with a POSITION-stall check (`_watchdogLastPosMs`): two consecutive 4 s ticks with
   a frozen position → force `_playNextSong()` (previously a silent no-op without re-arm
-  killed the watchdog on a playing zombie). LoopMode.one has NO completion watchdog
-  (`_onSongCompleted` early-returns) — `BackgroundAudioHandler.onLoopOneRestartFailed`
-  (v5.8.11) lets PlayerScreen force a full `_playSong(_currentSong)` reload when
-  `_restartLoopOne` exhausts its retries. This covers the v5.8.7 field bug where a rejected
+  killed the watchdog on a playing zombie). Since v5.8.12 LoopMode.one HAS its own completion
+  watchdog branch too (the early return in `AudioService._onSongCompleted` is GONE —
+  `onSongComplete` always fires): the screen arms the watchdog and, when the handler's
+  `_restartLoopOne` hasn't revived the track (completed && playing = the just_audio no-op trap,
+  or a frozen position), forces a full `_playSong(_currentSong)` reload (≤5 force-reloads per
+  completion episode; user pause at a completed song is respected and stands down). While a
+  study session is active the handler SKIPS its raw loop-one restart
+  (`BackgroundAudioHandler.isStudySessionActive` callback, v5.8.12) — study's
+  `onStudyCompleted` → `_playSong` owns the transition without the two fighting over the
+  player; `_restartLoopOne` also aborts while `_pausedForCall`. `BackgroundAudioHandler.
+  onLoopOneRestartFailed` (v5.8.11) lets PlayerScreen force the full reload when
+  `_restartLoopOne` exhausts its retries (v5.8.12: postponed by 1.5 s and retried when
+  `_isSongLoading`). `play()` / `playFromStudy()` seek to start first when the player sits at
+  `completed` (`_seekToStartIfCompleted`) — a bare `play()` there is a silent no-op. This covers
+  the v5.8.7 field bug where a rejected
   call or a notification beep left the session paused while the player kept playing, and each
   song then needed manual pause+play to advance. The late-play race that created that state
   is also plugged at the source: `StudyModeService._pauseSessionInner` re-checks
