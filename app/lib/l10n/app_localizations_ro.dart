@@ -2235,4 +2235,74 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get lyricPresetContrast => 'Contrast ridicat';
+
+  @override
+  String get renamePlaylist => 'Redenumește';
+
+  @override
+  String get renamePlaylistTitle => 'Redenumește playlistul';
+
+  @override
+  String get playlistNameLabel => 'Numele playlistului';
+
+  @override
+  String get playlistRenamed => 'Playlist redenumit';
+
+  @override
+  String get playlistNameExists => 'Există deja un playlist cu acest nume';
+
+  @override
+  String get noLyricsHint => 'Această melodie nu are încă versuri';
+
+  @override
+  String get checkForUpdates => 'Verifică actualizările';
+
+  @override
+  String get updateChecking => 'Se verifică actualizările…';
+
+  @override
+  String get updateAvailableTitle => 'Versiune nouă disponibilă';
+
+  @override
+  String updateCurrentVersion(Object version) {
+    return 'Versiunea actuală: $version';
+  }
+
+  @override
+  String updateNewVersion(Object version) {
+    return 'Versiune nouă: $version';
+  }
+
+  @override
+  String get whatsNew => 'Noutăți';
+
+  @override
+  String get download => 'Descarcă';
+
+  @override
+  String get later => 'Mai târziu';
+
+  @override
+  String get downloadingUpdate => 'Se descarcă actualizarea…';
+
+  @override
+  String get updateDownloaded => 'Actualizare descărcată';
+
+  @override
+  String get install => 'Instalează';
+
+  @override
+  String get openReleasePage => 'Deschide pagina versiunii';
+
+  @override
+  String get noUpdatesAvailable => 'Aveți cea mai recentă versiune';
+
+  @override
+  String get updateCheckFailed => 'Verificarea actualizărilor a eșuat';
+
+  @override
+  String get updateDownloadFailed => 'Descărcarea actualizării a eșuat';
+
+  @override
+  String get updateInstallFailed => 'Instalarea nu a putut fi pornită. Deschideți manual APK-ul descărcat.';
 }

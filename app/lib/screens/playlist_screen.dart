@@ -574,6 +574,80 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     }
   }
 
+  Future<void> _renamePlaylist(Playlist playlist) async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController(text: playlist.name);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.renamePlaylistTitle),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 60,
+          decoration: InputDecoration(
+            labelText: l10n.playlistNameLabel,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text),
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+
+    final newName = (result ?? '').trim();
+    if (newName.isEmpty || newName == playlist.name) return;
+
+    try {
+      // Дубль имени запутает пользователя в списке — не даём создать.
+      final all = await _playlistService.getAllPlaylists();
+      final duplicate = all.any((p) =>
+          p.id != playlist.id &&
+          p.name.toLowerCase() == newName.toLowerCase());
+      if (duplicate) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.playlistNameExists),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      final ok = await _playlistService.renamePlaylist(playlist.id, newName);
+      if (!ok) return;
+      await _loadPlaylists();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.playlistRenamed),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error renaming playlist: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.errorWithMessage(e.toString())),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _deletePlaylist(Playlist playlist) async {
     final l10n = AppLocalizations.of(context)!;
     final confirm = await showDialog<bool>(
@@ -1205,6 +1279,8 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                     onSelected: (value) {
                                       if (value == 'delete') {
                                         _deletePlaylist(playlist);
+                                      } else if (value == 'rename') {
+                                        _renamePlaylist(playlist);
                                       } else if (value == 'edit_cover') {
                                         _editPlaylistCover(playlist);
                                       } else if (value == 'link_folder') {
@@ -1216,6 +1292,18 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                       }
                                     },
                                     itemBuilder: (context) => [
+                                      PopupMenuItem(
+                                        value: 'rename',
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                                Icons.drive_file_rename_outline,
+                                                size: 20),
+                                            const SizedBox(width: 8),
+                                            Text(l10n.renamePlaylist),
+                                          ],
+                                        ),
+                                      ),
                                       PopupMenuItem(
                                         value: 'edit_cover',
                                         child: Row(

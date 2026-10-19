@@ -13,6 +13,7 @@ import '../services/settings_provider.dart';
 import '../services/background_audio_handler.dart';
 import '../services/database_service.dart';
 import '../services/tts_coordinator.dart';
+import '../services/update_flow.dart';
 import '../app_info.dart';
 import '../models/lyric_line.dart';
 import '../models/translation.dart' show Translation;
@@ -252,6 +253,14 @@ class _MainScreenState extends State<MainScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initBackgroundAudioService();
+      // Тихая проверка обновлений через 5 с после старта (не чаще раза в
+      // сутки); диалог «доступна новая версия» всплывает поверх текущего
+      // экрана, если вышла новая версия.
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) {
+          UpdateFlow.maybeAutoCheck(context);
+        }
+      });
     });
   }
 

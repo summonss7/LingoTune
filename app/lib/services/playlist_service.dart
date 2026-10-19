@@ -86,6 +86,23 @@ class PlaylistService {
     await _databaseService.updatePlaylist(playlist);
   }
 
+  /// Переименовывает плейлист (пользовательские; системные — нельзя).
+  /// Возвращает false, если плейлист не найден, системный или имя пустое.
+  /// Имя без изменений — тоже true (no-op), проверку дублей делает UI.
+  Future<bool> renamePlaylist(String id, String newName) async {
+    final playlist = await getPlaylist(id);
+    if (playlist == null || playlist.isSystem) {
+      debugPrint('⚠ renamePlaylist: playlist $id not found or system');
+      return false;
+    }
+    final name = newName.trim();
+    if (name.isEmpty) return false;
+    if (name == playlist.name) return true;
+    await _databaseService.updatePlaylist(playlist.copyWith(name: name));
+    debugPrint('✓ Playlist renamed: ${playlist.name} → $name');
+    return true;
+  }
+
   Future<void> deletePlaylist(String id) async {
     final playlist = await getPlaylist(id);
     if (playlist != null && !playlist.isSystem) {

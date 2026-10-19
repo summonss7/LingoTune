@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.8.12** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.9.0** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -557,6 +557,40 @@ void main() {
 
 ---
 
+## Auto-update (`UpdateService` + `UpdateFlow`, v5.9.0)
+
+- Source of truth for version: the **latest GitHub Release** of
+  `summonss7/LingoTune` (`UpdateService.defaultManifestUrl`, GitHub API
+  `/releases/latest`). A plain JSON manifest `{"version","notes","downloadUrl",
+  "size","url"}` is also supported — the URL can be overridden via the
+  `updateManifestUrl` SharedPreferences key. While the repo is PRIVATE the
+  anonymous API returns 404 → the check silently resolves "no update"; the
+  mechanism starts working unchanged once public releases exist.
+- Version comparison is numeric dot-part-wise (`compareVersions`, tolerates a
+  leading `v` and prerelease suffixes; missing parts = 0). Local version =
+  `AppInfo.version`. Unit tests: `test/update_service_test.dart`.
+- Auto-check: `MainScreen.initState` post-frame + 5 s delay →
+  `UpdateFlow.maybeAutoCheck` (throttled to once per 24 h via
+  `lastUpdateCheckMs`). Silent on "no update"/failure. Manual check: Settings →
+  «Check for updates» (`UpdateFlow.manualCheck`) — always shows a result.
+- Download: streamed `http` into `<externalStorageDir>/updates/
+  LingoTune-v<version>.apk` (app-specific dir, no storage permission), progress
+  dialog with cancel (`UpdateService.cancelDownload`); the dialog closes only
+  from the download completion path (single-pop, no races).
+- Install: `OpenFilex.open(path)` (`open_filex`) fires the system installer;
+  requires the `REQUEST_INSTALL_PACKAGES` permission (declared) + the user's
+  one-time "unknown sources" grant for LingoTune. `url_launcher` is the
+  fallback "open release page" action (https VIEW `<queries>` entry declared).
+- Playlist **rename** (same release): `PlaylistService.renamePlaylist` (guards
+  system playlists; `all_songs`/`favorites`/`lang_*` are NOT renamable) — UI in
+  `PlaylistScreen` card ⋮ menu and `PlaylistSongsScreen` sort menu; duplicate
+  names rejected with a SnackBar.
+- No-lyrics **equalizer** (same release): `widgets/audio_equalizer_widget.dart`
+  replaces the bare screen in `PlayerScreen` when `lyricLines` is empty;
+  pseudo-reactive CustomPainter bars animate only while `player.playing`.
+
+---
+
 ## Key Patterns
 
 ### Async Initialization
@@ -596,13 +630,14 @@ Run `flutter pub get` after modifying `app/pubspec.yaml`
   - **Phone calls**: `PhoneCallService` (native TelephonyManager EventChannel wrapper),
     `AudioModeService` (permission-free AudioManager.getMode() query — "no call" fallback)
   - **Settings**: `SettingsProvider`, `ThemeProvider`, `SettingsHelper`, `SettingsDialogs`, `SettingsExportService`
+  - **Updates**: `UpdateService` (manifest check + APK download), `UpdateFlow` (dialogs/install orchestration, v5.9.0)
 - **screens/**: UI screens (SongLibraryScreen, PlayerScreen, PlaylistScreen, PlaylistSongsScreen, SettingsScreen, LyricGeneratorDialog, TextLoaderDialog, TranslationEditorScreen, VoicePackagesScreen, CarCalibrationScreen)
 - **screens/helpers/**: Helper classes for complex screens (SongImportHelper, PlayerImportHelper, PlayerPlaylistHelper, PlayerTranslationHelper, SongTranslationLoader, CoverArtHelper, PlaylistImportHelper)
-- **widgets/**: Reusable components (SongListTile, EmptyLibraryWidget, MiniPlayerWidget, LyricLineWidget, GenerationOptionsWidget, GenerationProgressWidget, LibraryManagerWidget, BatchSelectionWidget, LoadingWidget, LyricsSearchDialog, SongSortWidget, SelectionModeActions) + `widgets/settings/` (ApiSettingsTile, TextSettingsSection, DefaultAutoScrollFocusOffsetControl)
+- **widgets/**: Reusable components (SongListTile, EmptyLibraryWidget, MiniPlayerWidget, LyricLineWidget, AudioEqualizerWidget, GenerationOptionsWidget, GenerationProgressWidget, LibraryManagerWidget, BatchSelectionWidget, LoadingWidget, LyricsSearchDialog, SongSortWidget, SelectionModeActions) + `widgets/settings/` (ApiSettingsTile, TextSettingsSection, DefaultAutoScrollFocusOffsetControl)
 - **theme/**: Amethyst gradient skin — `AppGradients` ThemeExtension, `AmethystPalette`, context helpers (`isAmethystSkin`, `appBarColor`, `amethystCardDecoration`)
 - **utils/**: Utility functions (SnackBarHelper, LrcFormatter, LanguageHelpers, TtsEngineHelper, Fft, LyricColors — palette + presets for custom lyric-line text colors, see `SettingsProvider.useCustomLyricColors` / `originalTextColor` / `translationTextColor`; since v5.8.10 also the ACTIVE line's highlight color `SettingsProvider.activeLineColor` — applied WITHOUT the `useCustomLyricColors` toggle, overriding the theme default incl. Amethyst's `activeLineHighlight`)
 - **constants/**: Constants and configuration (DeepSeekPrompts, GenerationConstants)
-- **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 684 keys each; ARB sources + generated `app_localizations*.dart`
+- **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 706 keys each; ARB sources + generated `app_localizations*.dart`
 
 <!-- ОБЩИЙ-СТАНДАРТ-КОДИРОВАНИЯ -->
 ## Общий стандарт программирования

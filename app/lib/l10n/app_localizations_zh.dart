@@ -2235,4 +2235,74 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get lyricPresetContrast => '高对比度';
+
+  @override
+  String get renamePlaylist => '重命名';
+
+  @override
+  String get renamePlaylistTitle => '重命名播放列表';
+
+  @override
+  String get playlistNameLabel => '播放列表名称';
+
+  @override
+  String get playlistRenamed => '播放列表已重命名';
+
+  @override
+  String get playlistNameExists => '已存在同名播放列表';
+
+  @override
+  String get noLyricsHint => '这首歌还没有歌词';
+
+  @override
+  String get checkForUpdates => '检查更新';
+
+  @override
+  String get updateChecking => '正在检查更新…';
+
+  @override
+  String get updateAvailableTitle => '有新版本可用';
+
+  @override
+  String updateCurrentVersion(Object version) {
+    return '当前版本：$version';
+  }
+
+  @override
+  String updateNewVersion(Object version) {
+    return '新版本：$version';
+  }
+
+  @override
+  String get whatsNew => '更新内容';
+
+  @override
+  String get download => '下载';
+
+  @override
+  String get later => '稍后';
+
+  @override
+  String get downloadingUpdate => '正在下载更新…';
+
+  @override
+  String get updateDownloaded => '更新已下载';
+
+  @override
+  String get install => '安装';
+
+  @override
+  String get openReleasePage => '打开发布页面';
+
+  @override
+  String get noUpdatesAvailable => '您已是最新版本';
+
+  @override
+  String get updateCheckFailed => '检查更新失败';
+
+  @override
+  String get updateDownloadFailed => '下载更新失败';
+
+  @override
+  String get updateInstallFailed => '无法开始安装。请手动打开已下载的 APK。';
 }

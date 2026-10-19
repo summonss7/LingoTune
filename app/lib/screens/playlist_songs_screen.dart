@@ -69,6 +69,10 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
   String _sortBy = 'default';
   final Map<String, Color> _buttonColorsCache = {};
 
+  /// Локальная копия плейлиста: переименование обновляет заголовок AppBar,
+  /// не пересоздавая экран (widget.playlist иммутабелен).
+  late Playlist _playlist = widget.playlist;
+
   /// Множество id песен, входящих в системный плейлист `favorites`. Нужно,
   /// чтобы рисовать заполненное/пустое сердечко на каждой строке списка.
   Set<String> _favoriteSongIds = {};
@@ -319,6 +323,82 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
       _loadSongs();
     } else {
       _applySorting();
+    }
+  }
+
+  Future<void> _renamePlaylist() async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController(text: _playlist.name);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.renamePlaylistTitle),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 60,
+          decoration: InputDecoration(
+            labelText: l10n.playlistNameLabel,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text),
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+
+    final newName = (result ?? '').trim();
+    if (newName.isEmpty || newName == _playlist.name) return;
+
+    try {
+      // Дубль имени запутает пользователя в списке плейлистов — не даём.
+      final all = await _playlistService.getAllPlaylists();
+      final duplicate = all.any((p) =>
+          p.id != _playlist.id &&
+          p.name.toLowerCase() == newName.toLowerCase());
+      if (duplicate) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.playlistNameExists),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      final ok = await _playlistService.renamePlaylist(_playlist.id, newName);
+      if (!ok) return;
+      setState(() {
+        _playlist = _playlist.copyWith(name: newName);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.playlistRenamed),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error renaming playlist: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.errorWithMessage(e.toString())),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -793,10 +873,10 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
        return Scaffold(
-      appBar: AppBar(
+        appBar: AppBar(
         title: _isSelectionMode
             ? Text(l10n.selectedSongsCount(_selectedSongs.length))
-            : Text(widget.playlist.name),
+            : Text(_playlist.name),
         elevation: 0,
         actions: _isSelectionMode
             ? [
@@ -852,7 +932,13 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
                  PopupMenuButton<String>(
                    icon: const Icon(Icons.sort_by_alpha),
                    tooltip: l10n.sortSongs,
-                   onSelected: _sortSongs,
+                   onSelected: (value) {
+                     if (value == 'rename') {
+                       _renamePlaylist();
+                     } else {
+                       _sortSongs(value);
+                     }
+                   },
                   itemBuilder: (context) => [
                     PopupMenuItem(
                       value: 'default',
@@ -874,6 +960,13 @@ class _PlaylistSongsScreenState extends State<PlaylistSongsScreen> {
                       value: 'date_asc',
                       child: Text('📅 ${l10n.sortDateAsc}'),
                     ),
+                    if (!widget.playlist.isSystem) ...[
+                      const PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'rename',
+                        child: Text('✏️ ${l10n.renamePlaylist}'),
+                      ),
+                    ],
                   ],
                 ),
                 if (!widget.playlist.isSystem)

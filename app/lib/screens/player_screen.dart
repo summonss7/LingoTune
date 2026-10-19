@@ -32,6 +32,7 @@ import '../services/phone_call_service.dart';
 import '../services/tts_coordinator.dart';
 import '../services/tts/tts_engine.dart' show TtsSource;
 import '../widgets/lyric_line_widget.dart';
+import '../widgets/audio_equalizer_widget.dart';
 import '../widgets/settings/vertical_focus_offset_slider.dart';
 import 'translation_editor_screen.dart';
 import 'text_loader_dialog.dart';
@@ -3947,6 +3948,15 @@ class _PlayerScreenState extends State<PlayerScreen>
                             });
                           }
                         });
+                      }
+
+                      // Нет текста у песни — вместо голого экрана живой
+                      // эквалайзер (анимируется, только пока играет).
+                      if (lines.isEmpty) {
+                        return AudioEqualizerWidget(
+                          player: widget.audioService.player,
+                          hint: AppLocalizations.of(context)!.noLyricsHint,
+                        );
                       }
 
                       return ListView.builder(

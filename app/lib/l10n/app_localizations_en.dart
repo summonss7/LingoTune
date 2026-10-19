@@ -2235,4 +2235,74 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lyricPresetContrast => 'High contrast';
+
+  @override
+  String get renamePlaylist => 'Rename';
+
+  @override
+  String get renamePlaylistTitle => 'Rename playlist';
+
+  @override
+  String get playlistNameLabel => 'Playlist name';
+
+  @override
+  String get playlistRenamed => 'Playlist renamed';
+
+  @override
+  String get playlistNameExists => 'A playlist with this name already exists';
+
+  @override
+  String get noLyricsHint => 'This song has no lyrics yet';
+
+  @override
+  String get checkForUpdates => 'Check for updates';
+
+  @override
+  String get updateChecking => 'Checking for updates…';
+
+  @override
+  String get updateAvailableTitle => 'New version available';
+
+  @override
+  String updateCurrentVersion(Object version) {
+    return 'Current version: $version';
+  }
+
+  @override
+  String updateNewVersion(Object version) {
+    return 'New version: $version';
+  }
+
+  @override
+  String get whatsNew => 'What\'s new';
+
+  @override
+  String get download => 'Download';
+
+  @override
+  String get later => 'Later';
+
+  @override
+  String get downloadingUpdate => 'Downloading update…';
+
+  @override
+  String get updateDownloaded => 'Update downloaded';
+
+  @override
+  String get install => 'Install';
+
+  @override
+  String get openReleasePage => 'Open release page';
+
+  @override
+  String get noUpdatesAvailable => 'You have the latest version';
+
+  @override
+  String get updateCheckFailed => 'Failed to check for updates';
+
+  @override
+  String get updateDownloadFailed => 'Failed to download the update';
+
+  @override
+  String get updateInstallFailed => 'Could not start the installation. Open the downloaded APK manually.';
 }

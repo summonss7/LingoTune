@@ -2235,4 +2235,74 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get lyricPresetContrast => 'Hoher Kontrast';
+
+  @override
+  String get renamePlaylist => 'Umbenennen';
+
+  @override
+  String get renamePlaylistTitle => 'Playlist umbenennen';
+
+  @override
+  String get playlistNameLabel => 'Playlist-Name';
+
+  @override
+  String get playlistRenamed => 'Playlist umbenannt';
+
+  @override
+  String get playlistNameExists => 'Eine Playlist mit diesem Namen existiert bereits';
+
+  @override
+  String get noLyricsHint => 'Für diesen Song gibt es noch keinen Text';
+
+  @override
+  String get checkForUpdates => 'Nach Updates suchen';
+
+  @override
+  String get updateChecking => 'Updates werden gesucht…';
+
+  @override
+  String get updateAvailableTitle => 'Neue Version verfügbar';
+
+  @override
+  String updateCurrentVersion(Object version) {
+    return 'Aktuelle Version: $version';
+  }
+
+  @override
+  String updateNewVersion(Object version) {
+    return 'Neue Version: $version';
+  }
+
+  @override
+  String get whatsNew => 'Neuigkeiten';
+
+  @override
+  String get download => 'Herunterladen';
+
+  @override
+  String get later => 'Später';
+
+  @override
+  String get downloadingUpdate => 'Update wird heruntergeladen…';
+
+  @override
+  String get updateDownloaded => 'Update heruntergeladen';
+
+  @override
+  String get install => 'Installieren';
+
+  @override
+  String get openReleasePage => 'Release-Seite öffnen';
+
+  @override
+  String get noUpdatesAvailable => 'Sie haben die neueste Version';
+
+  @override
+  String get updateCheckFailed => 'Update-Prüfung fehlgeschlagen';
+
+  @override
+  String get updateDownloadFailed => 'Download des Updates fehlgeschlagen';
+
+  @override
+  String get updateInstallFailed => 'Installation konnte nicht gestartet werden. Öffnen Sie die heruntergeladene APK manuell.';
 }

@@ -2235,4 +2235,74 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get lyricPresetContrast => 'Высокий контраст';
+
+  @override
+  String get renamePlaylist => 'Переименовать';
+
+  @override
+  String get renamePlaylistTitle => 'Переименовать плейлист';
+
+  @override
+  String get playlistNameLabel => 'Название плейлиста';
+
+  @override
+  String get playlistRenamed => 'Плейлист переименован';
+
+  @override
+  String get playlistNameExists => 'Плейлист с таким названием уже существует';
+
+  @override
+  String get noLyricsHint => 'У этой песни пока нет текста';
+
+  @override
+  String get checkForUpdates => 'Проверить обновления';
+
+  @override
+  String get updateChecking => 'Проверяю обновления…';
+
+  @override
+  String get updateAvailableTitle => 'Доступна новая версия';
+
+  @override
+  String updateCurrentVersion(Object version) {
+    return 'Текущая версия: $version';
+  }
+
+  @override
+  String updateNewVersion(Object version) {
+    return 'Новая версия: $version';
+  }
+
+  @override
+  String get whatsNew => 'Что нового';
+
+  @override
+  String get download => 'Скачать';
+
+  @override
+  String get later => 'Позже';
+
+  @override
+  String get downloadingUpdate => 'Скачивание обновления…';
+
+  @override
+  String get updateDownloaded => 'Обновление скачано';
+
+  @override
+  String get install => 'Установить';
+
+  @override
+  String get openReleasePage => 'Открыть страницу релиза';
+
+  @override
+  String get noUpdatesAvailable => 'У вас последняя версия';
+
+  @override
+  String get updateCheckFailed => 'Не удалось проверить обновления';
+
+  @override
+  String get updateDownloadFailed => 'Не удалось скачать обновление';
+
+  @override
+  String get updateInstallFailed => 'Не удалось запустить установку. Откройте скачанный APK вручную.';
 }

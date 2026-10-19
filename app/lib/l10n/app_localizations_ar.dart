@@ -2235,4 +2235,74 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get lyricPresetContrast => 'تباين عالٍ';
+
+  @override
+  String get renamePlaylist => 'إعادة تسمية';
+
+  @override
+  String get renamePlaylistTitle => 'إعادة تسمية قائمة التشغيل';
+
+  @override
+  String get playlistNameLabel => 'اسم قائمة التشغيل';
+
+  @override
+  String get playlistRenamed => 'تمت إعادة تسمية قائمة التشغيل';
+
+  @override
+  String get playlistNameExists => 'توجد قائمة تشغيل بهذا الاسم بالفعل';
+
+  @override
+  String get noLyricsHint => 'لا توجد كلمات لهذه الأغنية بعد';
+
+  @override
+  String get checkForUpdates => 'التحقق من التحديثات';
+
+  @override
+  String get updateChecking => 'جارٍ التحقق من التحديثات…';
+
+  @override
+  String get updateAvailableTitle => 'يتوفر إصدار جديد';
+
+  @override
+  String updateCurrentVersion(Object version) {
+    return 'الإصدار الحالي: $version';
+  }
+
+  @override
+  String updateNewVersion(Object version) {
+    return 'الإصدار الجديد: $version';
+  }
+
+  @override
+  String get whatsNew => 'ما الجديد';
+
+  @override
+  String get download => 'تنزيل';
+
+  @override
+  String get later => 'لاحقاً';
+
+  @override
+  String get downloadingUpdate => 'جارٍ تنزيل التحديث…';
+
+  @override
+  String get updateDownloaded => 'تم تنزيل التحديث';
+
+  @override
+  String get install => 'تثبيت';
+
+  @override
+  String get openReleasePage => 'فتح صفحة الإصدار';
+
+  @override
+  String get noUpdatesAvailable => 'لديك أحدث إصدار';
+
+  @override
+  String get updateCheckFailed => 'فشل التحقق من التحديثات';
+
+  @override
+  String get updateDownloadFailed => 'فشل تنزيل التحديث';
+
+  @override
+  String get updateInstallFailed => 'تعذّر بدء التثبيت. افتح ملف APK الذي تم تنزيله يدويًا.';
 }

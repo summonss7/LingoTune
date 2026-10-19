@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import '../services/settings_provider.dart';
 import '../theme/app_gradients.dart';
 import '../services/settings_dialogs.dart';
+import '../services/update_flow.dart';
 import '../app_info.dart';
 import 'package:lingotune/l10n/app_localizations.dart';
 import '../widgets/settings/theme_settings_tile.dart';
@@ -418,6 +419,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: Text(l10n.clearCache),
             subtitle: Text(l10n.clearCacheSubtitle),
             onTap: _clearCache,
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.system_update),
+            title: Text(l10n.checkForUpdates),
+            subtitle: Text(l10n.updateCurrentVersion(AppInfo.version)),
+            onTap: () => UpdateFlow.manualCheck(context),
           ),
           const Divider(),
           ListTile(

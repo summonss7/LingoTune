@@ -2,7 +2,7 @@ name: lingotune
 description: Language learning through music application
 
 publish_to: 'none'
-version: 5.8.12
+version: 5.9.0
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -37,6 +37,10 @@ dependencies:
   device_info_plus: ^10.1.0
   flutter_tts: ^4.2.0
   sherpa_onnx: ^1.13.3
+  # Автообновление: установка скачанного APK (open_filex) и фолбэк «открыть
+  # страницу релиза в браузере» (url_launcher).
+  open_filex: ^4.5.0
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:

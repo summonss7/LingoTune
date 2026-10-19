@@ -24,6 +24,12 @@
          рантайме через permission_handler (Permission.phone). -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
 
+    <!-- REQUEST_INSTALL_PACKAGES: автообновление приложения — установка
+         скачанного APK (GitHub Releases). Android 8+ требует разрешение
+         «установка из неизвестных источников» для самого LingoTune —
+         систему спросит при первой установке обновления. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
     <!-- Микрофон опционален: приложение работает и без него (фича детекции
          машин просто будет недоступна). required=false позволяет ставить APK
          на устройства без микрофона. -->
@@ -35,6 +41,11 @@
         </intent>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE"/>
+        </intent>
+        <!-- url_launcher: открытие страницы релиза в браузере (автообновление) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
         </intent>
     </queries>
 

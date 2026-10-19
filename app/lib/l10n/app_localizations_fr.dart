@@ -2235,4 +2235,74 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get lyricPresetContrast => 'Contraste élevé';
+
+  @override
+  String get renamePlaylist => 'Renommer';
+
+  @override
+  String get renamePlaylistTitle => 'Renommer la playlist';
+
+  @override
+  String get playlistNameLabel => 'Nom de la playlist';
+
+  @override
+  String get playlistRenamed => 'Playlist renommée';
+
+  @override
+  String get playlistNameExists => 'Une playlist avec ce nom existe déjà';
+
+  @override
+  String get noLyricsHint => 'Cette chanson n\'a pas encore de paroles';
+
+  @override
+  String get checkForUpdates => 'Rechercher des mises à jour';
+
+  @override
+  String get updateChecking => 'Recherche de mises à jour…';
+
+  @override
+  String get updateAvailableTitle => 'Nouvelle version disponible';
+
+  @override
+  String updateCurrentVersion(Object version) {
+    return 'Version actuelle : $version';
+  }
+
+  @override
+  String updateNewVersion(Object version) {
+    return 'Nouvelle version : $version';
+  }
+
+  @override
+  String get whatsNew => 'Nouveautés';
+
+  @override
+  String get download => 'Télécharger';
+
+  @override
+  String get later => 'Plus tard';
+
+  @override
+  String get downloadingUpdate => 'Téléchargement de la mise à jour…';
+
+  @override
+  String get updateDownloaded => 'Mise à jour téléchargée';
+
+  @override
+  String get install => 'Installer';
+
+  @override
+  String get openReleasePage => 'Ouvrir la page de la version';
+
+  @override
+  String get noUpdatesAvailable => 'Vous avez la dernière version';
+
+  @override
+  String get updateCheckFailed => 'Échec de la vérification des mises à jour';
+
+  @override
+  String get updateDownloadFailed => 'Échec du téléchargement de la mise à jour';
+
+  @override
+  String get updateInstallFailed => 'Impossible de démarrer l\'installation. Ouvrez manuellement l\'APK téléchargé.';
 }
