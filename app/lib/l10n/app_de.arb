@@ -737,5 +737,15 @@
       "noUpdatesAvailable": "Sie haben die neueste Version",
       "updateCheckFailed": "Update-Prüfung fehlgeschlagen",
       "updateDownloadFailed": "Download des Updates fehlgeschlagen",
-      "updateInstallFailed": "Installation konnte nicht gestartet werden. Öffnen Sie die heruntergeladene APK manuell."
+      "updateInstallFailed": "Installation konnte nicht gestartet werden. Öffnen Sie die heruntergeladene APK manuell.",
+      "updateSource": "Update-Quelle",
+      "updateSourceSubtitle": "Beliebige Manifest-URL: JSON mit Version und APK-Link oder die GitHub-API",
+      "updateSourceDefault": "GitHub Releases (Standard)",
+      "updateSourceDialogTitle": "Update-Manifest-URL",
+      "updateSourceHint": "https://example.com/manifest.json",
+      "updateSourceReset": "Zurücksetzen",
+      "updateSourceSaved": "Update-Quelle gespeichert",
+      "updateSourceInvalid": "Gültige http(s)-Adresse eingeben",
+      "showEqualizerTooltip": "Equalizer statt Songtext anzeigen",
+      "showLyricsTooltip": "Songtext anzeigen"
 }

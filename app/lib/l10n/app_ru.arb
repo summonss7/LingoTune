@@ -737,5 +737,15 @@
       "noUpdatesAvailable": "У вас последняя версия",
       "updateCheckFailed": "Не удалось проверить обновления",
       "updateDownloadFailed": "Не удалось скачать обновление",
-      "updateInstallFailed": "Не удалось запустить установку. Откройте скачанный APK вручную."
+      "updateInstallFailed": "Не удалось запустить установку. Откройте скачанный APK вручную.",
+      "updateSource": "Источник обновлений",
+      "updateSourceSubtitle": "Любой адрес манифеста: JSON с версией и ссылкой на APK или GitHub API",
+      "updateSourceDefault": "GitHub Releases (по умолчанию)",
+      "updateSourceDialogTitle": "Адрес манифеста обновлений",
+      "updateSourceHint": "https://example.com/manifest.json",
+      "updateSourceReset": "Сбросить",
+      "updateSourceSaved": "Источник обновлений сохранён",
+      "updateSourceInvalid": "Введите корректный http(s)-адрес",
+      "showEqualizerTooltip": "Показать эквалайзер вместо текста",
+      "showLyricsTooltip": "Показать текст песни"
 }

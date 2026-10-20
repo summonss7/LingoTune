@@ -7,6 +7,7 @@ class MainActivity : AudioServiceActivity() {
     private val phoneCallPlugin = PhoneCallPlugin()
     private val becomingNoisyPlugin = BecomingNoisyPlugin()
     private val audioModePlugin = AudioModePlugin()
+    private val audioVisualizerPlugin = AudioVisualizerPlugin()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -21,6 +22,11 @@ class MainActivity : AudioServiceActivity() {
         // только при активном audio focus — в TTS-хендоффе режима обучения
         // событие терялось, и песня продолжала играть в динамике.
         flutterEngine.plugins.add(becomingNoisyPlugin)
+        // Нативный анализатор играющего звука (EventChannel
+        // "lingotune/audio_visualizer/events"): android.media.audiofx.Visualizer
+        // на выходном миксе отдаёт реальный FFT → эквалайзер на плеере танцует
+        // от настоящей музыки (ритм/такт/громкость), а не от синусоид-заглушки.
+        flutterEngine.plugins.add(audioVisualizerPlugin)
         // Точечный запрос «занята ли аудио-линия звонком» (MethodChannel
         // "lingotune/audio_mode", AudioManager.getMode()). Без READ_PHONE_STATE:
         // fallback-подтверждение «звонка нет» для самолечения залипших

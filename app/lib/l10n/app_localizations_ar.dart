@@ -2305,4 +2305,34 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get updateInstallFailed => 'تعذّر بدء التثبيت. افتح ملف APK الذي تم تنزيله يدويًا.';
+
+  @override
+  String get updateSource => 'مصدر التحديث';
+
+  @override
+  String get updateSourceSubtitle => 'أي عنوان بيانات تحديث: JSON يحتوي على الإصدار ورابط APK أو واجهة GitHub';
+
+  @override
+  String get updateSourceDefault => 'GitHub Releases (افتراضي)';
+
+  @override
+  String get updateSourceDialogTitle => 'عنوان بيان التحديث';
+
+  @override
+  String get updateSourceHint => 'https://example.com/manifest.json';
+
+  @override
+  String get updateSourceReset => 'إعادة تعيين';
+
+  @override
+  String get updateSourceSaved => 'تم حفظ مصدر التحديث';
+
+  @override
+  String get updateSourceInvalid => 'أدخل عنوان http(s) صحيحًا';
+
+  @override
+  String get showEqualizerTooltip => 'عرض المعادل بدلاً من الكلمات';
+
+  @override
+  String get showLyricsTooltip => 'عرض كلمات الأغنية';
 }

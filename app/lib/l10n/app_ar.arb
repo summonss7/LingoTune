@@ -737,5 +737,15 @@
       "noUpdatesAvailable": "لديك أحدث إصدار",
       "updateCheckFailed": "فشل التحقق من التحديثات",
       "updateDownloadFailed": "فشل تنزيل التحديث",
-      "updateInstallFailed": "تعذّر بدء التثبيت. افتح ملف APK الذي تم تنزيله يدويًا."
+      "updateInstallFailed": "تعذّر بدء التثبيت. افتح ملف APK الذي تم تنزيله يدويًا.",
+      "updateSource": "مصدر التحديث",
+      "updateSourceSubtitle": "أي عنوان بيانات تحديث: JSON يحتوي على الإصدار ورابط APK أو واجهة GitHub",
+      "updateSourceDefault": "GitHub Releases (افتراضي)",
+      "updateSourceDialogTitle": "عنوان بيان التحديث",
+      "updateSourceHint": "https://example.com/manifest.json",
+      "updateSourceReset": "إعادة تعيين",
+      "updateSourceSaved": "تم حفظ مصدر التحديث",
+      "updateSourceInvalid": "أدخل عنوان http(s) صحيحًا",
+      "showEqualizerTooltip": "عرض المعادل بدلاً من الكلمات",
+      "showLyricsTooltip": "عرض كلمات الأغنية"
 }

@@ -737,5 +737,15 @@
       "noUpdatesAvailable": "Aveți cea mai recentă versiune",
       "updateCheckFailed": "Verificarea actualizărilor a eșuat",
       "updateDownloadFailed": "Descărcarea actualizării a eșuat",
-      "updateInstallFailed": "Instalarea nu a putut fi pornită. Deschideți manual APK-ul descărcat."
+      "updateInstallFailed": "Instalarea nu a putut fi pornită. Deschideți manual APK-ul descărcat.",
+      "updateSource": "Sursă de actualizări",
+      "updateSourceSubtitle": "Orice URL de manifest: JSON cu versiune și link APK sau API-ul GitHub",
+      "updateSourceDefault": "GitHub Releases (implicit)",
+      "updateSourceDialogTitle": "URL manifest actualizare",
+      "updateSourceHint": "https://example.com/manifest.json",
+      "updateSourceReset": "Resetează",
+      "updateSourceSaved": "Sursă de actualizare salvată",
+      "updateSourceInvalid": "Introduce un URL http(s) valid",
+      "showEqualizerTooltip": "Afișează egalizatorul în locul versurilor",
+      "showLyricsTooltip": "Afișează versurile"
 }

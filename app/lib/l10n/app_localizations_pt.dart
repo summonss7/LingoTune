@@ -2305,4 +2305,34 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get updateInstallFailed => 'Não foi possível iniciar a instalação. Abra o APK baixado manualmente.';
+
+  @override
+  String get updateSource => 'Fonte de atualizações';
+
+  @override
+  String get updateSourceSubtitle => 'Qualquer URL de manifesto: JSON com versão e link do APK, ou a API do GitHub';
+
+  @override
+  String get updateSourceDefault => 'GitHub Releases (padrão)';
+
+  @override
+  String get updateSourceDialogTitle => 'URL do manifesto de atualização';
+
+  @override
+  String get updateSourceHint => 'https://example.com/manifest.json';
+
+  @override
+  String get updateSourceReset => 'Redefinir';
+
+  @override
+  String get updateSourceSaved => 'Fonte de atualização salva';
+
+  @override
+  String get updateSourceInvalid => 'Insira um URL http(s) válido';
+
+  @override
+  String get showEqualizerTooltip => 'Mostrar equalizador em vez da letra';
+
+  @override
+  String get showLyricsTooltip => 'Mostrar a letra';
 }

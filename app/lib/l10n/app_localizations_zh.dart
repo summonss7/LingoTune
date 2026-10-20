@@ -2305,4 +2305,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get updateInstallFailed => '无法开始安装。请手动打开已下载的 APK。';
+
+  @override
+  String get updateSource => '更新来源';
+
+  @override
+  String get updateSourceSubtitle => '任意清单地址：含版本和 APK 链接的 JSON 或 GitHub API';
+
+  @override
+  String get updateSourceDefault => 'GitHub Releases（默认）';
+
+  @override
+  String get updateSourceDialogTitle => '更新清单地址';
+
+  @override
+  String get updateSourceHint => 'https://example.com/manifest.json';
+
+  @override
+  String get updateSourceReset => '重置';
+
+  @override
+  String get updateSourceSaved => '更新来源已保存';
+
+  @override
+  String get updateSourceInvalid => '请输入有效的 http(s) 网址';
+
+  @override
+  String get showEqualizerTooltip => '显示均衡器代替歌词';
+
+  @override
+  String get showLyricsTooltip => '显示歌词';
 }

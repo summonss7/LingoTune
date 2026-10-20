@@ -737,5 +737,15 @@
       "noUpdatesAvailable": "Hai l'ultima versione",
       "updateCheckFailed": "Impossibile cercare aggiornamenti",
       "updateDownloadFailed": "Download dell'aggiornamento non riuscito",
-      "updateInstallFailed": "Impossibile avviare l'installazione. Apri manualmente l'APK scaricato."
+      "updateInstallFailed": "Impossibile avviare l'installazione. Apri manualmente l'APK scaricato.",
+      "updateSource": "Origine aggiornamenti",
+      "updateSourceSubtitle": "Qualsiasi URL di manifest: JSON con versione e link APK, o l'API GitHub",
+      "updateSourceDefault": "GitHub Releases (predefinito)",
+      "updateSourceDialogTitle": "URL del manifest di aggiornamento",
+      "updateSourceHint": "https://example.com/manifest.json",
+      "updateSourceReset": "Reimposta",
+      "updateSourceSaved": "Origine aggiornamenti salvata",
+      "updateSourceInvalid": "Inserisci un URL http(s) valido",
+      "showEqualizerTooltip": "Mostra l'equalizzatore invece del testo",
+      "showLyricsTooltip": "Mostra il testo"
 }

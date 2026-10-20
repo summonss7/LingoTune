@@ -2305,4 +2305,34 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get updateInstallFailed => 'Не удалось запустить установку. Откройте скачанный APK вручную.';
+
+  @override
+  String get updateSource => 'Источник обновлений';
+
+  @override
+  String get updateSourceSubtitle => 'Любой адрес манифеста: JSON с версией и ссылкой на APK или GitHub API';
+
+  @override
+  String get updateSourceDefault => 'GitHub Releases (по умолчанию)';
+
+  @override
+  String get updateSourceDialogTitle => 'Адрес манифеста обновлений';
+
+  @override
+  String get updateSourceHint => 'https://example.com/manifest.json';
+
+  @override
+  String get updateSourceReset => 'Сбросить';
+
+  @override
+  String get updateSourceSaved => 'Источник обновлений сохранён';
+
+  @override
+  String get updateSourceInvalid => 'Введите корректный http(s)-адрес';
+
+  @override
+  String get showEqualizerTooltip => 'Показать эквалайзер вместо текста';
+
+  @override
+  String get showLyricsTooltip => 'Показать текст песни';
 }

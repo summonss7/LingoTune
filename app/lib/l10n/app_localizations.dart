@@ -4348,6 +4348,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not start the installation. Open the downloaded APK manually.'**
   String get updateInstallFailed;
+
+  /// No description provided for @updateSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Update source'**
+  String get updateSource;
+
+  /// No description provided for @updateSourceSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Any manifest URL: JSON with a version and an APK link, or the GitHub API'**
+  String get updateSourceSubtitle;
+
+  /// No description provided for @updateSourceDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub Releases (default)'**
+  String get updateSourceDefault;
+
+  /// No description provided for @updateSourceDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update manifest URL'**
+  String get updateSourceDialogTitle;
+
+  /// No description provided for @updateSourceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://example.com/manifest.json'**
+  String get updateSourceHint;
+
+  /// No description provided for @updateSourceReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get updateSourceReset;
+
+  /// No description provided for @updateSourceSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Update source saved'**
+  String get updateSourceSaved;
+
+  /// No description provided for @updateSourceInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid http(s) URL'**
+  String get updateSourceInvalid;
+
+  /// No description provided for @showEqualizerTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Show equalizer instead of lyrics'**
+  String get showEqualizerTooltip;
+
+  /// No description provided for @showLyricsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Show song lyrics'**
+  String get showLyricsTooltip;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

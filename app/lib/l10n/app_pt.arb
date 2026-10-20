@@ -737,5 +737,15 @@
       "noUpdatesAvailable": "Você tem a versão mais recente",
       "updateCheckFailed": "Falha ao verificar atualizações",
       "updateDownloadFailed": "Falha ao baixar a atualização",
-      "updateInstallFailed": "Não foi possível iniciar a instalação. Abra o APK baixado manualmente."
+      "updateInstallFailed": "Não foi possível iniciar a instalação. Abra o APK baixado manualmente.",
+      "updateSource": "Fonte de atualizações",
+      "updateSourceSubtitle": "Qualquer URL de manifesto: JSON com versão e link do APK, ou a API do GitHub",
+      "updateSourceDefault": "GitHub Releases (padrão)",
+      "updateSourceDialogTitle": "URL do manifesto de atualização",
+      "updateSourceHint": "https://example.com/manifest.json",
+      "updateSourceReset": "Redefinir",
+      "updateSourceSaved": "Fonte de atualização salva",
+      "updateSourceInvalid": "Insira um URL http(s) válido",
+      "showEqualizerTooltip": "Mostrar equalizador em vez da letra",
+      "showLyricsTooltip": "Mostrar a letra"
 }

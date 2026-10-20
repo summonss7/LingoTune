@@ -2305,4 +2305,34 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get updateInstallFailed => 'Instalarea nu a putut fi pornită. Deschideți manual APK-ul descărcat.';
+
+  @override
+  String get updateSource => 'Sursă de actualizări';
+
+  @override
+  String get updateSourceSubtitle => 'Orice URL de manifest: JSON cu versiune și link APK sau API-ul GitHub';
+
+  @override
+  String get updateSourceDefault => 'GitHub Releases (implicit)';
+
+  @override
+  String get updateSourceDialogTitle => 'URL manifest actualizare';
+
+  @override
+  String get updateSourceHint => 'https://example.com/manifest.json';
+
+  @override
+  String get updateSourceReset => 'Resetează';
+
+  @override
+  String get updateSourceSaved => 'Sursă de actualizare salvată';
+
+  @override
+  String get updateSourceInvalid => 'Introduce un URL http(s) valid';
+
+  @override
+  String get showEqualizerTooltip => 'Afișează egalizatorul în locul versurilor';
+
+  @override
+  String get showLyricsTooltip => 'Afișează versurile';
 }

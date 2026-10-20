@@ -2305,4 +2305,34 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get updateInstallFailed => 'Не вдалося розпочати встановлення. Відкрийте завантажений APK вручну.';
+
+  @override
+  String get updateSource => 'Джерело оновлень';
+
+  @override
+  String get updateSourceSubtitle => 'Будь-яка адреса маніфесту: JSON з версією та посиланням на APK або GitHub API';
+
+  @override
+  String get updateSourceDefault => 'GitHub Releases (типово)';
+
+  @override
+  String get updateSourceDialogTitle => 'Адреса маніфесту оновлень';
+
+  @override
+  String get updateSourceHint => 'https://example.com/manifest.json';
+
+  @override
+  String get updateSourceReset => 'Скинути';
+
+  @override
+  String get updateSourceSaved => 'Джерело оновлень збережено';
+
+  @override
+  String get updateSourceInvalid => 'Введіть коректну http(s)-адресу';
+
+  @override
+  String get showEqualizerTooltip => 'Показати еквалайзер замість тексту';
+
+  @override
+  String get showLyricsTooltip => 'Показати текст пісні';
 }

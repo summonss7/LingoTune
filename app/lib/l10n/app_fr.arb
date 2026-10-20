@@ -737,5 +737,15 @@
       "noUpdatesAvailable": "Vous avez la dernière version",
       "updateCheckFailed": "Échec de la vérification des mises à jour",
       "updateDownloadFailed": "Échec du téléchargement de la mise à jour",
-      "updateInstallFailed": "Impossible de démarrer l'installation. Ouvrez manuellement l'APK téléchargé."
+      "updateInstallFailed": "Impossible de démarrer l'installation. Ouvrez manuellement l'APK téléchargé.",
+      "updateSource": "Source de mise à jour",
+      "updateSourceSubtitle": "Toute URL de manifest : JSON avec version et lien APK, ou l'API GitHub",
+      "updateSourceDefault": "GitHub Releases (par défaut)",
+      "updateSourceDialogTitle": "URL du manifeste de mise à jour",
+      "updateSourceHint": "https://example.com/manifest.json",
+      "updateSourceReset": "Réinitialiser",
+      "updateSourceSaved": "Source de mise à jour enregistrée",
+      "updateSourceInvalid": "Saisissez une URL http(s) valide",
+      "showEqualizerTooltip": "Afficher l'égaliseur au lieu des paroles",
+      "showLyricsTooltip": "Afficher les paroles"
 }

@@ -739,5 +739,15 @@
       "noUpdatesAvailable": "You have the latest version",
       "updateCheckFailed": "Failed to check for updates",
       "updateDownloadFailed": "Failed to download the update",
-      "updateInstallFailed": "Could not start the installation. Open the downloaded APK manually."
+      "updateInstallFailed": "Could not start the installation. Open the downloaded APK manually.",
+      "updateSource": "Update source",
+      "updateSourceSubtitle": "Any manifest URL: JSON with a version and an APK link, or the GitHub API",
+      "updateSourceDefault": "GitHub Releases (default)",
+      "updateSourceDialogTitle": "Update manifest URL",
+      "updateSourceHint": "https://example.com/manifest.json",
+      "updateSourceReset": "Reset",
+      "updateSourceSaved": "Update source saved",
+      "updateSourceInvalid": "Enter a valid http(s) URL",
+      "showEqualizerTooltip": "Show equalizer instead of lyrics",
+      "showLyricsTooltip": "Show song lyrics"
 }

@@ -110,6 +110,11 @@ class _PlayerScreenState extends State<PlayerScreen>
   int _globalShufflePos = -1;
 
   bool _cachedShowTranscription = false;
+
+  /// Показывать эквалайзер вместо текста песни (кнопка в шапке плеера,
+  /// v5.10.0). Кнопка видна только когда у песни есть текст; в режиме
+  /// редактирования меток текст показывается принудительно.
+  bool _showEqualizerView = false;
   int _lastProcessedIndex = -1;
   int _lastProcessedLanguageIndex = -1;
 
@@ -2073,7 +2078,21 @@ class _PlayerScreenState extends State<PlayerScreen>
       _autoScroll = prefs.getBool('autoScroll') ?? true;
       _autoScrollFocusOffset = prefs.getDouble('autoScrollFocusOffset') ?? 50.0;
       _cachedShowTranscription = prefs.getBool('showTranscription') ?? false;
+      _showEqualizerView = prefs.getBool('playerShowEqualizer') ?? false;
     });
+  }
+
+  /// Переключение «текст ↔ эквалайзер» кнопкой в шапке (v5.10.0). Выбор
+  /// переживает перезапуск приложения; на песнях без текста кнопка не
+  /// показывается (эквалайзер там и так вместо текста).
+  Future<void> _toggleEqualizerView() async {
+    setState(() => _showEqualizerView = !_showEqualizerView);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('playerShowEqualizer', _showEqualizerView);
+    } catch (e) {
+      debugPrint('⚠ PlayerScreen: persist playerShowEqualizer failed: $e');
+    }
   }
 
   void _onFocusOffsetChanged(double newValue) {
@@ -2527,15 +2546,18 @@ class _PlayerScreenState extends State<PlayerScreen>
     final hd = widget.translationService.translations.isNotEmpty;
     final dw = hd ? sw * 0.22 : 0.0;
     final avail = sw - 40.0 - dw - (hd ? 12.0 : 4.0);
-    // НЕ edit mode: car-detect, study, study-settings, swap, transcription, popup = 6
+    // НЕ edit mode: car-detect, study, study-settings, [equalizer], swap,
+    //   transcription, popup = 6..7 (equalizer — только когда есть текст)
     // edit mode: study-settings, save, swap, transcription, popup = 5
     // (car-detect и study скрыты в edit mode, зато появляется save)
-    final int cnt = _isEditMode ? 5 : 6;
+    final bool hasLyrics = widget.lyricsService.lyricLines.isNotEmpty;
+    final int cnt = _isEditMode ? 5 : (hasLyrics ? 7 : 6);
     final bs = (avail / cnt).clamp(18.0, 52.0);
     final iconSz = (bs * 0.72).clamp(12.0, 24.0);
     final hdrBtnSize = iconSz.clamp(20.0, 26.0);
 
-    Widget btn(IconData icon, VoidCallback onTap, {Color? color}) {
+    Widget btn(IconData icon, VoidCallback onTap,
+        {Color? color, String? tooltip}) {
       return SizedBox(
         width: bs,
         height: bs,
@@ -2545,6 +2567,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           padding: EdgeInsets.zero,
           constraints: BoxConstraints.tightFor(width: bs, height: bs),
           onPressed: onTap,
+          tooltip: tooltip,
         ),
       );
     }
@@ -2677,6 +2700,17 @@ class _PlayerScreenState extends State<PlayerScreen>
             sp.setShowTranslationFirst(!sp.showTranslationFirst);
           },
         ),
+        if (!_isEditMode && hasLyrics)
+          btn(
+            _showEqualizerView ? Icons.lyrics : Icons.graphic_eq,
+            _toggleEqualizerView,
+            color: _showEqualizerView
+                ? Theme.of(context).colorScheme.primary
+                : null,
+            tooltip: _showEqualizerView
+                ? AppLocalizations.of(context)!.showLyricsTooltip
+                : AppLocalizations.of(context)!.showEqualizerTooltip,
+          ),
         btn(
           Icons.text_fields,
           () async {
@@ -3951,11 +3985,16 @@ class _PlayerScreenState extends State<PlayerScreen>
                       }
 
                       // Нет текста у песни — вместо голого экрана живой
-                      // эквалайзер (анимируется, только пока играет).
-                      if (lines.isEmpty) {
+                      // эквалайзер (реальный спектр музыки + фолбэк).
+                      // Или текст есть, но пользователь переключился на
+                      // эквалайзер кнопкой в шапке («надоело читать») —
+                      // кроме режима редактирования меток.
+                      if (lines.isEmpty || (_showEqualizerView && !_isEditMode)) {
                         return AudioEqualizerWidget(
                           player: widget.audioService.player,
-                          hint: AppLocalizations.of(context)!.noLyricsHint,
+                          hint: lines.isEmpty
+                              ? AppLocalizations.of(context)!.noLyricsHint
+                              : null,
                         );
                       }
 

@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.9.0** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.10.0** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -581,13 +581,42 @@ void main() {
   requires the `REQUEST_INSTALL_PACKAGES` permission (declared) + the user's
   one-time "unknown sources" grant for LingoTune. `url_launcher` is the
   fallback "open release page" action (https VIEW `<queries>` entry declared).
-- Playlist **rename** (same release): `PlaylistService.renamePlaylist` (guards
+- Custom **update source** (v5.10.0, wish option «б»): any manifest URL —
+  `UpdateService.getCustomManifestUrl()/setCustomManifestUrl()` (same
+  `updateManifestUrl` prefs key; `null`/blank = GitHub default). UI: Settings →
+  «Update source» dialog with http(s) validation and reset. Unit tests cover
+  the round-trip and reset.
+- Playlist **rename** (v5.9.0): `PlaylistService.renamePlaylist` (guards
   system playlists; `all_songs`/`favorites`/`lang_*` are NOT renamable) — UI in
   `PlaylistScreen` card ⋮ menu and `PlaylistSongsScreen` sort menu; duplicate
   names rejected with a SnackBar.
-- No-lyrics **equalizer** (same release): `widgets/audio_equalizer_widget.dart`
-  replaces the bare screen in `PlayerScreen` when `lyricLines` is empty;
-  pseudo-reactive CustomPainter bars animate only while `player.playing`.
+- No-lyrics **equalizer** (v5.9.0): `widgets/audio_equalizer_widget.dart`
+  replaces the bare screen in `PlayerScreen` when `lyricLines` is empty.
+  Since v5.10.0 it dances to the REAL audio (see «Audio visualizer» below)
+  and a header button toggles lyrics ↔ equalizer on ANY song (persisted
+  `playerShowEqualizer`; hidden in edit-timestamps mode).
+
+## Audio visualizer (`AudioVisualizerService` + `AudioVisualizerPlugin`, v5.10.0)
+
+- Native Kotlin plugin (`AudioVisualizerPlugin.kt`, registered in
+  `MainActivity`): `android.media.audiofx.Visualizer` attached to the global
+  output mix (session 0) streams the REAL FFT of whatever is playing (~20
+  fps) → 32 log-spaced frequency bands (bytes 0..255) over EventChannel
+  `lingotune/audio_visualizer/events`. No file decoding, no audio-path
+  changes. Needs RECORD_AUDIO (requested at runtime by the Dart side — same
+  permission as car detection). If the ROM refuses to create the Visualizer
+  (common on de-Googled ROMs) the widget silently falls back to the old
+  sine-wave pseudo-animation.
+- Dart wrapper `services/audio_visualizer_service.dart` (singleton): `start()`
+  requests the permission, invokes native `start`, broadcasts frames on
+  `barStream`; `stop()` releases the native Visualizer (battery) — the
+  equalizer widget stops it in `dispose()`.
+- `utils/audio_band_processor.dart` (pure Dart, unit-tested in
+  `test/audio_band_processor_test.dart`): instant attack + exponential
+  release (~160 ms), adaptive gain vs a ~3 s running peak (≤3×), beat
+  detection (bass energy vs ~2 s moving average, 220 ms refractory), falling
+  peak caps. The painter adds a beat-synced glow pulse and slightly taller
+  bars on each beat.
 
 ---
 
@@ -630,14 +659,15 @@ Run `flutter pub get` after modifying `app/pubspec.yaml`
   - **Phone calls**: `PhoneCallService` (native TelephonyManager EventChannel wrapper),
     `AudioModeService` (permission-free AudioManager.getMode() query — "no call" fallback)
   - **Settings**: `SettingsProvider`, `ThemeProvider`, `SettingsHelper`, `SettingsDialogs`, `SettingsExportService`
-  - **Updates**: `UpdateService` (manifest check + APK download), `UpdateFlow` (dialogs/install orchestration, v5.9.0)
+  - **Updates**: `UpdateService` (manifest check + APK download + custom source URL), `UpdateFlow` (dialogs/install orchestration, v5.9.0)
+  - **Visualizer**: `AudioVisualizerService` (native FFT → equalizer bars, v5.10.0)
 - **screens/**: UI screens (SongLibraryScreen, PlayerScreen, PlaylistScreen, PlaylistSongsScreen, SettingsScreen, LyricGeneratorDialog, TextLoaderDialog, TranslationEditorScreen, VoicePackagesScreen, CarCalibrationScreen)
 - **screens/helpers/**: Helper classes for complex screens (SongImportHelper, PlayerImportHelper, PlayerPlaylistHelper, PlayerTranslationHelper, SongTranslationLoader, CoverArtHelper, PlaylistImportHelper)
 - **widgets/**: Reusable components (SongListTile, EmptyLibraryWidget, MiniPlayerWidget, LyricLineWidget, AudioEqualizerWidget, GenerationOptionsWidget, GenerationProgressWidget, LibraryManagerWidget, BatchSelectionWidget, LoadingWidget, LyricsSearchDialog, SongSortWidget, SelectionModeActions) + `widgets/settings/` (ApiSettingsTile, TextSettingsSection, DefaultAutoScrollFocusOffsetControl)
 - **theme/**: Amethyst gradient skin — `AppGradients` ThemeExtension, `AmethystPalette`, context helpers (`isAmethystSkin`, `appBarColor`, `amethystCardDecoration`)
-- **utils/**: Utility functions (SnackBarHelper, LrcFormatter, LanguageHelpers, TtsEngineHelper, Fft, LyricColors — palette + presets for custom lyric-line text colors, see `SettingsProvider.useCustomLyricColors` / `originalTextColor` / `translationTextColor`; since v5.8.10 also the ACTIVE line's highlight color `SettingsProvider.activeLineColor` — applied WITHOUT the `useCustomLyricColors` toggle, overriding the theme default incl. Amethyst's `activeLineHighlight`)
+- **utils/**: Utility functions (SnackBarHelper, LrcFormatter, LanguageHelpers, TtsEngineHelper, Fft, LyricColors — palette + presets for custom lyric-line text colors, see `SettingsProvider.useCustomLyricColors` / `originalTextColor` / `translationTextColor`; since v5.8.10 also the ACTIVE line's highlight color `SettingsProvider.activeLineColor` — applied WITHOUT the `useCustomLyricColors` toggle, overriding the theme default incl. Amethyst's `activeLineHighlight`; since v5.10.0 `AudioBandProcessor` — spectrum frames → equalizer bars: attack/release, adaptive gain, beat detection, peak caps, unit-tested)
 - **constants/**: Constants and configuration (DeepSeekPrompts, GenerationConstants)
-- **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 706 keys each; ARB sources + generated `app_localizations*.dart`
+- **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 716 keys each; ARB sources + generated `app_localizations*.dart`
 
 <!-- ОБЩИЙ-СТАНДАРТ-КОДИРОВАНИЯ -->
 ## Общий стандарт программирования

@@ -147,6 +147,30 @@ void main() {
     });
   });
 
+  group('custom manifest url accessors (v5.10.0)', () {
+    test('null by default, round-trips through set', () async {
+      expect(await UpdateService.getCustomManifestUrl(), isNull);
+      await UpdateService.setCustomManifestUrl(
+          '  https://example.com/manifest.json  ');
+      expect(await UpdateService.getCustomManifestUrl(),
+          'https://example.com/manifest.json');
+    });
+
+    test('blank value resets to default source', () async {
+      await UpdateService.setCustomManifestUrl('https://example.com/m.json');
+      await UpdateService.setCustomManifestUrl('   ');
+      expect(await UpdateService.getCustomManifestUrl(), isNull);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('updateManifestUrl'), isFalse);
+    });
+
+    test('null value resets to default source', () async {
+      await UpdateService.setCustomManifestUrl('https://example.com/m.json');
+      await UpdateService.setCustomManifestUrl(null);
+      expect(await UpdateService.getCustomManifestUrl(), isNull);
+    });
+  });
+
   group('auto-check throttling', () {
     test('due when never checked, not due right after mark', () async {
       expect(await UpdateService.autoCheckDue(), isTrue);

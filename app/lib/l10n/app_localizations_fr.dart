@@ -2305,4 +2305,34 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get updateInstallFailed => 'Impossible de démarrer l\'installation. Ouvrez manuellement l\'APK téléchargé.';
+
+  @override
+  String get updateSource => 'Source de mise à jour';
+
+  @override
+  String get updateSourceSubtitle => 'Toute URL de manifest : JSON avec version et lien APK, ou l\'API GitHub';
+
+  @override
+  String get updateSourceDefault => 'GitHub Releases (par défaut)';
+
+  @override
+  String get updateSourceDialogTitle => 'URL du manifeste de mise à jour';
+
+  @override
+  String get updateSourceHint => 'https://example.com/manifest.json';
+
+  @override
+  String get updateSourceReset => 'Réinitialiser';
+
+  @override
+  String get updateSourceSaved => 'Source de mise à jour enregistrée';
+
+  @override
+  String get updateSourceInvalid => 'Saisissez une URL http(s) valide';
+
+  @override
+  String get showEqualizerTooltip => 'Afficher l\'égaliseur au lieu des paroles';
+
+  @override
+  String get showLyricsTooltip => 'Afficher les paroles';
 }

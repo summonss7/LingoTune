@@ -83,15 +83,36 @@ class UpdateService {
   }
 
   Future<Uri> _manifestUri() async {
-    final prefs = await SharedPreferences.getInstance();
-    final custom = prefs.getString(_prefManifestUrl);
-    if (custom != null && custom.trim().isNotEmpty) {
-      final parsed = Uri.tryParse(custom.trim());
+    final custom = await getCustomManifestUrl();
+    if (custom != null) {
+      final parsed = Uri.tryParse(custom);
       if (parsed != null && (parsed.isScheme('http') || parsed.isScheme('https'))) {
         return parsed;
       }
     }
     return Uri.parse(defaultManifestUrl);
+  }
+
+  /// Пользовательский адрес манифеста (вариант «б» из пожелания: любой
+  /// источник — JSON `{"version","downloadUrl",...}` или GitHub API).
+  /// `null` — адрес не задан, используется [defaultManifestUrl].
+  static Future<String?> getCustomManifestUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    final custom = prefs.getString(_prefManifestUrl);
+    if (custom != null && custom.trim().isNotEmpty) return custom.trim();
+    return null;
+  }
+
+  /// Сохраняет пользовательский адрес манифеста; `null`/пустая строка —
+  /// сброс на источник по умолчанию (GitHub Releases).
+  static Future<void> setCustomManifestUrl(String? url) async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = url?.trim() ?? '';
+    if (value.isEmpty) {
+      await prefs.remove(_prefManifestUrl);
+    } else {
+      await prefs.setString(_prefManifestUrl, value);
+    }
   }
 
   /// Проверяет манифест; возвращает [AppUpdate], только если там версия новее

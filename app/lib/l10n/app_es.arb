@@ -737,5 +737,15 @@
       "noUpdatesAvailable": "Tienes la última versión",
       "updateCheckFailed": "No se pudieron buscar actualizaciones",
       "updateDownloadFailed": "Error al descargar la actualización",
-      "updateInstallFailed": "No se pudo iniciar la instalación. Abra el APK descargado manualmente."
+      "updateInstallFailed": "No se pudo iniciar la instalación. Abra el APK descargado manualmente.",
+      "updateSource": "Fuente de actualizaciones",
+      "updateSourceSubtitle": "Cualquier URL de manifiesto: JSON con versión y enlace al APK, o la API de GitHub",
+      "updateSourceDefault": "GitHub Releases (predeterminado)",
+      "updateSourceDialogTitle": "URL del manifiesto de actualizaciones",
+      "updateSourceHint": "https://example.com/manifest.json",
+      "updateSourceReset": "Restablecer",
+      "updateSourceSaved": "Fuente de actualizaciones guardada",
+      "updateSourceInvalid": "Introduce una URL http(s) válida",
+      "showEqualizerTooltip": "Mostrar ecualizador en vez de la letra",
+      "showLyricsTooltip": "Mostrar la letra"
 }

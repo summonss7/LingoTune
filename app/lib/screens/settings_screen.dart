@@ -6,6 +6,7 @@ import '../services/settings_provider.dart';
 import '../theme/app_gradients.dart';
 import '../services/settings_dialogs.dart';
 import '../services/update_flow.dart';
+import '../services/update_service.dart';
 import '../app_info.dart';
 import 'package:lingotune/l10n/app_localizations.dart';
 import '../widgets/settings/theme_settings_tile.dart';
@@ -38,6 +39,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _audioServiceInitialized = false;
   String _audioServiceError = '';
 
+  /// Пользовательский адрес манифеста обновлений (null — GitHub по
+  /// умолчанию). Загружается в [_initAsync], правится диалогом
+  /// [_showUpdateSourceDialog] (v5.10.0).
+  String? _customManifestUrl;
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +54,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _migrateSettings();
     await _loadFolderConfig();
     await _loadAudioServiceStatus();
+    await _loadUpdateSource();
+  }
+
+  Future<void> _loadUpdateSource() async {
+    final custom = await UpdateService.getCustomManifestUrl();
+    if (mounted) {
+      setState(() => _customManifestUrl = custom);
+    }
   }
 
   Future<void> _migrateSettings() async {
@@ -131,6 +145,87 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       (path) => setState(() => _customLrcJsonFolder = path),
     );
+  }
+
+  /// Диалог адреса манифеста обновлений (вариант «б»): любой источник —
+  /// JSON `{"version","notes","downloadUrl","size","url"}` или GitHub API.
+  /// Результат диалога: null — отмена, '' — сброс на дефолт, иначе — URL.
+  Future<void> _showUpdateSourceDialog() async {
+    final controller = TextEditingController(text: _customManifestUrl ?? '');
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(l10n.updateSourceDialogTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(l10n.updateSourceSubtitle),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(
+                  hintText: l10n.updateSourceHint,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(''),
+              child: Text(_customManifestUrl == null
+                  ? l10n.cancel
+                  : l10n.updateSourceReset),
+            ),
+            TextButton(
+              onPressed: () {
+                final value = controller.text.trim();
+                final parsed = Uri.tryParse(value);
+                if (value.isEmpty ||
+                    (parsed != null &&
+                        (parsed.isScheme('http') ||
+                            parsed.isScheme('https')))) {
+                  Navigator.of(dialogContext).pop(value);
+                } else {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(l10n.updateSourceInvalid),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: Text(
+                l10n.save,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null) return;
+    if (result.isEmpty) {
+      await UpdateService.setCustomManifestUrl(null);
+    } else {
+      await UpdateService.setCustomManifestUrl(result);
+    }
+    await _loadUpdateSource();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.updateSourceSaved),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   @override
@@ -426,6 +521,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: Text(l10n.checkForUpdates),
             subtitle: Text(l10n.updateCurrentVersion(AppInfo.version)),
             onTap: () => UpdateFlow.manualCheck(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.link),
+            title: Text(l10n.updateSource),
+            subtitle: Text(
+              _customManifestUrl ?? l10n.updateSourceDefault,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: _showUpdateSourceDialog,
           ),
           const Divider(),
           ListTile(

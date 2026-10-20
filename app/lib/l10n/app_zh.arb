@@ -737,5 +737,15 @@
       "noUpdatesAvailable": "您已是最新版本",
       "updateCheckFailed": "检查更新失败",
       "updateDownloadFailed": "下载更新失败",
-      "updateInstallFailed": "无法开始安装。请手动打开已下载的 APK。"
+      "updateInstallFailed": "无法开始安装。请手动打开已下载的 APK。",
+      "updateSource": "更新来源",
+      "updateSourceSubtitle": "任意清单地址：含版本和 APK 链接的 JSON 或 GitHub API",
+      "updateSourceDefault": "GitHub Releases（默认）",
+      "updateSourceDialogTitle": "更新清单地址",
+      "updateSourceHint": "https://example.com/manifest.json",
+      "updateSourceReset": "重置",
+      "updateSourceSaved": "更新来源已保存",
+      "updateSourceInvalid": "请输入有效的 http(s) 网址",
+      "showEqualizerTooltip": "显示均衡器代替歌词",
+      "showLyricsTooltip": "显示歌词"
 }
