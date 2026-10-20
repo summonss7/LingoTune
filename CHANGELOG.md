@@ -169,3 +169,53 @@
     диалоги обновления, установка APK) выполнит Артём при установке LingoTune-v5.9.0.apk.
 - Коммит: 6c801b0 «Release LingoTune v5.9.0: playlist rename, no-lyrics equalizer, in-app
   auto-update (card lingotune-004)» (43 файла), запушен в github.com/summonss7/LingoTune (main).
+
+## 20.10.2026, 14:25 — Release v5.10.0: эквалайзер от настоящего звука + кнопка на любой песне, свой адрес манифеста обновлений (карточка lingotune-005)
+
+- Начало работы: 20.10.2026, 10:06
+- Окончание работы: 20.10.2026, 14:25
+- Что сделано:
+  - Бэкап проекта до изменений: backups/LingoTune_backup_2026-10-20_10-37.zip (сеанс реализации).
+  - Фича 1 «эквалайзер погружает в музыку» (ритм, такт, громкость): нативный
+    AudioVisualizerPlugin.kt — системный android.media.audiofx.Visualizer на глобальном выходном
+    миксе отдаёт НАСТОЯЩИЙ FFT играющей музыки (~20 кадров/с → 32 логарифмические полосы 0..255,
+    EventChannel lingotune/audio_visualizer/events); Dart-обёртка AudioVisualizerService
+    (runtime-запрос RECORD_AUDIO — то же разрешение, что у car detection); чистый Dart-процессор
+    AudioBandProcessor: мгновенная атака + экспоненциальный спад (~160 мс), адаптивный гейн
+    (тихий трек не «пол», громкий не «потолок», ≤3x), детектор бита (бас против скользящего
+    среднего ~2 с, рефрактерные 220 мс), пик-шапки; AudioEqualizerWidget переписан — зеркальные
+    столбики, свечение-пульс и «подпрыг» в такт биту; прежняя синусоидная заглушка осталась
+    фолбэком (нет разрешения / не Android / ROM не дал создать Visualizer); захват
+    останавливается, когда эквалайзер не виден (батарея).
+  - Фича 2 «вызвать эквалайзер кнопкой даже на песне с текстом»: кнопка в шапке плеера
+    (graphic_eq ↔ lyrics) переключает текст ↔ эквалайзер на любой песне С текстом («надоело
+    читать»); выбор переживает перезапуск (prefs playerShowEqualizer); в режиме редактирования
+    меток текст показывается принудительно; тултипы + подсветка активного состояния.
+  - Фича 3 «автообновление — вариант (б): любой адрес-манифест»: UpdateService
+    .getCustomManifestUrl/.setCustomManifestUrl (JSON {"version","downloadUrl",...} или GitHub
+    API; пустое/null → сброс на GitHub Releases по умолчанию); Настройки → «Источник обновлений»:
+    диалог с валидацией http(s), кнопка «Сбросить», зелёный SnackBar подтверждения.
+  - 10 новых l10n-ключей × 11 локалей (updateSource*, showEqualizerTooltip, showLyricsTooltip);
+    706 → 716 ключей; gen-l10n.
+  - Версия 5.9.0 → 5.10.0, versionCode 241 → 242 (pubspec, app_info +3 features, build.gradle
+    archivesBaseName); CHANGELOG_v5.10.0.dart (релизный ритуал), docs/CHANGELOG.md (запись
+    v5.10.0), README.md (версия + пункты возможностей), AGENTS.md (версия, раздел «Audio
+    visualizer», Custom update source, File Organization, 716 l10n-ключей). ROADMAP.md в проекте
+    отсутствует — не требовался. Мелкий фикс: в MainActivity регистрируется поле
+    audioVisualizerPlugin (а не новый экземпляр) — единый стиль с остальными нативными плагинами.
+- Как проверено:
+  - flutter test: 63/63 passed, из них 11 новых (test/audio_band_processor_test.dart — 8:
+    атака/спад, шапки, бит + рефрактерность, гейн; test/update_service_test.dart — 3: round-trip
+    кастомного URL, сброс пустой строкой и null);
+  - flutter analyze: 231 info/warning — ровно базовый уровень до правок, 0 ошибок, новых
+    замечаний не внесено;
+  - сборка release: build_apk_v5.7.4.ps1 → BUILD SUCCESSFUL → builds\LingoTune-v5.10.0.apk
+    (225 614 289 байт); сборка debug: builds\LingoTune-v5.10.0-debug.apk (322 127 551 байт);
+    в корне проекта посторонних APK нет (builds/*.apk в .gitignore);
+  - ручная проверка на устройстве не выполнялась (телефон не подключён, AVD эмуляторов нет) —
+    логика покрыта юнит-тестами и трассировкой кода; визуальную/полевую проверку (танцующий
+    эквалайзер, кнопка текст↔эквалайзер, смена источника обновлений) выполнит Артём при
+    установке LingoTune-v5.10.0.apk.
+- Коммит: de0ec15 «Release LingoTune v5.10.0: real-spectrum equalizer (beat/rhythm),
+  lyrics↔equalizer toggle, custom update manifest URL (card lingotune-005)» (40 файлов) —
+  запушен в github.com/summonss7/LingoTune (main).
