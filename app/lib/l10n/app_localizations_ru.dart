@@ -2295,7 +2295,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get openReleasePage => 'Открыть страницу релиза';
 
   @override
-  String get noUpdatesAvailable => 'У вас последняя версия';
+  String get noUpdatesAvailable => '✓ У вас последняя версия';
 
   @override
   String get updateCheckFailed => 'Не удалось проверить обновления';
@@ -2310,10 +2310,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get updateSource => 'Источник обновлений';
 
   @override
-  String get updateSourceSubtitle => 'Любой адрес манифеста: JSON с версией и ссылкой на APK или GitHub API';
+  String get updateSourceSubtitle => 'По умолчанию — центр обновлений Aila, GitHub Releases — запасной канал; здесь можно указать любой адрес манифеста (JSON с версией и ссылкой на APK)';
 
   @override
-  String get updateSourceDefault => 'GitHub Releases (по умолчанию)';
+  String get updateSourceDefault => 'Центр обновлений Aila (по умолчанию)';
 
   @override
   String get updateSourceDialogTitle => 'Адрес манифеста обновлений';

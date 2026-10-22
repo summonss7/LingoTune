@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.10.0** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.11.0** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -77,6 +77,12 @@ from the project root. All other build entry points (`build_apk_v5.3.0.ps1`,
 `build_apk_v4.6.12.ps1`, `build_v4.6.12.bat`, `scripts\build_apk.bat`) target the
 same `builds\` folder; Flutter's intermediate output stays in
 `app\build\app\outputs\flutter-apk\`.
+
+**Release publishing** (v5.11.0): after a successful build, publish the
+release to both update channels with one command —
+`powershell -NoProfile -ExecutionPolicy Bypass -File publish_release.ps1`
+(primary: Aila update center manifest v2; backup: GitHub Releases via PAT,
+see «Auto-update» below for details).
 
 ### Python
 
@@ -557,35 +563,59 @@ void main() {
 
 ---
 
-## Auto-update (`UpdateService` + `UpdateFlow`, v5.9.0)
+## Auto-update (`UpdateService` + `UpdateFlow`, v5.9.0; канал Aila — v5.11.0)
 
-- Source of truth for version: the **latest GitHub Release** of
-  `summonss7/LingoTune` (`UpdateService.defaultManifestUrl`, GitHub API
-  `/releases/latest`). A plain JSON manifest `{"version","notes","downloadUrl",
-  "size","url"}` is also supported — the URL can be overridden via the
-  `updateManifestUrl` SharedPreferences key. While the repo is PRIVATE the
-  anonymous API returns 404 → the check silently resolves "no update"; the
-  mechanism starts working unchanged once public releases exist.
-- Version comparison is numeric dot-part-wise (`compareVersions`, tolerates a
-  leading `v` and prerelease suffixes; missing parts = 0). Local version =
-  `AppInfo.version`. Unit tests: `test/update_service_test.dart`.
-- Auto-check: `MainScreen.initState` post-frame + 5 s delay →
-  `UpdateFlow.maybeAutoCheck` (throttled to once per 24 h via
-  `lastUpdateCheckMs`). Silent on "no update"/failure. Manual check: Settings →
-  «Check for updates» (`UpdateFlow.manualCheck`) — always shows a result.
+- Source of truth for version (v5.11.0, card lingotune-006, canon
+  `D:\Scheduler\UPDATES-SYSTEM.md`): the **Aila update center** — manifest v2
+  at `UpdateService.ailaManifestUrl`
+  (`https://aila.skillcoin.pp.ua/updates/lingotune/manifest.json`, format:
+  `project/versionName/versionCode/notes/assets[{name,url,size,sha256,kind}]`).
+  **GitHub Releases** (`UpdateService.githubReleasesUrl`) is the automatic
+  BACKUP, consulted only when the previous source failed to answer (network /
+  non-200 / bad JSON / unusable format). A source that ANSWERS is
+  authoritative — its "no update" verdict never falls through to the backup.
+  Check chain: custom URL (if set) → Aila → GitHub; a v2 manifest without an
+  APK asset (web-release) is unusable for this client → treated as unanswered.
+- Version comparison: v2 manifests compare **`versionCode`** (Android rule;
+  equal versionName with a higher code IS an update), GitHub tags compare
+  semver strings (`compareVersions`, tolerates a leading `v` and prerelease
+  suffixes; missing parts = 0). Local version = `AppInfo.version` /
+  `AppInfo.versionCode`. `checkForUpdate()` returns a tri-state
+  `UpdateCheckResult` (`updateAvailable` / `upToDate` / `sourceUnavailable`).
+  Unit tests: `test/update_service_test.dart`.
+- Manual check: Settings → «Check for updates» (`UpdateFlow.manualCheck`) —
+  update dialog / green «✓ You have the latest version» (`noUpdatesAvailable`)
+  / red «failed to check» when ALL sources are unreachable. Auto-check:
+  `MainScreen.initState` post-frame + 5 s delay → `UpdateFlow.maybeAutoCheck`
+  (throttled to once per 24 h via `lastUpdateCheckMs`), silent on everything
+  except an available update.
 - Download: streamed `http` into `<externalStorageDir>/updates/
   LingoTune-v<version>.apk` (app-specific dir, no storage permission), progress
   dialog with cancel (`UpdateService.cancelDownload`); the dialog closes only
-  from the download completion path (single-pop, no races).
+  from the download completion path (single-pop, no races). **sha256
+  verification** (v5.11.0): when the manifest carries `assets[].sha256`, the
+  downloaded file is hashed (`crypto`) after the stream ends; a mismatch
+  deletes the file and fails the download (integrity rule of the center).
+  Sources without a hash (old GitHub/simple manifests) skip the check.
 - Install: `OpenFilex.open(path)` (`open_filex`) fires the system installer;
   requires the `REQUEST_INSTALL_PACKAGES` permission (declared) + the user's
   one-time "unknown sources" grant for LingoTune. `url_launcher` is the
   fallback "open release page" action (https VIEW `<queries>` entry declared).
 - Custom **update source** (v5.10.0, wish option «б»): any manifest URL —
   `UpdateService.getCustomManifestUrl()/setCustomManifestUrl()` (same
-  `updateManifestUrl` prefs key; `null`/blank = GitHub default). UI: Settings →
-  «Update source» dialog with http(s) validation and reset. Unit tests cover
-  the round-trip and reset.
+  `updateManifestUrl` prefs key; `null`/blank = default Aila→GitHub chain).
+  The custom URL is checked FIRST and its verdict is final; if it fails to
+  answer, the default chain runs. UI: Settings → «Update source» dialog with
+  http(s) validation and reset. Unit tests cover the round-trip and reset.
+- **Release publishing** (v5.11.0): `publish_release.ps1` (project root)
+  publishes a release to BOTH channels in one command — the Aila center via
+  `node D:\Scheduler\tools\publish-update.cjs lingotune --notes-file
+  CHANGELOG.md` (manifest v2 + sha256 + history + «Хаб ИИ» notification) and
+  GitHub Releases via REST API (tag `v<version>` + APK asset; PAT from
+  `GITHUB_TOKEN` or untracked `.github_release_token`; no token → channel
+  skipped with a warning, Aila is the source of truth). `-Version`/`-Code`
+  default from `pubspec.yaml`/`build.gradle`, `-DryRun`, `-SkipAila`,
+  `-SkipGitHub`; exit 0 = primary channel published.
 - Playlist **rename** (v5.9.0): `PlaylistService.renamePlaylist` (guards
   system playlists; `all_songs`/`favorites`/`lang_*` are NOT renamable) — UI in
   `PlaylistScreen` card ⋮ menu and `PlaylistSongsScreen` sort menu; duplicate

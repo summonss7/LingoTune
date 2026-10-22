@@ -2295,7 +2295,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get openReleasePage => 'Ouvrir la page de la version';
 
   @override
-  String get noUpdatesAvailable => 'Vous avez la dernière version';
+  String get noUpdatesAvailable => '✓ Vous avez la dernière version';
 
   @override
   String get updateCheckFailed => 'Échec de la vérification des mises à jour';
@@ -2310,10 +2310,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get updateSource => 'Source de mise à jour';
 
   @override
-  String get updateSourceSubtitle => 'Toute URL de manifest : JSON avec version et lien APK, ou l\'API GitHub';
+  String get updateSourceSubtitle => 'Par défaut : centre de mises à jour Aila, GitHub Releases en secours ; ou toute URL de manifest (JSON avec version et lien APK)';
 
   @override
-  String get updateSourceDefault => 'GitHub Releases (par défaut)';
+  String get updateSourceDefault => 'Centre de mises à jour Aila (par défaut)';
 
   @override
   String get updateSourceDialogTitle => 'URL du manifeste de mise à jour';

@@ -2295,7 +2295,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get openReleasePage => 'فتح صفحة الإصدار';
 
   @override
-  String get noUpdatesAvailable => 'لديك أحدث إصدار';
+  String get noUpdatesAvailable => '✓ لديك أحدث إصدار';
 
   @override
   String get updateCheckFailed => 'فشل التحقق من التحديثات';
@@ -2310,10 +2310,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get updateSource => 'مصدر التحديث';
 
   @override
-  String get updateSourceSubtitle => 'أي عنوان بيانات تحديث: JSON يحتوي على الإصدار ورابط APK أو واجهة GitHub';
+  String get updateSourceSubtitle => 'الافتراضي: مركز تحديثات Aila مع GitHub Releases كاحتياطي؛ أو أي عنوان بيانات تحديث (JSON يحتوي على الإصدار ورابط APK)';
 
   @override
-  String get updateSourceDefault => 'GitHub Releases (افتراضي)';
+  String get updateSourceDefault => 'مركز تحديثات Aila (افتراضي)';
 
   @override
   String get updateSourceDialogTitle => 'عنوان بيان التحديث';

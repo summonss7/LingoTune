@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.10.0';
+  static const String version = '5.11.0';
 
-  static const String versionCode = '242';
+  static const String versionCode = '243';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -71,8 +71,10 @@ class AppInfo {
     '🎚️ Animated equalizer on the player screen when the song has no lyrics (was an empty screen)',
     '📊 Equalizer dances to the REAL music: native spectrum analysis (rhythm, beat, volume) with glowing beat pulses and falling peak caps',
     '🎚️ Equalizer button on the player header — switch lyrics ↔ visualizer on any song (when you are tired of reading)',
-    '⬆️ In-app auto-update: checks GitHub Releases once a day, shows what\'s new, downloads the APK and starts the install',
-    '🔗 Custom update source: any manifest URL (JSON with version + APK link) instead of GitHub Releases',
+    '⬆️ In-app auto-update: checks the family Aila update center once a day, shows what\'s new, downloads the APK and starts the install',
+    '🔗 Custom update source: any manifest URL (JSON with version + APK link) instead of the default channel',
+    '🛡️ GitHub Releases stays as an automatic backup channel; downloaded APKs are verified by sha256',
+    '✓ Explicit "you have the latest version" confirmation on every update check',
   ];
 
   static const List<String> supportedLanguages = [

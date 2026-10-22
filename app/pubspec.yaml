@@ -2,7 +2,7 @@ name: lingotune
 description: Language learning through music application
 
 publish_to: 'none'
-version: 5.10.0
+version: 5.11.0
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -41,6 +41,8 @@ dependencies:
   # страницу релиза в браузере» (url_launcher).
   open_filex: ^4.5.0
   url_launcher: ^6.3.1
+  # Автообновление: сверка sha256 скачанного APK с манифестом центра Aila.
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:

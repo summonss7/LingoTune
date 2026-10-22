@@ -2295,7 +2295,7 @@ class AppLocalizationsUk extends AppLocalizations {
   String get openReleasePage => 'Відкрити сторінку релізу';
 
   @override
-  String get noUpdatesAvailable => 'У вас остання версія';
+  String get noUpdatesAvailable => '✓ У вас остання версія';
 
   @override
   String get updateCheckFailed => 'Не вдалося перевірити оновлення';
@@ -2310,10 +2310,10 @@ class AppLocalizationsUk extends AppLocalizations {
   String get updateSource => 'Джерело оновлень';
 
   @override
-  String get updateSourceSubtitle => 'Будь-яка адреса маніфесту: JSON з версією та посиланням на APK або GitHub API';
+  String get updateSourceSubtitle => 'Типово — центр оновлень Aila, GitHub Releases — запасний канал; тут можна вказати будь-яку адресу маніфесту (JSON з версією та посиланням на APK)';
 
   @override
-  String get updateSourceDefault => 'GitHub Releases (типово)';
+  String get updateSourceDefault => 'Центр оновлень Aila (типово)';
 
   @override
   String get updateSourceDialogTitle => 'Адреса маніфесту оновлень';

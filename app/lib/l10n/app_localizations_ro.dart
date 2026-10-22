@@ -2295,7 +2295,7 @@ class AppLocalizationsRo extends AppLocalizations {
   String get openReleasePage => 'Deschide pagina versiunii';
 
   @override
-  String get noUpdatesAvailable => 'Aveți cea mai recentă versiune';
+  String get noUpdatesAvailable => '✓ Aveți cea mai recentă versiune';
 
   @override
   String get updateCheckFailed => 'Verificarea actualizărilor a eșuat';
@@ -2310,10 +2310,10 @@ class AppLocalizationsRo extends AppLocalizations {
   String get updateSource => 'Sursă de actualizări';
 
   @override
-  String get updateSourceSubtitle => 'Orice URL de manifest: JSON cu versiune și link APK sau API-ul GitHub';
+  String get updateSourceSubtitle => 'Implicit: centrul de actualizări Aila, cu GitHub Releases ca rezervă; sau orice URL de manifest (JSON cu versiune și link APK)';
 
   @override
-  String get updateSourceDefault => 'GitHub Releases (implicit)';
+  String get updateSourceDefault => 'Centrul de actualizări Aila (implicit)';
 
   @override
   String get updateSourceDialogTitle => 'URL manifest actualizare';

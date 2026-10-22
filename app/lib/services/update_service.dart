@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -15,16 +16,23 @@ class AppUpdate {
   const AppUpdate({
     required this.version,
     required this.notes,
+    this.versionCode,
     this.downloadUrl,
     this.releasePageUrl,
     this.sizeBytes,
+    this.sha256,
   });
 
-  /// Версия из манифеста как есть (например `v5.9.0` или `5.9.0`).
+  /// Версия из манифеста как есть (например `v5.9.0`, `5.9.0` или
+  /// `versionName` манифеста Aila).
   final String version;
 
-  /// Примечания к релизу (тело GitHub-релиза или поле `notes` манифеста).
+  /// Примечания к релизу (поле `notes` манифеста или тело GitHub-релиза).
   final String notes;
+
+  /// Целочисленный номер сборки (versionCode манифеста Aila). Когда он есть,
+  /// сравнение идёт по нему — строгий порядок сборок Android.
+  final int? versionCode;
 
   /// Прямая ссылка на APK (может отсутствовать — тогда только страница релиза).
   final String? downloadUrl;
@@ -35,6 +43,9 @@ class AppUpdate {
   /// Размер APK в байтах (если известен).
   final int? sizeBytes;
 
+  /// Ожидаемый sha256 APK из манифеста (сверяется после скачивания).
+  final String? sha256;
+
   /// Имя файла, под которым APK сохраняется при скачивании.
   String get suggestedFileName {
     final cleanVersion = version.trim().replaceFirst(RegExp(r'^[vV]'), '');
@@ -42,20 +53,51 @@ class AppUpdate {
   }
 }
 
+/// Итог проверки обновлений — три состояния вместо «null обо всём»:
+/// ручная проверка должна честно отличать «актуальна» от «не удалось проверить».
+enum UpdateCheckStatus { updateAvailable, upToDate, sourceUnavailable }
+
+@immutable
+class UpdateCheckResult {
+  const UpdateCheckResult(this.status, [this.update]);
+
+  final UpdateCheckStatus status;
+
+  /// Доступное обновление; не `null` только при [UpdateCheckStatus.updateAvailable].
+  final AppUpdate? update;
+}
+
 /// Проверка и скачивание обновлений приложения.
 ///
-/// Источник по умолчанию — GitHub Releases репозитория проекта
-/// (`/releases/latest`). Понимает и простой JSON-манифест
-/// `{"version": "...", "notes": "...", "downloadUrl": "..."}` — адрес можно
-/// переопределить ключом настроек `updateManifestUrl`. Пока репозиторий
-/// приватный (GitHub отвечает 404 анонимно), проверка тихо завершается
-/// «нет обновлений» — механизм заработает без правок приложения, как только
-/// появятся публичные релизы или будет указан другой манифест.
+/// Источник по умолчанию — **центр обновлений Aila** (семейный канал,
+/// манифест v2: `versionName`/`versionCode`/`notes`/`assets[].sha256`,
+/// см. D:\Scheduler\UPDATES-SYSTEM.md). Если канал недоступен (нет сети,
+/// сервер спит, кривой JSON) — автоматический резерв: GitHub Releases
+/// репозитория. Ответившие источники авторитетны: если манифест прочитан,
+/// его вердикт («есть обновление» или «у вас последняя версия») финален,
+/// резерв на «нет обновления» не переключается.
+///
+/// Настройка «Источник обновлений» (`updateManifestUrl`) сохранена: ручной
+/// URL проверяется первым и приоритетнее дефолта; при его недоступности
+/// срабатывает обычная цепочка Aila → GitHub. Любая недоступность всех
+/// источников — это [UpdateCheckStatus.sourceUnavailable], а не ошибка:
+/// тихий фоновый автоЧек не должен показывать пользователю «ошибку» за то,
+/// что сервер обновлений временно спит.
 class UpdateService {
   UpdateService({http.Client? client}) : _client = client ?? http.Client();
 
-  static const String defaultManifestUrl =
+  /// Семейный канал Aila — источник правды о версиях (манифест v2).
+  static const String ailaManifestUrl =
+      'https://aila.skillcoin.pp.ua/updates/lingotune/manifest.json';
+
+  /// Резерв на случай недоступности Aila (приватный репозиторий отвечает
+  /// 404 анонимно — тогда проверка честно говорит «не удалось проверить»).
+  static const String githubReleasesUrl =
       'https://api.github.com/repos/summonss7/LingoTune/releases/latest';
+
+  @Deprecated('Источник по умолчанию — центр Aila (ailaManifestUrl), '
+      'GitHub — резерв (githubReleasesUrl); карточка lingotune-006')
+  static const String defaultManifestUrl = ailaManifestUrl;
 
   static const String _prefManifestUrl = 'updateManifestUrl';
   static const String _prefLastCheckMs = 'lastUpdateCheckMs';
@@ -82,20 +124,9 @@ class UpdateService {
         _prefLastCheckMs, DateTime.now().millisecondsSinceEpoch);
   }
 
-  Future<Uri> _manifestUri() async {
-    final custom = await getCustomManifestUrl();
-    if (custom != null) {
-      final parsed = Uri.tryParse(custom);
-      if (parsed != null && (parsed.isScheme('http') || parsed.isScheme('https'))) {
-        return parsed;
-      }
-    }
-    return Uri.parse(defaultManifestUrl);
-  }
-
   /// Пользовательский адрес манифеста (вариант «б» из пожелания: любой
-  /// источник — JSON `{"version","downloadUrl",...}` или GitHub API).
-  /// `null` — адрес не задан, используется [defaultManifestUrl].
+  /// источник — JSON `{"version","downloadUrl",...}`, манифест v2 или GitHub
+  /// API). `null` — адрес не задан, используется цепочка по умолчанию.
   static Future<String?> getCustomManifestUrl() async {
     final prefs = await SharedPreferences.getInstance();
     final custom = prefs.getString(_prefManifestUrl);
@@ -104,7 +135,7 @@ class UpdateService {
   }
 
   /// Сохраняет пользовательский адрес манифеста; `null`/пустая строка —
-  /// сброс на источник по умолчанию (GitHub Releases).
+  /// сброс на источник по умолчанию (центр Aila, GitHub — резерв).
   static Future<void> setCustomManifestUrl(String? url) async {
     final prefs = await SharedPreferences.getInstance();
     final value = url?.trim() ?? '';
@@ -115,40 +146,135 @@ class UpdateService {
     }
   }
 
-  /// Проверяет манифест; возвращает [AppUpdate], только если там версия новее
-  /// текущей ([AppInfo.version]). Любая недоступность источника (нет сети,
-  /// приватный репозиторий, кривой JSON) — это `null`, а не ошибка: тихий
-  /// фоновый автоЧек не должен показывать пользователю «ошибку» за то,
-  /// что хозяин ещё не выложил релиз.
-  Future<AppUpdate?> checkForUpdate() async {
-    final uri = await _manifestUri();
-    final response = await _client.get(uri, headers: const {
-      'Accept': 'application/vnd.github+json',
-    }).timeout(const Duration(seconds: 20));
+  /// Проверяет источники по цепочке «ручной URL → Aila → GitHub» и возвращает
+  /// [UpdateCheckResult]. Первый ОТВЕТИВШИЙ источник решает: новее —
+  /// [UpdateCheckStatus.updateAvailable] с описанием, не новее —
+  /// [UpdateCheckStatus.upToDate]. Ответили ошибкой все —
+  /// [UpdateCheckStatus.sourceUnavailable] (не исключение: автоЧек тихий).
+  Future<UpdateCheckResult> checkForUpdate() async {
+    final custom = await getCustomManifestUrl();
+    final customUri = _parseHttpUri(custom);
+    final urls = <Uri>[
+      if (customUri != null) customUri,
+      Uri.parse(ailaManifestUrl),
+      Uri.parse(githubReleasesUrl),
+    ];
 
-    if (response.statusCode != 200) {
-      debugPrint('ℹ UpdateService: manifest ${uri} → HTTP ${response.statusCode}');
-      return null;
+    var anyResponded = false;
+    for (var i = 0; i < urls.length; i++) {
+      final uri = urls[i];
+      // Ручной URL может совпадать с дефолтным — не дёргаем дважды.
+      final seen = urls.sublist(0, i).map((u) => u.toString());
+      if (seen.contains(uri.toString())) continue;
+
+      final data = await _fetchManifest(uri);
+      if (data == null) continue; // источник недоступен — идём к резерву
+      anyResponded = true;
+
+      final update = _parseManifest(data);
+      if (update == null) continue; // нечитаемый формат — тоже «не ответил»
+
+      return isNewerThanLocal(update)
+          ? UpdateCheckResult(UpdateCheckStatus.updateAvailable, update)
+          : const UpdateCheckResult(UpdateCheckStatus.upToDate);
     }
 
-    final Object? data;
-    try {
-      data = jsonDecode(utf8.decode(response.bodyBytes));
-    } catch (e) {
-      debugPrint('✗ UpdateService: manifest parse error: $e');
-      return null;
+    if (!anyResponded) {
+      debugPrint('ℹ UpdateService: все источники обновлений недоступны');
     }
-    if (data is! Map) return null;
-
-    final update = _parseManifest(data);
-    if (update == null) return null;
-
-    return isNewer(update.version, AppInfo.version) ? update : null;
+    return const UpdateCheckResult(UpdateCheckStatus.sourceUnavailable);
   }
 
-  /// GitHub-релиз или простой манифест — единая модель.
+  static Uri? _parseHttpUri(String? raw) {
+    if (raw == null) return null;
+    final parsed = Uri.tryParse(raw);
+    if (parsed != null &&
+        (parsed.isScheme('http') || parsed.isScheme('https'))) {
+      return parsed;
+    }
+    return null;
+  }
+
+  /// GET + декод JSON; `null` — любая недоступность (нет сети, таймаут,
+  /// не-200, битый JSON, не-объект).
+  Future<Map<dynamic, dynamic>?> _fetchManifest(Uri uri) async {
+    try {
+      final response = await _client.get(uri, headers: const {
+        'Accept': 'application/vnd.github+json',
+      }).timeout(const Duration(seconds: 20));
+
+      if (response.statusCode != 200) {
+        debugPrint('ℹ UpdateService: manifest ${uri} → HTTP ${response.statusCode}');
+        return null;
+      }
+
+      final Object? data;
+      try {
+        data = jsonDecode(utf8.decode(response.bodyBytes));
+      } catch (e) {
+        debugPrint('✗ UpdateService: manifest parse error (${uri}): $e');
+        return null;
+      }
+      if (data is! Map) return null;
+      return data;
+    } catch (e) {
+      debugPrint('ℹ UpdateService: manifest unreachable (${uri}): $e');
+      return null;
+    }
+  }
+
+  /// Манифест Aila v2, GitHub-релиз или простой манифест — единая модель.
   static AppUpdate? _parseManifest(Map<dynamic, dynamic> data) {
-    if (data.containsKey('tag_name') || data.containsKey('assets')) {
+    if (data.containsKey('versionName') || data.containsKey('versionCode')) {
+      // Манифест v2 центра обновлений Aila (UPDATES-SYSTEM.md §4).
+      final versionName = (data['versionName'] as String?)?.trim() ?? '';
+      final rawCode = data['versionCode'];
+      final code = rawCode is int ? rawCode : int.tryParse('$rawCode');
+      if (versionName.isEmpty && code == null) return null;
+
+      // Из assets клиент сам выбирает свой артефакт (правило центра):
+      // LingoTune — универсальный APK, при нескольких берём release-сборку.
+      String? apkUrl;
+      int? apkSize;
+      String? sha256;
+      final assets = data['assets'];
+      if (assets is List) {
+        Map<dynamic, dynamic>? best;
+        for (final asset in assets) {
+          if (asset is! Map) continue;
+          final name = (asset['name'] as String?)?.toLowerCase() ?? '';
+          final url = (asset['url'] as String?)?.toLowerCase() ?? '';
+          if (!name.endsWith('.apk') && !url.endsWith('.apk')) continue;
+          final kind = (asset['kind'] as String?)?.toLowerCase() ?? '';
+          final bestKind =
+              best == null ? '' : (best['kind'] as String?)?.toLowerCase() ?? '';
+          if (best == null || (kind == 'release' && bestKind != 'release')) {
+            best = asset;
+          }
+        }
+        if (best != null) {
+          apkUrl = best['url'] as String?;
+          final size = best['size'];
+          if (size is int) apkSize = size;
+          sha256 = (best['sha256'] as String?)?.trim();
+          if (sha256 != null && sha256.isEmpty) sha256 = null;
+        }
+        // Нет APK-asset (например, web-релиз) — манифест бесполезен этому
+        // клиенту: проверка уходит в резерв, а не предлагает пустое обновление.
+        if (apkUrl == null || apkUrl.isEmpty) return null;
+      }
+
+      return AppUpdate(
+        version: versionName,
+        notes: (data['notes'] as String?) ?? '',
+        versionCode: code,
+        downloadUrl: apkUrl,
+        sizeBytes: apkSize,
+        sha256: sha256,
+      );
+    }
+
+    if (data.containsKey('tag_name')) {
       // GitHub Releases: /releases/latest
       final tag = (data['tag_name'] as String?)?.trim() ?? '';
       if (tag.isEmpty) return null;
@@ -199,9 +325,10 @@ class UpdateService {
     return null;
   }
 
-  /// Скачивает APK в каталог приложения (updates/). Возвращает путь к файлу
-  /// или `null` при ошибке/отмене. [onProgress] получает байты получено/всего
-  /// (всего может быть неизвестен — тогда 0).
+  /// Скачивает APK в каталог приложения (updates/), сверяет sha256 (если
+  /// манифест его сообщил) и возвращает путь к файлу или `null` при
+  /// ошибке/отмене/несовпадении хэша. [onProgress] получает байты
+  /// получено/всего (всего может быть неизвестен — тогда 0).
   Future<String?> downloadUpdate(
     AppUpdate update, {
     void Function(int received, int total)? onProgress,
@@ -254,6 +381,25 @@ class UpdateService {
         await sink.close();
       }
 
+      // Целостность: sha256 обязателен в манифесте v2 (UPDATES-SYSTEM.md §5);
+      // старые источники без хэша пропускают сверку.
+      final expected = update.sha256;
+      if (expected != null && expected.isNotEmpty) {
+        final actual = await _sha256OfFile(File(filePath));
+        if (actual.toUpperCase() != expected.toUpperCase()) {
+          debugPrint('✗ UpdateService: sha256 mismatch — файл повреждён, '
+              'ожидался ${expected.substring(0, 12)}…, получен '
+              '${actual.substring(0, 12)}…');
+          try {
+            await File(filePath).delete();
+          } catch (e) {
+            debugPrint('ℹ UpdateService: cleanup after mismatch failed: $e');
+          }
+          return null;
+        }
+        debugPrint('✓ UpdateService: sha256 verified ($received bytes)');
+      }
+
       debugPrint('✓ UpdateService: downloaded $filePath ($received bytes)');
       return filePath;
     } catch (e) {
@@ -262,9 +408,25 @@ class UpdateService {
     }
   }
 
+  static Future<String> _sha256OfFile(File file) async {
+    final digest = await crypto.sha256.bind(file.openRead()).first;
+    return digest.toString();
+  }
+
   /// Просит прервать текущее скачивание (кнопка «Отмена» в диалоге).
   void cancelDownload() {
     _cancelRequested = true;
+  }
+
+  /// `true`, если `candidate` строго новее установленной версии:
+  /// при наличии versionCode (манифест v2) — по нему, иначе по строке версии.
+  static bool isNewerThanLocal(AppUpdate candidate) {
+    final code = candidate.versionCode;
+    if (code != null) {
+      final localCode = int.tryParse(AppInfo.versionCode);
+      if (localCode != null) return code > localCode;
+    }
+    return isNewer(candidate.version, AppInfo.version);
   }
 
   /// `true`, если `candidate` строго новее `current`.

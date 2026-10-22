@@ -43,6 +43,9 @@ temp/*
 
 # Build artifacts
 builds/*.apk
+
+# Секрет publish-скрипта: GitHub PAT для резервного канала релизов
+.github_release_token
 builds/*.aab
 !builds/.gitkeep
 

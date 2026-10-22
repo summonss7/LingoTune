@@ -2295,7 +2295,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get openReleasePage => 'Release-Seite öffnen';
 
   @override
-  String get noUpdatesAvailable => 'Sie haben die neueste Version';
+  String get noUpdatesAvailable => '✓ Sie haben die neueste Version';
 
   @override
   String get updateCheckFailed => 'Update-Prüfung fehlgeschlagen';
@@ -2310,10 +2310,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get updateSource => 'Update-Quelle';
 
   @override
-  String get updateSourceSubtitle => 'Beliebige Manifest-URL: JSON mit Version und APK-Link oder die GitHub-API';
+  String get updateSourceSubtitle => 'Standard: Aila-Updatezentrum mit GitHub Releases als Reserve; oder eine beliebige Manifest-URL (JSON mit Version und APK-Link)';
 
   @override
-  String get updateSourceDefault => 'GitHub Releases (Standard)';
+  String get updateSourceDefault => 'Aila-Updatezentrum (Standard)';
 
   @override
   String get updateSourceDialogTitle => 'Update-Manifest-URL';

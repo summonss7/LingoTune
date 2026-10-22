@@ -4328,7 +4328,7 @@ abstract class AppLocalizations {
   /// No description provided for @noUpdatesAvailable.
   ///
   /// In en, this message translates to:
-  /// **'You have the latest version'**
+  /// **'✓ You have the latest version'**
   String get noUpdatesAvailable;
 
   /// No description provided for @updateCheckFailed.
@@ -4358,13 +4358,13 @@ abstract class AppLocalizations {
   /// No description provided for @updateSourceSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Any manifest URL: JSON with a version and an APK link, or the GitHub API'**
+  /// **'Default: Aila update center, GitHub Releases as backup; or set any manifest URL (JSON with a version and an APK link)'**
   String get updateSourceSubtitle;
 
   /// No description provided for @updateSourceDefault.
   ///
   /// In en, this message translates to:
-  /// **'GitHub Releases (default)'**
+  /// **'Aila update center (default)'**
   String get updateSourceDefault;
 
   /// No description provided for @updateSourceDialogTitle.

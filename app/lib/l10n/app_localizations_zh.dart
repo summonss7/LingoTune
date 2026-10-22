@@ -2295,7 +2295,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get openReleasePage => '打开发布页面';
 
   @override
-  String get noUpdatesAvailable => '您已是最新版本';
+  String get noUpdatesAvailable => '✓ 您已是最新版本';
 
   @override
   String get updateCheckFailed => '检查更新失败';
@@ -2310,10 +2310,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateSource => '更新来源';
 
   @override
-  String get updateSourceSubtitle => '任意清单地址：含版本和 APK 链接的 JSON 或 GitHub API';
+  String get updateSourceSubtitle => '默认使用 Aila 更新中心，GitHub Releases 作为备用；也可设置任意清单地址（含版本和 APK 链接的 JSON）';
 
   @override
-  String get updateSourceDefault => 'GitHub Releases（默认）';
+  String get updateSourceDefault => 'Aila 更新中心（默认）';
 
   @override
   String get updateSourceDialogTitle => '更新清单地址';

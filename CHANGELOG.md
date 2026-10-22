@@ -219,3 +219,57 @@
 - Коммит: de0ec15 «Release LingoTune v5.10.0: real-spectrum equalizer (beat/rhythm),
   lyrics↔equalizer toggle, custom update manifest URL (card lingotune-005)» (40 файлов) —
   запушен в github.com/summonss7/LingoTune (main).
+
+## 23.10.2026, 01:16 — Release v5.11.0: источник обновлений — центр Aila (манифест v2), GitHub — резерв; «✓ последняя версия», sha256, publish-скрипт (карточка lingotune-006)
+
+- Начало работы: 23.10.2026, 00:51
+- Окончание работы: 23.10.2026, 01:16
+- Что сделано:
+  - Бэкап до изменений: backups/LingoTune_backup_2026-10-23_00-51.zip.
+  - UpdateService: источник по умолчанию — манифест v2 центра Aila
+    (https://aila.skillcoin.pp.ua/updates/lingotune/manifest.json), GitHub Releases —
+    автоматический резерв при недоступности канала; ответивший источник авторитетен
+    («нет обновления» не переключает на резерв). Настройка «Источник обновлений»
+    сохранена: ручной URL проверяется первым, при его недоступности — обычная цепочка.
+  - Поддержка формата v2 (versionName/versionCode/notes/assets[{url,size,sha256,kind}]);
+    сравнение Android по versionCode (у GitHub — по тегу); web-манифест без APK-asset
+    для клиента «не существует».
+  - downloadUpdate: сверка sha256 скачанного APK с манифестом (пакет crypto);
+    несовпадение — файл удалён, скачивание считается неудачным.
+  - UpdateCheckResult (updateAvailable/upToDate/sourceUnavailable): ручная проверка
+    теперь честно различает «✓ У вас последняя версия» (зелёный) и «не удалось
+    проверить» (красный) — раньше недоступность маскировалась под «обновлений нет».
+  - publish_release.ps1 (новый, корень): публикация релиза в ОБА канала одной
+    командой — центр Aila (node D:\Scheduler\tools\publish-update.cjs lingotune,
+    манифест v2 + sha256 + история + «📦 Обновление» в «Хабе ИИ») и GitHub Releases
+    (REST API, тег v<версия> + APK-asset; токен GITHUB_TOKEN или .github_release_token,
+    файл в .gitignore; нет токена — канал пропущен с предупреждением). -DryRun,
+    -SkipAila/-SkipGitHub, -Version/-Code из pubspec/build.gradle по умолчанию.
+  - l10n: значения 3 ключей × 11 локалей (noUpdatesAvailable с «✓», updateSourceDefault
+    «Центр обновлений Aila (по умолчанию)», updateSourceSubtitle); ключей 716, gen-l10n.
+  - Версия 5.10.0 → 5.11.0, versionCode 242 → 243 (pubspec, app_info +2 features,
+    build.gradle archivesBaseName); CHANGELOG_v5.11.0.dart (релизный ритуал),
+    docs/CHANGELOG.md (запись v5.11.0), README.md (версия + пункт обновлений),
+    AGENTS.md (версия, раздел «Auto-update», publish-скрипт).
+- Как проверено:
+  - flutter test: 71/71 passed, из них 8 новых в test/update_service_test.dart
+    (v2-манифест: больший/равный versionCode, versionName==но code>, фолбэк Aila→GitHub
+    по 404 и по исключению, sourceUnavailable, ручной URL приоритетнее и его фолбэк,
+    sha256: совпал/не совпал/нет хэша);
+  - flutter analyze: 231 info/warning — ровно базовый уровень, 0 ошибок;
+  - publish_release.ps1 -DryRun: план публикации 5.10.0 (code 242) в Aila корректен,
+    GitHub-канал честно сообщает об отсутствии токена;
+  - сборка release: build_apk_v5.7.4.ps1 → BUILD SUCCESSFUL → builds\LingoTune-v5.11.0.apk
+    (225 630 673 байт); сборка debug: builds\LingoTune-v5.11.0-debug.apk (322 139 531 байт);
+  - живая проверка канала: publish_release.ps1 опубликовал v5.11.0 (code 243) в центр Aila
+    («Опубликовано ✔ lingotune 5.11.0, 1 файл, sha256 f29d2e22…»); публичный манифест
+    …/updates/lingotune/manifest.json отдаёт v2 (versionName 5.11.0, versionCode 243,
+    assets[0].sha256) — sha256 манифеста побайтово совпал с локальным APK; НАСТОЯЩИЙ
+    манифест (живые байты канала) прогнан через настоящий UpdateService → вердикт
+    «у вас последняя версия» (upToDate, 243 == 243); сценарий «подменённый манифест с
+    большей versionCode → баннер/скачивание» покрыт юнит-тестами (code 999, sha256
+    совпал/не совпал). Прямой HTTP-запрос из Dart-теста на этой машине блокирует
+    локальный web-фильтр (пустой 400 всем Dart-процессам, curl проходит) — полевую
+    проверку на телефоне (баннер + установка) выполнит Артём при установке
+    LingoTune-v5.11.0.apk.
+- Коммит: 421427b «Release LingoTune v5.11.0: Aila update center as default source (manifest v2), GitHub fallback, explicit latest-version status, sha256 verification, dual-channel publish script (card lingotune-006)» (39 файлов) — запушен в github.com/summonss7/LingoTune (main).

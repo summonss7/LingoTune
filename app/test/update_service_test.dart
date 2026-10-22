@@ -1,9 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lingotune/services/update_service.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -42,108 +46,365 @@ void main() {
     });
   });
 
-  group('checkForUpdate', () {
-    test('GitHub release with newer tag and APK asset', () async {
+  group('checkForUpdate — цепочка Aila → GitHub (lingotune-006)', () {
+    test('манифест v2 Aila с большим versionCode → обновление', () async {
       final body = jsonEncode({
-        'tag_name': 'v99.0.0',
-        'body': 'Big release\n- feature',
-        'html_url': 'https://github.com/summonss7/LingoTune/releases/tag/v99.0.0',
+        'project': 'lingotune',
+        'versionName': '5.12.0',
+        'versionCode': 250,
+        'notes': 'Семейный канал',
         'assets': [
           {
-            'name': 'README.txt',
-            'browser_download_url': 'https://example.com/readme.txt',
-            'size': 10,
-          },
+            'name': 'LingoTune-v5.12.0-release.apk',
+            'url':
+                'https://aila.skillcoin.pp.ua/updates/lingotune/LingoTune-v5.12.0-release.apk',
+            'size': 12345678,
+            'sha256': 'aa11' * 16,
+            'kind': 'release',
+          }
+        ],
+      });
+      final seen = <Uri>[];
+      final service = UpdateService(
+        client: MockClient((request) async {
+          seen.add(request.url);
+          if (request.url.host == 'aila.skillcoin.pp.ua') {
+            return http.Response(body, 200,
+                headers: {'content-type': 'application/json; charset=utf-8'});
+          }
+          return http.Response('Not Found', 404);
+        }),
+      );
+
+      final result = await service.checkForUpdate();
+
+      expect(result.status, UpdateCheckStatus.updateAvailable);
+      expect(result.update!.version, '5.12.0');
+      expect(result.update!.versionCode, 250);
+      expect(result.update!.sha256, 'aa11' * 16);
+      expect(result.update!.sizeBytes, 12345678);
+      // Ответивший источник авторитетен — GitHub не дёргается.
+      expect(seen.length, 1);
+      expect(seen.single.host, 'aila.skillcoin.pp.ua');
+    });
+
+    test('равный versionCode → «у вас последняя версия», без резерва',
+        () async {
+      final body = jsonEncode({
+        'project': 'lingotune',
+        'versionName': '5.11.0',
+        'versionCode': 243,
+        'assets': [
+          {
+            'name': 'LingoTune-v5.11.0-release.apk',
+            'url': 'https://aila.skillcoin.pp.ua/updates/lingotune/LingoTune-v5.11.0-release.apk',
+            'sha256': 'ab' * 32,
+            'kind': 'release',
+          }
+        ],
+      });
+      final seen = <Uri>[];
+      final service = UpdateService(
+        client: MockClient((request) async {
+          seen.add(request.url);
+          if (request.url.host == 'aila.skillcoin.pp.ua') {
+            return http.Response(body, 200);
+          }
+          return http.Response('Not Found', 404);
+        }),
+      );
+
+      final result = await service.checkForUpdate();
+
+      expect(result.status, UpdateCheckStatus.upToDate);
+      expect(result.update, isNull);
+      expect(seen.length, 1);
+    });
+
+    test('одинаковое versionName, но больше versionCode → обновление', () async {
+      // Правило центра (UPDATES-SYSTEM.md §4): Android сверяет по versionCode.
+      final body = jsonEncode({
+        'versionName': '5.11.0',
+        'versionCode': 999,
+        'assets': [
+          {'name': 'a.apk', 'url': 'https://aila.skillcoin.pp.ua/a.apk'}
+        ],
+      });
+      final service = UpdateService(
+        client: MockClient((request) async {
+          if (request.url.host == 'aila.skillcoin.pp.ua') {
+            return http.Response(body, 200);
+          }
+          return http.Response('Not Found', 404);
+        }),
+      );
+
+      final result = await service.checkForUpdate();
+
+      expect(result.status, UpdateCheckStatus.updateAvailable);
+      expect(result.update!.version, '5.11.0');
+      expect(result.update!.versionCode, 999);
+    });
+
+    test('Aila недоступна (404) → GitHub-резерв с новым тегом', () async {
+      final githubBody = jsonEncode({
+        'tag_name': 'v99.0.0',
+        'body': 'Big release',
+        'html_url':
+            'https://github.com/summonss7/LingoTune/releases/tag/v99.0.0',
+        'assets': [
           {
             'name': 'LingoTune-v99.0.0.apk',
             'browser_download_url':
                 'https://github.com/summonss7/LingoTune/releases/download/v99.0.0/LingoTune-v99.0.0.apk',
             'size': 12345678,
-          },
+          }
         ],
       });
+      final seen = <Uri>[];
       final service = UpdateService(
-        client: MockClient((request) async => http.Response(body, 200)),
+        client: MockClient((request) async {
+          seen.add(request.url);
+          if (request.url.host == 'api.github.com') {
+            return http.Response(githubBody, 200);
+          }
+          return http.Response('Not Found', 404);
+        }),
       );
 
-      final update = await service.checkForUpdate();
+      final result = await service.checkForUpdate();
 
-      expect(update, isNotNull);
-      expect(update!.version, 'v99.0.0');
-      expect(update.notes, contains('Big release'));
-      expect(
-        update.downloadUrl,
-        contains('LingoTune-v99.0.0.apk'),
-      );
-      expect(update.sizeBytes, 12345678);
-      expect(update.releasePageUrl, contains('releases/tag'));
+      expect(result.status, UpdateCheckStatus.updateAvailable);
+      expect(result.update!.version, 'v99.0.0');
+      expect(result.update!.notes, contains('Big release'));
+      expect(result.update!.downloadUrl, contains('LingoTune-v99.0.0.apk'));
+      expect(result.update!.sizeBytes, 12345678);
+      expect(result.update!.releasePageUrl, contains('releases/tag'));
+      // Сначала канал Aila, потом резерв.
+      expect(seen.length, 2);
+      expect(seen.first.host, 'aila.skillcoin.pp.ua');
+      expect(seen.last.host, 'api.github.com');
     });
 
-    test('GitHub release with same version returns null', () async {
-      final body = jsonEncode({
-        'tag_name': '5.8.12',
-        'assets': [],
-      });
+    test('Aila кидает исключением → GitHub-резерв', () async {
+      final githubBody = jsonEncode({'tag_name': 'v99.0.0', 'assets': []});
       final service = UpdateService(
-        client: MockClient((request) async => http.Response(body, 200)),
+        client: MockClient((request) async {
+          if (request.url.host == 'api.github.com') {
+            return http.Response(githubBody, 200);
+          }
+          throw const SocketException('network down');
+        }),
       );
 
-      expect(await service.checkForUpdate(), isNull);
+      final result = await service.checkForUpdate();
+
+      expect(result.status, UpdateCheckStatus.updateAvailable);
+      expect(result.update!.version, 'v99.0.0');
     });
 
-    test('simple JSON manifest is supported', () async {
+    test('все источники недоступны → sourceUnavailable, не исключение',
+        () async {
+      final service = UpdateService(
+        client: MockClient(
+          (request) async => http.Response('Not Found', 404),
+        ),
+      );
+
+      final result = await service.checkForUpdate();
+
+      expect(result.status, UpdateCheckStatus.sourceUnavailable);
+    });
+
+    test('битый JSON во всех источниках → sourceUnavailable', () async {
+      final service = UpdateService(
+        client: MockClient(
+          (request) async => http.Response('{oops', 200),
+        ),
+      );
+
+      final result = await service.checkForUpdate();
+
+      expect(result.status, UpdateCheckStatus.sourceUnavailable);
+    });
+
+    test('GitHub с той же версией → upToDate', () async {
+      final githubBody = jsonEncode({'tag_name': '5.11.0', 'assets': []});
+      final service = UpdateService(
+        client: MockClient((request) async {
+          if (request.url.host == 'api.github.com') {
+            return http.Response(githubBody, 200);
+          }
+          return http.Response('Not Found', 404);
+        }),
+      );
+
+      final result = await service.checkForUpdate();
+
+      expect(result.status, UpdateCheckStatus.upToDate);
+    });
+
+    test('ручной URL приоритетнее дефолта и не дёргает его', () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+          'updateManifestUrl', 'https://example.com/manifest.json');
+
       final body = jsonEncode({
-        'version': '99.1.0',
+        'version': '99.2.0',
         'notes': 'manual host',
         'downloadUrl': 'https://example.com/app.apk',
         'size': 2048,
         'url': 'https://example.com/changelog',
       });
+      final seen = <Uri>[];
       final service = UpdateService(
-        client: MockClient((request) async => http.Response(body, 200)),
+        client: MockClient((request) async {
+          seen.add(request.url);
+          return http.Response(body, 200);
+        }),
       );
 
-      final update = await service.checkForUpdate();
+      final result = await service.checkForUpdate();
 
-      expect(update, isNotNull);
-      expect(update!.version, '99.1.0');
-      expect(update.downloadUrl, 'https://example.com/app.apk');
-      expect(update.sizeBytes, 2048);
-      expect(update.releasePageUrl, 'https://example.com/changelog');
+      expect(seen.single.toString(), 'https://example.com/manifest.json');
+      expect(result.status, UpdateCheckStatus.updateAvailable);
+      expect(result.update!.version, '99.2.0');
+      expect(result.update!.downloadUrl, 'https://example.com/app.apk');
+      expect(result.update!.sizeBytes, 2048);
+      expect(result.update!.releasePageUrl, 'https://example.com/changelog');
     });
 
-    test('private repo (404) means no update, not an error', () async {
-      final service = UpdateService(
-        client: MockClient((request) async => http.Response('Not Found', 404)),
-      );
-      expect(await service.checkForUpdate(), isNull);
-    });
-
-    test('broken JSON means no update', () async {
-      final service = UpdateService(
-        client: MockClient((request) async => http.Response('{oops', 200)),
-      );
-      expect(await service.checkForUpdate(), isNull);
-    });
-
-    test('manifest URL can be overridden via preferences', () async {
+    test('ручной URL недоступен → обычная цепочка Aila → GitHub', () async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
           'updateManifestUrl', 'https://example.com/manifest.json');
 
-      final seenUrls = <Uri>[];
+      final ailaBody = jsonEncode({
+        'versionName': '5.12.0',
+        'versionCode': 250,
+        'assets': [
+          {'name': 'a.apk', 'url': 'https://aila.skillcoin.pp.ua/a.apk'}
+        ],
+      });
+      final seen = <Uri>[];
       final service = UpdateService(
         client: MockClient((request) async {
-          seenUrls.add(request.url);
-          return http.Response(
-              jsonEncode({'version': '99.2.0'}), 200);
+          seen.add(request.url);
+          if (request.url.host == 'aila.skillcoin.pp.ua') {
+            return http.Response(ailaBody, 200);
+          }
+          return http.Response('Not Found', 404);
         }),
       );
 
-      final update = await service.checkForUpdate();
+      final result = await service.checkForUpdate();
 
-      expect(seenUrls.single.toString(), 'https://example.com/manifest.json');
-      expect(update!.version, '99.2.0');
+      expect(seen.first.host, 'example.com');
+      expect(result.status, UpdateCheckStatus.updateAvailable);
+      expect(result.update!.versionCode, 250);
+    });
+
+    test('манифест v2 без APK-asset — нечитаемый для APK-обновления', () async {
+      // web-релиз (assets: []) не должен предлагать установку.
+      final body = jsonEncode({
+        'versionName': '9.9.9',
+        'versionCode': 999,
+        'web': true,
+        'assets': [],
+      });
+      final service = UpdateService(
+        client: MockClient((request) async {
+          if (request.url.host == 'aila.skillcoin.pp.ua') {
+            return http.Response(body, 200);
+          }
+          return http.Response('Not Found', 404);
+        }),
+      );
+
+      final result = await service.checkForUpdate();
+
+      // Версия новее, но качать нечего — источник считается бесполезным,
+      // проверка уходит в резерв (GitHub) и там честно «недоступен».
+      expect(result.status, UpdateCheckStatus.sourceUnavailable);
+    });
+  });
+
+  group('downloadUpdate — сверка sha256 (lingotune-006)', () {
+    late Directory tempDir;
+    late PathProviderPlatform originalPlatform;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('lingotune_updates_test');
+      // path_provider кидает UnsupportedError вне Android — подменяем
+      // платформенную реализацию на временную папку.
+      originalPlatform = PathProviderPlatform.instance;
+      PathProviderPlatform.instance = _FakePathProvider(tempDir.path);
+    });
+
+    tearDown(() {
+      PathProviderPlatform.instance = originalPlatform;
+      tempDir.deleteSync(recursive: true);
+    });
+
+    UpdateService serving(Uint8List bytes) => UpdateService(
+          client: MockClient.streaming(
+            (request, bodyStream) async => http.StreamedResponse(
+              Stream.value(bytes),
+              200,
+              contentLength: bytes.length,
+            ),
+          ),
+        );
+
+    test('совпавший sha256 → файл сохранён и возвращён путь', () async {
+      final bytes = Uint8List.fromList(List.filled(4096, 7));
+      final digest = crypto.sha256.convert(bytes).toString();
+      final update = AppUpdate(
+        version: '5.12.0',
+        notes: '',
+        versionCode: 250,
+        downloadUrl: 'https://aila.skillcoin.pp.ua/a.apk',
+        sizeBytes: bytes.length,
+        sha256: digest,
+      );
+      final service = serving(bytes);
+
+      final path = await service.downloadUpdate(update);
+
+      expect(path, isNotNull);
+      expect(File(path!).readAsBytesSync(), bytes);
+    });
+
+    test('несовпавший sha256 → null и файл удалён', () async {
+      final bytes = Uint8List.fromList(List.filled(2048, 1));
+      final update = AppUpdate(
+        version: '5.12.0',
+        notes: '',
+        versionCode: 250,
+        downloadUrl: 'https://aila.skillcoin.pp.ua/a.apk',
+        sha256: 'deadbeef' * 8,
+      );
+      final service = serving(bytes);
+
+      final path = await service.downloadUpdate(update);
+
+      expect(path, isNull);
+      expect(tempDir.listSync(recursive: true).whereType<File>(), isEmpty);
+    });
+
+    test('источник без sha256 — сверка пропускается', () async {
+      final bytes = Uint8List.fromList([1, 2, 3]);
+      final update = AppUpdate(
+        version: '5.9.0',
+        notes: '',
+        downloadUrl: 'https://example.com/old.apk',
+      );
+      final service = serving(bytes);
+
+      final path = await service.downloadUpdate(update);
+
+      expect(path, isNotNull);
+      expect(File(path!).lengthSync(), bytes.length);
     });
   });
 
@@ -178,4 +439,17 @@ void main() {
       expect(await UpdateService.autoCheckDue(), isFalse);
     });
   });
+}
+
+/// path_provider без Android: все каталоги — во временную папку теста.
+class _FakePathProvider extends PathProviderPlatform {
+  _FakePathProvider(this.root);
+
+  final String root;
+
+  @override
+  Future<String?> getExternalStoragePath() async => root;
+
+  @override
+  Future<String?> getApplicationDocumentsPath() async => root;
 }

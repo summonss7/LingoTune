@@ -12,6 +12,12 @@ import 'update_service.dart';
 /// ручная проверка из настроек, диалог «доступна новая версия», скачивание
 /// с прогрессом и запуск установки APK.
 ///
+/// Источник по умолчанию — центр обновлений Aila (манифест v2), GitHub
+/// Releases — автоматический резерв (lingotune-006). Ручная проверка честно
+/// различает три исхода: обновление (диалог), «✓ У вас последняя версия»
+/// (зелёный SnackBar) и «не удалось проверить» (красный SnackBar — все
+/// источники молчат).
+///
 /// Все диалоги — через rootNavigator, чтобы всплывать поверх любого экрана
 /// (включая плеер). Семантические цвета SnackBar (зелёный/красный) — как во
 /// всём приложении.
@@ -25,16 +31,17 @@ class UpdateFlow {
     await UpdateService.markAutoCheckDone();
 
     final service = UpdateService();
-    AppUpdate? update;
+    UpdateCheckResult result;
     try {
-      update = await service.checkForUpdate();
+      result = await service.checkForUpdate();
     } catch (e) {
       debugPrint('ℹ UpdateFlow: auto check failed: $e');
       return;
     }
     if (!context.mounted) return;
-    if (update != null) {
-      _showUpdateDialog(context, update, service);
+    if (result.status == UpdateCheckStatus.updateAvailable &&
+        result.update != null) {
+      _showUpdateDialog(context, result.update!, service);
     }
   }
 
@@ -49,10 +56,11 @@ class UpdateFlow {
     );
 
     final service = UpdateService();
-    AppUpdate? update;
     String? error;
+    var result =
+        const UpdateCheckResult(UpdateCheckStatus.sourceUnavailable);
     try {
-      update = await service.checkForUpdate();
+      result = await service.checkForUpdate();
     } catch (e) {
       error = e.toString();
       debugPrint('✗ UpdateFlow: manual check failed: $e');
@@ -60,15 +68,21 @@ class UpdateFlow {
     messenger.hideCurrentSnackBar();
 
     if (!context.mounted) return;
-    if (update != null) {
-      _showUpdateDialog(context, update, service);
+    if (error == null &&
+        result.status == UpdateCheckStatus.updateAvailable &&
+        result.update != null) {
+      _showUpdateDialog(context, result.update!, service);
       return;
     }
+    // upToDate — явная зелёная строка (просил Артём); sourceUnavailable и
+    // исключение — честное «не удалось проверить», а не молчаливое «нет».
+    final failed = error != null ||
+        result.status == UpdateCheckStatus.sourceUnavailable;
     messenger.showSnackBar(
       SnackBar(
         content:
-            Text(error != null ? l10n.updateCheckFailed : l10n.noUpdatesAvailable),
-        backgroundColor: error != null ? Colors.red : Colors.green,
+            Text(failed ? l10n.updateCheckFailed : l10n.noUpdatesAvailable),
+        backgroundColor: failed ? Colors.red : Colors.green,
       ),
     );
   }

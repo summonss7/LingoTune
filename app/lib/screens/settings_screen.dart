@@ -39,8 +39,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _audioServiceInitialized = false;
   String _audioServiceError = '';
 
-  /// Пользовательский адрес манифеста обновлений (null — GitHub по
-  /// умолчанию). Загружается в [_initAsync], правится диалогом
+  /// Пользовательский адрес манифеста обновлений (null — центр Aila по
+  /// умолчанию, GitHub — резерв). Загружается в [_initAsync], правится диалогом
   /// [_showUpdateSourceDialog] (v5.10.0).
   String? _customManifestUrl;
 
