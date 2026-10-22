@@ -272,4 +272,4 @@
     локальный web-фильтр (пустой 400 всем Dart-процессам, curl проходит) — полевую
     проверку на телефоне (баннер + установка) выполнит Артём при установке
     LingoTune-v5.11.0.apk.
-- Коммит: 421427b «Release LingoTune v5.11.0: Aila update center as default source (manifest v2), GitHub fallback, explicit latest-version status, sha256 verification, dual-channel publish script (card lingotune-006)» (39 файлов) — запушен в github.com/summonss7/LingoTune (main).
+- Коммит: 3ec874e «Release LingoTune v5.11.0: Aila update center as default source (manifest v2), GitHub fallback, explicit latest-version status, sha256 verification, dual-channel publish script (card lingotune-006)» (39 файлов) — запушен в github.com/summonss7/LingoTune (main).
