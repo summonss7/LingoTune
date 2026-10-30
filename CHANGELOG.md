@@ -313,6 +313,8 @@
     builds\LingoTune-v5.12.0.apk (225 663 441 байт); сборка debug:
     builds\LingoTune-v5.12.0-debug.apk;
   - publish_release.ps1: релиз опубликован в центр обновлений Aila
-    (манифест v2, sha256, уведомление в «Хаб ИИ»), GitHub Releases —
-    резервным каналом (тег v5.12.0, APK-asset).
-- Коммит: <HASH> «Release LingoTune v5.12.0: A-B section repeat — loop any part of a song (button A–B, slider segment highlight, background-safe; card lingotune-007)» — запушен в github.com/summonss7/LingoTune (main).
+    («Опубликовано ✔ lingotune 5.12.0», sha256 492568bf45d7…, манифест
+    https://aila.skillcoin.pp.ua/updates/lingotune/manifest.json, уведомление
+    в «Хаб ИИ»); GitHub Releases — резервный канал пропущен: токен не задан
+    (нет GITHUB_TOKEN/.github_release_token; Aila — источник правды).
+- Коммит: 2bed4f5 «Release LingoTune v5.12.0: A-B section repeat — loop any part of a song (button A–B, slider segment highlight, background-safe; card lingotune-007)» — запушен в github.com/summonss7/LingoTune (main).
