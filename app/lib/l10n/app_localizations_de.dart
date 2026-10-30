@@ -2335,4 +2335,28 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get showLyricsTooltip => 'Songtext anzeigen';
+
+  @override
+  String get abRepeatTooltipIdle => 'Ausschnitt wiederholen (A–B)';
+
+  @override
+  String get abRepeatTooltipWaitEnd => 'Tippe am Ende des Ausschnitts (B)';
+
+  @override
+  String get abRepeatTooltipActive => 'Ausschnitt-Wiederholung läuft — zum Ausschalten tippen';
+
+  @override
+  String get abRepeatStartSet => 'Ausschnitt-Anfang A:';
+
+  @override
+  String get abRepeatActiveOn => 'Ausschnitt-Wiederholung an:';
+
+  @override
+  String get abRepeatCleared => 'Ausschnitt-Wiederholung aus';
+
+  @override
+  String get abRepeatTooShort => 'Ausschnitt zu kurz — spule mindestens 1 s weiter';
+
+  @override
+  String get abRepeatUnavailableStudy => 'Nicht verfügbar, solange der Lernmodus aktiv ist';
 }

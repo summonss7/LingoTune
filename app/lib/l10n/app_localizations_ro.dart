@@ -2335,4 +2335,28 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get showLyricsTooltip => 'Afișează versurile';
+
+  @override
+  String get abRepeatTooltipIdle => 'Repetă fragmentul (A–B)';
+
+  @override
+  String get abRepeatTooltipWaitEnd => 'Atinge la sfârșitul fragmentului (B)';
+
+  @override
+  String get abRepeatTooltipActive => 'Repetarea fragmentului e activă — atinge pentru a opri';
+
+  @override
+  String get abRepeatStartSet => 'Începutul fragmentului A:';
+
+  @override
+  String get abRepeatActiveOn => 'Repetarea fragmentului activată:';
+
+  @override
+  String get abRepeatCleared => 'Repetarea fragmentului oprită';
+
+  @override
+  String get abRepeatTooShort => 'Fragment prea scurt — înaintează cel puțin 1 s';
+
+  @override
+  String get abRepeatUnavailableStudy => 'Indisponibil cu modul de studiu activ';
 }

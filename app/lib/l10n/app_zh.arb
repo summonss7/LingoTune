@@ -747,5 +747,13 @@
       "updateSourceSaved": "更新来源已保存",
       "updateSourceInvalid": "请输入有效的 http(s) 网址",
       "showEqualizerTooltip": "显示均衡器代替歌词",
-      "showLyricsTooltip": "显示歌词"
+      "showLyricsTooltip": "显示歌词",
+      "abRepeatTooltipIdle": "重复片段 (A–B)",
+      "abRepeatTooltipWaitEnd": "在片段结尾 (B) 点击",
+      "abRepeatTooltipActive": "片段重复中 — 点击关闭",
+      "abRepeatStartSet": "片段起点 A：",
+      "abRepeatActiveOn": "片段重复已开启：",
+      "abRepeatCleared": "片段重复已关闭",
+      "abRepeatTooShort": "片段太短 — 请至少前进 1 秒",
+      "abRepeatUnavailableStudy": "学习模式激活时不可用"
 }

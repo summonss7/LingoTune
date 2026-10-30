@@ -4,9 +4,9 @@
 class AppInfo {
   static const String appName = 'LingoTune';
   static const String packageName = 'com.lingotune.app';
-  static const String version = '5.11.0';
+  static const String version = '5.12.0';
 
-  static const String versionCode = '243';
+  static const String versionCode = '244';
   static const String developerName = 'Z.AI GLM & Цимбалов Артем';
   static const String developerEmail = 'support@lingotune.com';
   static const String website = 'https://lingotune.app';
@@ -75,6 +75,7 @@ class AppInfo {
     '🔗 Custom update source: any manifest URL (JSON with version + APK link) instead of the default channel',
     '🛡️ GitHub Releases stays as an automatic backup channel; downloaded APKs are verified by sha256',
     '✓ Explicit "you have the latest version" confirmation on every update check',
+    '🔁 A–B section repeat: mark start and end on the player bar and loop just that part of the song (highlighted on the progress bar)',
   ];
 
   static const List<String> supportedLanguages = [

@@ -747,5 +747,13 @@
       "updateSourceSaved": "Источник обновлений сохранён",
       "updateSourceInvalid": "Введите корректный http(s)-адрес",
       "showEqualizerTooltip": "Показать эквалайзер вместо текста",
-      "showLyricsTooltip": "Показать текст песни"
+      "showLyricsTooltip": "Показать текст песни",
+      "abRepeatTooltipIdle": "Повтор отрезка (A–B)",
+      "abRepeatTooltipWaitEnd": "Нажмите в конце отрезка (B)",
+      "abRepeatTooltipActive": "Повтор отрезка идёт — нажмите, чтобы выключить",
+      "abRepeatStartSet": "Начало отрезка A:",
+      "abRepeatActiveOn": "Повтор отрезка включён:",
+      "abRepeatCleared": "Повтор отрезка выключен",
+      "abRepeatTooShort": "Отрезок слишком короткий — продвиньтесь хотя бы на 1 с",
+      "abRepeatUnavailableStudy": "Недоступно при активном режиме изучения"
 }

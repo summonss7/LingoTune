@@ -2335,4 +2335,28 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get showLyricsTooltip => 'عرض كلمات الأغنية';
+
+  @override
+  String get abRepeatTooltipIdle => 'تكرار مقطع (A–B)';
+
+  @override
+  String get abRepeatTooltipWaitEnd => 'انقر عند نهاية المقطع (B)';
+
+  @override
+  String get abRepeatTooltipActive => 'تكرار المقطع يعمل — انقر لإيقافه';
+
+  @override
+  String get abRepeatStartSet => 'بداية المقطع A:';
+
+  @override
+  String get abRepeatActiveOn => 'تم تشغيل تكرار المقطع:';
+
+  @override
+  String get abRepeatCleared => 'تم إيقاف تكرار المقطع';
+
+  @override
+  String get abRepeatTooShort => 'المقطع قصير جدًا — تقدّم ثانية واحدة على الأقل';
+
+  @override
+  String get abRepeatUnavailableStudy => 'غير متاح أثناء نشاط وضع التعلّم';
 }

@@ -4408,6 +4408,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show song lyrics'**
   String get showLyricsTooltip;
+
+  /// No description provided for @abRepeatTooltipIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat section (A–B)'**
+  String get abRepeatTooltipIdle;
+
+  /// No description provided for @abRepeatTooltipWaitEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap at the end of the section (B)'**
+  String get abRepeatTooltipWaitEnd;
+
+  /// No description provided for @abRepeatTooltipActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Section repeat running — tap to turn off'**
+  String get abRepeatTooltipActive;
+
+  /// No description provided for @abRepeatStartSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Section start A:'**
+  String get abRepeatStartSet;
+
+  /// No description provided for @abRepeatActiveOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Section repeat on:'**
+  String get abRepeatActiveOn;
+
+  /// No description provided for @abRepeatCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Section repeat off'**
+  String get abRepeatCleared;
+
+  /// No description provided for @abRepeatTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Section too short — play at least 1 s further'**
+  String get abRepeatTooShort;
+
+  /// No description provided for @abRepeatUnavailableStudy.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available while study mode is active'**
+  String get abRepeatUnavailableStudy;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -273,3 +273,46 @@
     проверку на телефоне (баннер + установка) выполнит Артём при установке
     LingoTune-v5.11.0.apk.
 - Коммит: 3ec874e «Release LingoTune v5.11.0: Aila update center as default source (manifest v2), GitHub fallback, explicit latest-version status, sha256 verification, dual-channel publish script (card lingotune-006)» (39 файлов) — запушен в github.com/summonss7/LingoTune (main).
+
+## 30.10.2026, 21:35 — Release v5.12.0: повтор отрезка A–B — крути выбранный кусок песни, а не всю (карточка lingotune-007)
+
+- Начало работы: 30.10.2026, 20:05
+- Окончание работы: 30.10.2026, 21:35
+- Что сделано (пожелание Артёма от 30.10.2026: «повторять песню кусочком —
+  не всю песню по кругу, а какую-то часть песни»):
+  - новая кнопка «A–B» на панели плеера (справа от кнопки режимов повтора):
+    тап — точка A, тап — точка B (отрезок играет по кругу), тап — сброс,
+    долгое нажатие — сброс из любого состояния; каждое действие — SnackBar
+    со временем точки («Начало отрезка A: 0:12», «Повтор отрезка включён:
+    0:12 – 0:25»);
+  - отрезок подсвечивается на полосе прогресса (кастомный трекшейп слайдера
+    lib/widgets/ab_repeat_slider_track.dart: полоса A..B + метки краёв,
+    пока выставлена только A — метка начала);
+  - чистая логика — lib/services/ab_repeat_controller.dart (конечный автомат
+    idle → A → A..B-цикл; тап-B раньше A переезжает точкой A; минимум 1 с);
+  - enforcement цикла — в AudioService по ЧАСТОМУ потоку позиций
+    (createPositionStream, maxPeriod 80 мс, перелёт за B на слух незаметен),
+    прыжок сырым _player.seek(A) — работает и в фоне; окно 400 мс после
+    явного seek'а (скраб слайдера, ±10 с) цикл не срабатывает — не борется
+    с перетаскиванием ползунка; сброс при loadAudio (смена песни);
+  - при старте study-режима (кнопка / автостарт / рестарт после seek)
+    повторитель сбрасывается, кнопка гаснет — сегменты study и цикл
+    конфликтуют за seek;
+  - точки ставятся по LIVE player.position (wall-clock — тот же домен
+    времени, что у меток таймкодов, правило v5.8.4);
+  - l10n: 8 ключей × 11 локалей (724 ключа всего); версия 5.12.0/244
+    (pubspec, app_info.dart, build.gradle); README.md, AGENTS.md,
+    docs/CHANGELOG.md, CHANGELOG_v5.12.0.dart (релизный ритуал).
+- Как проверено:
+  - flutter test: 84/84 passed, из них 15 новых в
+    test/ab_repeat_controller_test.dart (фазы, границы ≥1 с, tooShort,
+    переезд A, сброс, shouldLoopBack до/на/после B, уведомления слушателей);
+  - flutter analyze: 0 ошибок, 231 info/warning — ровно базовый уровень
+    (новых предупреждений нет);
+  - сборка release: build_apk_v5.7.4.ps1 → BUILD SUCCESSFUL →
+    builds\LingoTune-v5.12.0.apk (225 663 441 байт); сборка debug:
+    builds\LingoTune-v5.12.0-debug.apk;
+  - publish_release.ps1: релиз опубликован в центр обновлений Aila
+    (манифест v2, sha256, уведомление в «Хаб ИИ»), GitHub Releases —
+    резервным каналом (тег v5.12.0, APK-asset).
+- Коммит: <HASH> «Release LingoTune v5.12.0: A-B section repeat — loop any part of a song (button A–B, slider segment highlight, background-safe; card lingotune-007)» — запушен в github.com/summonss7/LingoTune (main).

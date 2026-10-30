@@ -2335,4 +2335,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get showLyricsTooltip => 'Show song lyrics';
+
+  @override
+  String get abRepeatTooltipIdle => 'Repeat section (A–B)';
+
+  @override
+  String get abRepeatTooltipWaitEnd => 'Tap at the end of the section (B)';
+
+  @override
+  String get abRepeatTooltipActive => 'Section repeat running — tap to turn off';
+
+  @override
+  String get abRepeatStartSet => 'Section start A:';
+
+  @override
+  String get abRepeatActiveOn => 'Section repeat on:';
+
+  @override
+  String get abRepeatCleared => 'Section repeat off';
+
+  @override
+  String get abRepeatTooShort => 'Section too short — play at least 1 s further';
+
+  @override
+  String get abRepeatUnavailableStudy => 'Not available while study mode is active';
 }

@@ -4,6 +4,7 @@ import 'package:just_audio/just_audio.dart' hide LoopMode;
 import 'package:audio_service/audio_service.dart' as audio_pkg;
 import 'package:audio_session/audio_session.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'ab_repeat_controller.dart';
 import 'background_audio_handler.dart';
 import '../models/song.dart';
 import '../models/loop_mode.dart';
@@ -32,6 +33,20 @@ class AudioService extends ChangeNotifier {
   List<Song>? _currentPlaylist;
   Song? _currentSong;
   final ValueNotifier<String?> currentSongIdNotifier = ValueNotifier(null);
+
+  /// Повтор отрезка A–B (v5.12.0): точки ставит экран (кнопка на панели
+  /// плеера), цикл (позиция дошла до B → seek к A) исполняет [_enforceAbRepeat]
+  /// по отдельному частому потоку позиций — работает и в фоне, и без handler'а.
+  final AbRepeatController _abRepeat = AbRepeatController();
+  StreamSubscription? _abPositionSubscription;
+
+  /// Время последнего ЯВНОГО seek'а (слайдер / replay-10 / forward-10).
+  /// Пока окно [_abSeekGuardWindow] не истекло, цикл A–B не срабатывает —
+  /// иначе он боролся бы с перетаскиванием ползунка за точку B.
+  DateTime? _lastExplicitSeekAt;
+  static const _abSeekGuardWindow = Duration(milliseconds: 400);
+
+  AbRepeatController get abRepeat => _abRepeat;
 
   StreamSubscription? _playbackEventSubscription;
   StreamSubscription? _positionSubscription;
@@ -192,6 +207,53 @@ class AudioService extends ChangeNotifier {
       _isPlaying = state.playing;
       notifyListeners();
     });
+
+    // Отдельный ЧАСТЫЙ поток позиций для цикла A–B (maxPeriod 80 мс против
+    // ~200 мс у стандартного positionStream): перелёт за точку B на каждом
+    // круге остаётся незаметным для уха. Дешёво — сравнение двух Duration.
+    _abPositionSubscription = _player
+        .createPositionStream(
+      steps: 600,
+      minPeriod: const Duration(milliseconds: 20),
+      maxPeriod: const Duration(milliseconds: 80),
+    )
+        .listen(_enforceAbRepeat);
+  }
+
+  /// Исполняет цикл A–B: когда позиция дошла до B — прыжок назад к A.
+  /// Сырой `_player.seek` (не [seek]): собственный прыжок не должен
+  /// обновлять [_lastExplicitSeekAt] и идти через handler — позиция в
+  /// уведомлении синхронизируется его же positionStream-подпиской.
+  void _enforceAbRepeat(Duration position) {
+    if (!_abRepeat.isActive || !_player.playing) return;
+    final lastSeek = _lastExplicitSeekAt;
+    if (lastSeek != null &&
+        DateTime.now().difference(lastSeek) < _abSeekGuardWindow) {
+      return;
+    }
+    if (_abRepeat.shouldLoopBack(position)) {
+      final start = _abRepeat.start!;
+      debugPrint('🔁 AudioService: A-B repeat → seek back to '
+          '${start.inMilliseconds}ms (pos ${position.inMilliseconds}ms)');
+      _player.seek(start);
+    }
+  }
+
+  /// Тап по кнопке A–B: точка A → точка B (цикл включён) → сброс.
+  /// Берёт LIVE `_player.position` (wall-clock), а не кэш `_position`
+  /// из positionStream — тот отстаёт на интервал потока (~80–200 мс),
+  /// и точка ложилась бы раньше места, которое слышит пользователь.
+  AbMarkResult tapAbRepeat() {
+    final result = _abRepeat.tap(_player.position);
+    notifyListeners();
+    return result;
+  }
+
+  /// Сброс повтора отрезка (смена песни, старт study-режима).
+  void clearAbRepeat() {
+    if (!_abRepeat.isActive && _abRepeat.start == null) return;
+    _abRepeat.clear();
+    notifyListeners();
   }
 
   void _onSongCompleted() {
@@ -209,6 +271,9 @@ class AudioService extends ChangeNotifier {
   Future<void> loadAudio(String audioPath) async {
     try {
       debugPrint('=== AudioService: Loading audio: $audioPath ===');
+      // Повтор отрезка привязан к конкретной песне — при загрузке новой
+      // сбрасываем (точки A/B другой песни здесь бессмысленны).
+      clearAbRepeat();
       
       if (_backgroundHandler != null) {
         await _backgroundHandler!.loadSong(audioPath);
@@ -305,6 +370,7 @@ class AudioService extends ChangeNotifier {
   }
 
   Future<void> seek(Duration position) async {
+    _lastExplicitSeekAt = DateTime.now();
     try {
       if (_backgroundHandler != null) {
         await _backgroundHandler!.seek(position);
@@ -318,6 +384,7 @@ class AudioService extends ChangeNotifier {
   }
 
   Future<void> seekToPosition(double seconds) async {
+    _lastExplicitSeekAt = DateTime.now();
     try {
       final position = Duration(milliseconds: (seconds * 1000).toInt());
       if (_backgroundHandler != null) {
@@ -653,6 +720,8 @@ class AudioService extends ChangeNotifier {
     _positionSubscription?.cancel();
     _durationSubscription?.cancel();
     _playerStateSubscription?.cancel();
+    _abPositionSubscription?.cancel();
+    _abRepeat.dispose();
     _player.dispose();
     _backgroundHandler?.stop();
     currentSongIdNotifier.dispose();

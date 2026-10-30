@@ -747,5 +747,13 @@
       "updateSourceSaved": "تم حفظ مصدر التحديث",
       "updateSourceInvalid": "أدخل عنوان http(s) صحيحًا",
       "showEqualizerTooltip": "عرض المعادل بدلاً من الكلمات",
-      "showLyricsTooltip": "عرض كلمات الأغنية"
+      "showLyricsTooltip": "عرض كلمات الأغنية",
+      "abRepeatTooltipIdle": "تكرار مقطع (A–B)",
+      "abRepeatTooltipWaitEnd": "انقر عند نهاية المقطع (B)",
+      "abRepeatTooltipActive": "تكرار المقطع يعمل — انقر لإيقافه",
+      "abRepeatStartSet": "بداية المقطع A:",
+      "abRepeatActiveOn": "تم تشغيل تكرار المقطع:",
+      "abRepeatCleared": "تم إيقاف تكرار المقطع",
+      "abRepeatTooShort": "المقطع قصير جدًا — تقدّم ثانية واحدة على الأقل",
+      "abRepeatUnavailableStudy": "غير متاح أثناء نشاط وضع التعلّم"
 }

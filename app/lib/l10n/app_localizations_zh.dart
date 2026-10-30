@@ -2335,4 +2335,28 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get showLyricsTooltip => '显示歌词';
+
+  @override
+  String get abRepeatTooltipIdle => '重复片段 (A–B)';
+
+  @override
+  String get abRepeatTooltipWaitEnd => '在片段结尾 (B) 点击';
+
+  @override
+  String get abRepeatTooltipActive => '片段重复中 — 点击关闭';
+
+  @override
+  String get abRepeatStartSet => '片段起点 A：';
+
+  @override
+  String get abRepeatActiveOn => '片段重复已开启：';
+
+  @override
+  String get abRepeatCleared => '片段重复已关闭';
+
+  @override
+  String get abRepeatTooShort => '片段太短 — 请至少前进 1 秒';
+
+  @override
+  String get abRepeatUnavailableStudy => '学习模式激活时不可用';
 }

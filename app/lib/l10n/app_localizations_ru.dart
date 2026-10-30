@@ -2335,4 +2335,28 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get showLyricsTooltip => 'Показать текст песни';
+
+  @override
+  String get abRepeatTooltipIdle => 'Повтор отрезка (A–B)';
+
+  @override
+  String get abRepeatTooltipWaitEnd => 'Нажмите в конце отрезка (B)';
+
+  @override
+  String get abRepeatTooltipActive => 'Повтор отрезка идёт — нажмите, чтобы выключить';
+
+  @override
+  String get abRepeatStartSet => 'Начало отрезка A:';
+
+  @override
+  String get abRepeatActiveOn => 'Повтор отрезка включён:';
+
+  @override
+  String get abRepeatCleared => 'Повтор отрезка выключен';
+
+  @override
+  String get abRepeatTooShort => 'Отрезок слишком короткий — продвиньтесь хотя бы на 1 с';
+
+  @override
+  String get abRepeatUnavailableStudy => 'Недоступно при активном режиме изучения';
 }

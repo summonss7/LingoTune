@@ -17,6 +17,7 @@ import '../models/translation.dart' show Translation;
 import '../models/loop_mode.dart';
 import '../models/playlist.dart';
 import '../services/audio_service.dart';
+import '../services/ab_repeat_controller.dart';
 import '../services/audio_mode_service.dart';
 import '../services/audio_position_corrector.dart';
 import '../services/lyrics_service.dart';
@@ -33,6 +34,7 @@ import '../services/tts_coordinator.dart';
 import '../services/tts/tts_engine.dart' show TtsSource;
 import '../widgets/lyric_line_widget.dart';
 import '../widgets/audio_equalizer_widget.dart';
+import '../widgets/ab_repeat_slider_track.dart';
 import '../widgets/settings/vertical_focus_offset_slider.dart';
 import 'translation_editor_screen.dart';
 import 'text_loader_dialog.dart';
@@ -79,6 +81,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   late Song _currentSong;
   bool _isShuffleEnabled = false;
   LoopMode _loopMode = LoopMode.off;
+  // Кэш состояния A–B для слушателя _onAudioServiceChanged (детект смены
+  // без сравнения с прошлым build'ом).
+  bool _abActiveLast = false;
+  bool _abMarkedLast = false;
   final Random _random = Random();
 
   /// Корректор позиции для подсветки строк (wall-clock интерполяция против
@@ -514,6 +520,54 @@ class _PlayerScreenState extends State<PlayerScreen>
     });
   }
 
+  /// Тап по кнопке повтора отрезка A–B (v5.12.0): A → B (цикл включён) →
+  /// сброс. Каждое действие подтверждается SnackBar'ом с временем точки,
+  /// чтобы можно было поставить A/B точно (не глядя на слайдер).
+  void _onAbRepeatTap() {
+    final result = widget.audioService.tapAbRepeat();
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final ab = widget.audioService.abRepeat;
+    String message;
+    switch (result) {
+      case AbMarkResult.startSet:
+        message =
+            '${l10n.abRepeatStartSet} ${_formatDuration(ab.start ?? Duration.zero)}';
+        break;
+      case AbMarkResult.endSet:
+        message =
+            '${l10n.abRepeatActiveOn} ${_formatDuration(ab.start ?? Duration.zero)} – ${_formatDuration(ab.end ?? Duration.zero)}';
+        break;
+      case AbMarkResult.tooShort:
+        message = l10n.abRepeatTooShort;
+        break;
+      case AbMarkResult.cleared:
+        message = l10n.abRepeatCleared;
+        break;
+    }
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  /// Долгое нажатие кнопки A–B — сброс повторителя из любого состояния
+  /// (например, когда выставлена только A и нужно начать разметку заново).
+  void _onAbRepeatLongPress() {
+    widget.audioService.clearAbRepeat();
+    if (!mounted) return;
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.abRepeatCleared),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   /// Синхронизация локальных копий loop/shuffle с [AudioService]. Режим можно
   /// переключить с экрана блокировки (notification) — без этого слушателя
   /// кнопки и логика next/prev/study-completion работали бы с устаревшим
@@ -529,7 +583,14 @@ class _PlayerScreenState extends State<PlayerScreen>
       _globalShuffleQueue = null;
       _globalShufflePos = -1;
     }
-    if (newLoop != _loopMode || newShuffle != _isShuffleEnabled) {
+    // Состояние A–B (например, сброс при смене песни в loadAudio) — кнопка
+    // и подсветка слайдера должны отразить его без ожидания стрима позиции.
+    final ab = widget.audioService.abRepeat;
+    final abChanged =
+        ab.isActive != _abActiveLast || (ab.start != null) != _abMarkedLast;
+    if (newLoop != _loopMode || newShuffle != _isShuffleEnabled || abChanged) {
+      _abActiveLast = ab.isActive;
+      _abMarkedLast = ab.start != null;
       setState(() {
         _loopMode = newLoop;
         _isShuffleEnabled = newShuffle;
@@ -902,6 +963,9 @@ class _PlayerScreenState extends State<PlayerScreen>
       return;
     }
     if (!await _ensureTtsReady(fromUser: true)) return;
+    // Study-сегменты и цикл A–B конфликтуют за seek плеера — при старте
+    // study повторитель отрезка выключаем (кнопка на время сессии гаснет).
+    widget.audioService.clearAbRepeat();
     final started = await _studyModeService.start();
     if (started && mounted) {
       final l10n = AppLocalizations.of(context)!;
@@ -932,6 +996,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (_studyModeService.isActive) return;
     debugPrint('▶ Study mode persisted ON — auto-starting on player init');
     await _ensureTtsReady(fromUser: false);
+    widget.audioService.clearAbRepeat();
     await _studyModeService.start();
     if (mounted) setState(() {});
   }
@@ -992,6 +1057,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     debugPrint('▶ Study mode persist — restarting after song switch/seek');
     await _ensureTtsReady(fromUser: false);
+    widget.audioService.clearAbRepeat();
     final started = await _studyModeService.start();
     _studyEvt('restart: start() -> $started; '
         'isActive=${_studyModeService.isActive} '
@@ -2974,6 +3040,56 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
+  /// Кнопка повтора отрезка A–B (v5.12.0): тап — точка A, тап — точка B
+  /// (цикл), тап — сброс; долгое нажатие — сброс из любого состояния.
+  /// Стиль повторяет кнопку loop: активное состояние подсвечено
+  /// контейнером primaryContainer + рамкой. В study-режиме выключена —
+  /// сегменты study и цикл отрезка конфликтуют за seek.
+  Widget _buildAbRepeatButton(bool isLandscape, {double iconSize = 32.0}) {
+    final ab = widget.audioService.abRepeat;
+    final localizations = AppLocalizations.of(context)!;
+    final active = ab.isActive;
+    final startMarked = ab.start != null && !active;
+    final highlighted = active || startMarked;
+    final accent = Theme.of(context).colorScheme.primary;
+
+    final label = active ? 'A–B' : (startMarked ? 'A–' : 'A–B');
+    final tooltip = active
+        ? localizations.abRepeatTooltipActive
+        : startMarked
+            ? localizations.abRepeatTooltipWaitEnd
+            : localizations.abRepeatTooltipIdle;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: highlighted
+            ? Theme.of(context).colorScheme.primaryContainer
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: highlighted ? Border.all(color: accent, width: 2) : null,
+      ),
+      child: IconButton(
+        icon: Text(
+          label,
+          style: TextStyle(
+            fontSize: (iconSize * 0.42).clamp(9.0, 14.0),
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+            color: highlighted ? accent : null,
+          ),
+        ),
+        onPressed:
+            _studyModeService.isActive ? null : _onAbRepeatTap,
+        onLongPress: _onAbRepeatLongPress,
+        tooltip: _studyModeService.isActive
+            ? localizations.abRepeatUnavailableStudy
+            : tooltip,
+        iconSize: iconSize,
+        padding: const EdgeInsets.all(4.0),
+      ),
+    );
+  }
+
   void _showSpeedDialog() {
     final speeds = [0.5, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 2.0];
     final l10n = AppLocalizations.of(context)!;
@@ -4120,23 +4236,36 @@ class _PlayerScreenState extends State<PlayerScreen>
                         final valueMs = position.inMilliseconds
                             .toDouble()
                             .clamp(0.0, maxMs);
-                        return Slider(
-                          value: valueMs,
-                          max: maxMs,
-                          onChanged: (value) {
-                            if (_studyModeService.isActive) {
-                              _studyModeService.stop();
-                            }
-                            widget.audioService
-                                .seek(Duration(milliseconds: value.toInt()));
-                          },
-                          onChangeEnd: (_) {
-                            // Resume study mode from the new position if it was
-                            // persisted as enabled (small delay so the seek
-                            // position settles before start() reads it).
-                            _restartStudyIfNeeded(
-                                delay: const Duration(milliseconds: 250));
-                          },
+                        // Повтор отрезка A–B: подсветка сегмента на дорожке
+                        // (SliderTheme обёрнут всегда — при пустом A–B
+                        // трекшейс ведёт себя как стандартный).
+                        final ab = widget.audioService.abRepeat;
+                        return SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackShape: AbRepeatSliderTrackShape(
+                              segmentStart: ab.start,
+                              segmentEnd: ab.end,
+                              duration: duration,
+                            ),
+                          ),
+                          child: Slider(
+                            value: valueMs,
+                            max: maxMs,
+                            onChanged: (value) {
+                              if (_studyModeService.isActive) {
+                                _studyModeService.stop();
+                              }
+                              widget.audioService
+                                  .seek(Duration(milliseconds: value.toInt()));
+                            },
+                            onChangeEnd: (_) {
+                              // Resume study mode from the new position if it was
+                              // persisted as enabled (small delay so the seek
+                              // position settles before start() reads it).
+                              _restartStudyIfNeeded(
+                                  delay: const Duration(milliseconds: 250));
+                            },
+                          ),
                         );
                       },
                     );
@@ -4224,7 +4353,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     final baseIconSize = isLandscape ? 24.0 : 32.0;
                     final baseFabSize = 56.0;
                     final baseSpacing = isLandscape ? 8.0 : 16.0;
-                    final buttonCount = 7;
+                    final buttonCount = 8; // 7 кнопок + FAB (v5.12.0: +A–B)
                     final fabVisualSize = baseFabSize;
                     final totalSpacing = baseSpacing * 2;
                     final totalButtonWidth = buttonCount * (baseIconSize + 16) +
@@ -4385,6 +4514,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                               padding: const EdgeInsets.all(4.0),
                             ),
                             _buildLoopButton(isLandscape, iconSize: iconSize),
+                            _buildAbRepeatButton(isLandscape,
+                                iconSize: iconSize),
                           ],
                         );
                       },

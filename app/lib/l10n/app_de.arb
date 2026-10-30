@@ -747,5 +747,13 @@
       "updateSourceSaved": "Update-Quelle gespeichert",
       "updateSourceInvalid": "Gültige http(s)-Adresse eingeben",
       "showEqualizerTooltip": "Equalizer statt Songtext anzeigen",
-      "showLyricsTooltip": "Songtext anzeigen"
+      "showLyricsTooltip": "Songtext anzeigen",
+      "abRepeatTooltipIdle": "Ausschnitt wiederholen (A–B)",
+      "abRepeatTooltipWaitEnd": "Tippe am Ende des Ausschnitts (B)",
+      "abRepeatTooltipActive": "Ausschnitt-Wiederholung läuft — zum Ausschalten tippen",
+      "abRepeatStartSet": "Ausschnitt-Anfang A:",
+      "abRepeatActiveOn": "Ausschnitt-Wiederholung an:",
+      "abRepeatCleared": "Ausschnitt-Wiederholung aus",
+      "abRepeatTooShort": "Ausschnitt zu kurz — spule mindestens 1 s weiter",
+      "abRepeatUnavailableStudy": "Nicht verfügbar, solange der Lernmodus aktiv ist"
 }

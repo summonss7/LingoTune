@@ -747,5 +747,13 @@
       "updateSourceSaved": "Fonte de atualização salva",
       "updateSourceInvalid": "Insira um URL http(s) válido",
       "showEqualizerTooltip": "Mostrar equalizador em vez da letra",
-      "showLyricsTooltip": "Mostrar a letra"
+      "showLyricsTooltip": "Mostrar a letra",
+      "abRepeatTooltipIdle": "Repetir trecho (A–B)",
+      "abRepeatTooltipWaitEnd": "Toque no fim do trecho (B)",
+      "abRepeatTooltipActive": "Repetição do trecho ativa — toque para desativar",
+      "abRepeatStartSet": "Início do trecho A:",
+      "abRepeatActiveOn": "Repetição do trecho ativada:",
+      "abRepeatCleared": "Repetição do trecho desativada",
+      "abRepeatTooShort": "Trecho curto demais — avance pelo menos 1 s",
+      "abRepeatUnavailableStudy": "Indisponível com o modo de estudo ativo"
 }

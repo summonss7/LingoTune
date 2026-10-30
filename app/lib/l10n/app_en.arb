@@ -749,5 +749,13 @@
       "updateSourceSaved": "Update source saved",
       "updateSourceInvalid": "Enter a valid http(s) URL",
       "showEqualizerTooltip": "Show equalizer instead of lyrics",
-      "showLyricsTooltip": "Show song lyrics"
+      "showLyricsTooltip": "Show song lyrics",
+      "abRepeatTooltipIdle": "Repeat section (A–B)",
+      "abRepeatTooltipWaitEnd": "Tap at the end of the section (B)",
+      "abRepeatTooltipActive": "Section repeat running — tap to turn off",
+      "abRepeatStartSet": "Section start A:",
+      "abRepeatActiveOn": "Section repeat on:",
+      "abRepeatCleared": "Section repeat off",
+      "abRepeatTooShort": "Section too short — play at least 1 s further",
+      "abRepeatUnavailableStudy": "Not available while study mode is active"
 }

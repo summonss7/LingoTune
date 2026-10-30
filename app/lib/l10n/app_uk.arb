@@ -747,5 +747,13 @@
       "updateSourceSaved": "Джерело оновлень збережено",
       "updateSourceInvalid": "Введіть коректну http(s)-адресу",
       "showEqualizerTooltip": "Показати еквалайзер замість тексту",
-      "showLyricsTooltip": "Показати текст пісні"
+      "showLyricsTooltip": "Показати текст пісні",
+      "abRepeatTooltipIdle": "Повтор відрізка (A–B)",
+      "abRepeatTooltipWaitEnd": "Натисніть в кінці відрізка (B)",
+      "abRepeatTooltipActive": "Повтор відрізка триває — натисніть, щоб вимкнути",
+      "abRepeatStartSet": "Початок відрізка A:",
+      "abRepeatActiveOn": "Повтор відрізка увімкнено:",
+      "abRepeatCleared": "Повтор відрізка вимкнено",
+      "abRepeatTooShort": "Відрізок занадто короткий — просуньтеся хоча б на 1 с",
+      "abRepeatUnavailableStudy": "Недоступно під час активного режиму вивчення"
 }

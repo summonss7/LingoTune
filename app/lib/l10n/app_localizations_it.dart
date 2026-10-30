@@ -2335,4 +2335,28 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get showLyricsTooltip => 'Mostra il testo';
+
+  @override
+  String get abRepeatTooltipIdle => 'Ripeti pezzo (A–B)';
+
+  @override
+  String get abRepeatTooltipWaitEnd => 'Tocca alla fine del pezzo (B)';
+
+  @override
+  String get abRepeatTooltipActive => 'Ripetizione del pezzo attiva — tocca per disattivare';
+
+  @override
+  String get abRepeatStartSet => 'Inizio del pezzo A:';
+
+  @override
+  String get abRepeatActiveOn => 'Ripetizione del pezzo attivata:';
+
+  @override
+  String get abRepeatCleared => 'Ripetizione del pezzo disattivata';
+
+  @override
+  String get abRepeatTooShort => 'Pezzo troppo corto — avanza di almeno 1 s';
+
+  @override
+  String get abRepeatUnavailableStudy => 'Non disponibile con la modalità studio attiva';
 }

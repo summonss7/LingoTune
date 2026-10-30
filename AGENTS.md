@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.11.0** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.12.0** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -366,6 +366,18 @@ void main() {
   not repeated immediately, reshuffled each cycle; the queue itself becomes
   `_activePlaybackList` so indices/prev/notification stay consistent. Without shuffle,
   `allPlaylists` remains sequential (folder by folder, `_playNextFromAllPlaylists`).
+- **A–B section repeat** (v5.12.0, `AbRepeatController` + `AbRepeatSliderTrackShape`):
+  tap the «A–B» player-bar button to mark start A, second tap marks end B —
+  the segment loops; third tap / long-press clears. `AudioService` owns the
+  controller and enforces the loop on a FINE position stream
+  (`createPositionStream` maxPeriod 80 ms) with a raw `_player.seek(A)` —
+  works in background, survives no-handler mode. A 400 ms guard after any
+  EXPLICIT seek (slider scrub, replay/forward-10) keeps the loop from
+  fighting the user's drag. Cleared on `loadAudio` (song change) and on
+  study-mode start (segments and the loop would fight over seeks); the
+  button is disabled while a study session is active. Marks use the LIVE
+  `player.position` (same time-domain rule as timestamp marks). Pure logic
+  is unit-tested in `test/ab_repeat_controller_test.dart`.
 - **Track completion**: `AudioService.onSongComplete` (fired on `processingState == completed`)
   is guarded while study mode is active — advancement then depends on study's own completion
   detector. A completion watchdog in `PlayerScreen` (`_armCompletionWatchdog`) breaks the
@@ -680,7 +692,7 @@ Run `flutter pub get` after modifying `app/pubspec.yaml`
 
 - **models/**: Data models (Song, Playlist, Translation, LyricLine, LoopMode, GenerationResult, TranslationRequest)
 - **services/**: Business logic
-  - **Audio**: `AudioService`, `BackgroundAudioHandler`, `AudioPositionCorrector`
+  - **Audio**: `AudioService`, `BackgroundAudioHandler`, `AudioPositionCorrector`, `AbRepeatController` (A–B section repeat, v5.12.0)
   - **Data**: `DatabaseService` (sqflite singleton), `LyricsService`, `TranslationService`, `PlaylistService`, `SongImportService`, `FolderImportService`, `FolderConfigService`, `ExportImportService`, `CoverArtService`
   - **AI / API**: `DeepSeekApiService`, `TranslationApiService`, `LyricsApiService`, `LyricsGeneratorService`
   - **Study mode**: `StudyModeService` (line-by-line translation playback coordinator)
@@ -693,11 +705,11 @@ Run `flutter pub get` after modifying `app/pubspec.yaml`
   - **Visualizer**: `AudioVisualizerService` (native FFT → equalizer bars, v5.10.0)
 - **screens/**: UI screens (SongLibraryScreen, PlayerScreen, PlaylistScreen, PlaylistSongsScreen, SettingsScreen, LyricGeneratorDialog, TextLoaderDialog, TranslationEditorScreen, VoicePackagesScreen, CarCalibrationScreen)
 - **screens/helpers/**: Helper classes for complex screens (SongImportHelper, PlayerImportHelper, PlayerPlaylistHelper, PlayerTranslationHelper, SongTranslationLoader, CoverArtHelper, PlaylistImportHelper)
-- **widgets/**: Reusable components (SongListTile, EmptyLibraryWidget, MiniPlayerWidget, LyricLineWidget, AudioEqualizerWidget, GenerationOptionsWidget, GenerationProgressWidget, LibraryManagerWidget, BatchSelectionWidget, LoadingWidget, LyricsSearchDialog, SongSortWidget, SelectionModeActions) + `widgets/settings/` (ApiSettingsTile, TextSettingsSection, DefaultAutoScrollFocusOffsetControl)
+- **widgets/**: Reusable components (SongListTile, EmptyLibraryWidget, MiniPlayerWidget, LyricLineWidget, AudioEqualizerWidget, GenerationOptionsWidget, GenerationProgressWidget, LibraryManagerWidget, BatchSelectionWidget, LoadingWidget, LyricsSearchDialog, SongSortWidget, SelectionModeActions, AbRepeatSliderTrackShape (A–B highlight on the position slider, v5.12.0) + `widgets/settings/` (ApiSettingsTile, TextSettingsSection, DefaultAutoScrollFocusOffsetControl)
 - **theme/**: Amethyst gradient skin — `AppGradients` ThemeExtension, `AmethystPalette`, context helpers (`isAmethystSkin`, `appBarColor`, `amethystCardDecoration`)
 - **utils/**: Utility functions (SnackBarHelper, LrcFormatter, LanguageHelpers, TtsEngineHelper, Fft, LyricColors — palette + presets for custom lyric-line text colors, see `SettingsProvider.useCustomLyricColors` / `originalTextColor` / `translationTextColor`; since v5.8.10 also the ACTIVE line's highlight color `SettingsProvider.activeLineColor` — applied WITHOUT the `useCustomLyricColors` toggle, overriding the theme default incl. Amethyst's `activeLineHighlight`; since v5.10.0 `AudioBandProcessor` — spectrum frames → equalizer bars: attack/release, adaptive gain, beat detection, peak caps, unit-tested)
 - **constants/**: Constants and configuration (DeepSeekPrompts, GenerationConstants)
-- **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 716 keys each; ARB sources + generated `app_localizations*.dart`
+- **l10n/**: Localization — 11 locales (en, ru, de, es, fr, it, pt, ro, uk, zh, ar), 724 keys each; ARB sources + generated `app_localizations*.dart`
 
 <!-- ОБЩИЙ-СТАНДАРТ-КОДИРОВАНИЯ -->
 ## Общий стандарт программирования

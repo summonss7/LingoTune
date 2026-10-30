@@ -2335,4 +2335,28 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get showLyricsTooltip => 'Afficher les paroles';
+
+  @override
+  String get abRepeatTooltipIdle => 'Répéter un passage (A–B)';
+
+  @override
+  String get abRepeatTooltipWaitEnd => 'Touchez à la fin du passage (B)';
+
+  @override
+  String get abRepeatTooltipActive => 'Répétition du passage active — touchez pour désactiver';
+
+  @override
+  String get abRepeatStartSet => 'Début du passage A :';
+
+  @override
+  String get abRepeatActiveOn => 'Répétition du passage activée :';
+
+  @override
+  String get abRepeatCleared => 'Répétition du passage désactivée';
+
+  @override
+  String get abRepeatTooShort => 'Passage trop court — avance d\'au moins 1 s';
+
+  @override
+  String get abRepeatUnavailableStudy => 'Indisponible quand le mode étude est actif';
 }
