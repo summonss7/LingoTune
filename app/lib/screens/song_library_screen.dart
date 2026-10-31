@@ -115,6 +115,7 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
 
   Future<void> _loadSortPreference() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _sortBy = prefs.getString('librarySortBy') ?? 'default';
     });
@@ -128,6 +129,7 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
     try {
       final songs = await _databaseService.getAllSongs();
 
+      if (!mounted) return;
       setState(() {
         _songs = songs;
         _isLoading = false;
@@ -137,11 +139,12 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
       await _checkTimestampsValidity();
       _scrollToCurrentSong();
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
+      debugPrint('SongLibraryScreen: failed to load songs: $e');
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load songs: $e'),
@@ -180,6 +183,7 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
     for (final song in _songs) {
       if (song.hasLyrics && song.lrcPath != null) {
         final hasValidTimestamps = await LyricsService.hasValidTimestamps(song.lrcPath);
+        if (!mounted) return;
         if (hasValidTimestamps) {
           _buttonColorsCache[song.id] = Theme.of(context).colorScheme.primary;
         } else {
@@ -189,7 +193,7 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
         _buttonColorsCache[song.id] = Colors.deepOrange;
       }
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Color _getGeneratorButtonColor(Song song) {
