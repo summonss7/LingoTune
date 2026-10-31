@@ -89,8 +89,9 @@ promt.txt
 promt_done.txt
 backup.bat
 
-# Debug
-debug/
+# Debug (локальная черновая папка в корне; манифест app/android/app/src/debug/
+# — исходник, lingotune-009, не игнорировать)
+/debug/
 
 # Gradle
 app/android/.gradle/

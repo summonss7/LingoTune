@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Debug-only cleartext (lingotune-009, вариант Б): в debug-сборках
+         источник обновлений можно указывать и по http:// — LAN-тесты
+         (http://192.168.x.x/manifest.json). Release-сборка этот файл не
+         наследует: там незашифрованный трафик остаётся запрещён платформой,
+         диалог «Источник обновлений» принимает только https. -->
+    <application android:usesCleartextTraffic="true" />
+</manifest>

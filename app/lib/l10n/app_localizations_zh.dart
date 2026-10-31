@@ -2310,7 +2310,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateSource => '更新来源';
 
   @override
-  String get updateSourceSubtitle => '默认使用 Aila 更新中心，GitHub Releases 作为备用；也可设置任意清单地址（含版本和 APK 链接的 JSON）';
+  String get updateSourceSubtitle => '默认使用 Aila 更新中心，GitHub Releases 作为备用；也可设置自己的清单地址（含版本和 APK 链接的 JSON）——仅限 https';
 
   @override
   String get updateSourceDefault => 'Aila 更新中心（默认）';
@@ -2328,7 +2328,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateSourceSaved => '更新来源已保存';
 
   @override
-  String get updateSourceInvalid => '请输入有效的 http(s) 网址';
+  String get updateSourceInvalid => '请输入有效的 https 网址';
+
+  @override
+  String get updateSourceHttpBlocked => '不支持 HTTP 网址：应用会阻止未加密流量。请使用 https://… 地址';
 
   @override
   String get showEqualizerTooltip => '显示均衡器代替歌词';

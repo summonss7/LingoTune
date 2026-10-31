@@ -2310,7 +2310,7 @@ class AppLocalizationsUk extends AppLocalizations {
   String get updateSource => 'Джерело оновлень';
 
   @override
-  String get updateSourceSubtitle => 'Типово — центр оновлень Aila, GitHub Releases — запасний канал; тут можна вказати будь-яку адресу маніфесту (JSON з версією та посиланням на APK)';
+  String get updateSourceSubtitle => 'Типово — центр оновлень Aila, GitHub Releases — запасний канал; можна вказати свою адресу маніфесту (JSON з версією та посиланням на APK) — лише https';
 
   @override
   String get updateSourceDefault => 'Центр оновлень Aila (типово)';
@@ -2328,7 +2328,10 @@ class AppLocalizationsUk extends AppLocalizations {
   String get updateSourceSaved => 'Джерело оновлень збережено';
 
   @override
-  String get updateSourceInvalid => 'Введіть коректну http(s)-адресу';
+  String get updateSourceInvalid => 'Введіть коректну https-адресу';
+
+  @override
+  String get updateSourceHttpBlocked => 'HTTP-адреси не підтримуються: збірка блокує незашифрований трафік. Використовуйте https://…';
 
   @override
   String get showEqualizerTooltip => 'Показати еквалайзер замість тексту';

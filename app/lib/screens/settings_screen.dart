@@ -147,8 +147,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// Диалог адреса манифеста обновлений (вариант «б»): любой источник —
-  /// JSON `{"version","notes","downloadUrl","size","url"}` или GitHub API.
+  /// Диалог адреса манифеста обновлений (вариант «б»): свой источник —
+  /// JSON `{"version","notes","downloadUrl","size","url"}` или GitHub API,
+  /// только https — release-сборка режет cleartext (lingotune-009).
   /// Результат диалога: null — отмена, '' — сброс на дефолт, иначе — URL.
   Future<void> _showUpdateSourceDialog() async {
     final controller = TextEditingController(text: _customManifestUrl ?? '');
@@ -186,19 +187,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
             TextButton(
               onPressed: () {
                 final value = controller.text.trim();
-                final parsed = Uri.tryParse(value);
-                if (value.isEmpty ||
-                    (parsed != null &&
-                        (parsed.isScheme('http') ||
-                            parsed.isScheme('https')))) {
-                  Navigator.of(dialogContext).pop(value);
-                } else {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(l10n.updateSourceInvalid),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                final verdict =
+                    UpdateService.validateCustomManifestUrl(value);
+                switch (verdict) {
+                  case UpdateSourceValidation.ok:
+                    Navigator.of(dialogContext).pop(value);
+                  case UpdateSourceValidation.httpBlocked:
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(l10n.updateSourceHttpBlocked),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  case UpdateSourceValidation.invalid:
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(l10n.updateSourceInvalid),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
                 }
               },
               child: Text(

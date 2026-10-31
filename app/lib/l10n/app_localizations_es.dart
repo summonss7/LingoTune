@@ -2310,7 +2310,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get updateSource => 'Fuente de actualizaciones';
 
   @override
-  String get updateSourceSubtitle => 'Predeterminado: centro de actualizaciones Aila, GitHub Releases como respaldo; o cualquier URL de manifiesto (JSON con versión y enlace al APK)';
+  String get updateSourceSubtitle => 'Predeterminado: centro de actualizaciones Aila, GitHub Releases como respaldo; o una URL de manifiesto propia (JSON con versión y enlace al APK) — solo https';
 
   @override
   String get updateSourceDefault => 'Centro de actualizaciones Aila (predeterminado)';
@@ -2328,7 +2328,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get updateSourceSaved => 'Fuente de actualizaciones guardada';
 
   @override
-  String get updateSourceInvalid => 'Introduce una URL http(s) válida';
+  String get updateSourceInvalid => 'Introduce una URL https válida';
+
+  @override
+  String get updateSourceHttpBlocked => 'Las URL HTTP no son compatibles: la app bloquea el tráfico sin cifrar. Usa una dirección https://…';
 
   @override
   String get showEqualizerTooltip => 'Mostrar ecualizador en vez de la letra';

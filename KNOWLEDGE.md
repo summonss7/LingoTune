@@ -527,12 +527,20 @@ void main() {
   requires the `REQUEST_INSTALL_PACKAGES` permission (declared) + the user's
   one-time "unknown sources" grant for LingoTune. `url_launcher` is the
   fallback "open release page" action (https VIEW `<queries>` entry declared).
-- Custom **update source** (v5.10.0, wish option «б»): any manifest URL —
-  `UpdateService.getCustomManifestUrl()/setCustomManifestUrl()` (same
-  `updateManifestUrl` prefs key; `null`/blank = default Aila→GitHub chain).
-  The custom URL is checked FIRST and its verdict is final; if it fails to
-  answer, the default chain runs. UI: Settings → «Update source» dialog with
-  http(s) validation and reset. Unit tests cover the round-trip and reset.
+- Custom **update source** (v5.10.0, wish option «б»; https-only since
+  lingotune-009): `UpdateService.getCustomManifestUrl()/setCustomManifestUrl()`
+  (same `updateManifestUrl` prefs key; `null`/blank = default Aila→GitHub
+  chain). The custom URL is checked FIRST and its verdict is final; if it
+  fails to answer, the default chain runs. **Only https is accepted** (variant
+  Б, agreed in «Хаб ИИ» 31.10.2026): release Android (targetSdk 35) blocks
+  cleartext, so an http source always failed with «не удалось проверить».
+  `UpdateService.validateCustomManifestUrl()` → `UpdateSourceValidation`
+  (ok/httpBlocked/invalid); the dialog snackbar explains the http rejection
+  (`updateSourceHttpBlocked` l10n). http stays allowed in debug builds only
+  (`app/android/app/src/debug/AndroidManifest.xml` sets
+  `usesCleartextTraffic="true"` for LAN tests; release manifest is clean).
+  Unit tests cover the round-trip, reset, https/http/debug postures and the
+  Android manifest contents.
 - **Release publishing** (v5.11.0): `publish_release.ps1` (project root)
   publishes a release to BOTH channels in one command — the Aila center via
   `node D:\Scheduler\tools\publish-update.cjs lingotune --notes-file

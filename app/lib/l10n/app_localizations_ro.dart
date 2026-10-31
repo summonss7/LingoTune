@@ -2310,7 +2310,7 @@ class AppLocalizationsRo extends AppLocalizations {
   String get updateSource => 'Sursă de actualizări';
 
   @override
-  String get updateSourceSubtitle => 'Implicit: centrul de actualizări Aila, cu GitHub Releases ca rezervă; sau orice URL de manifest (JSON cu versiune și link APK)';
+  String get updateSourceSubtitle => 'Implicit: centrul de actualizări Aila, cu GitHub Releases ca rezervă; sau un URL de manifest propriu (JSON cu versiune și link APK) — doar https';
 
   @override
   String get updateSourceDefault => 'Centrul de actualizări Aila (implicit)';
@@ -2328,7 +2328,10 @@ class AppLocalizationsRo extends AppLocalizations {
   String get updateSourceSaved => 'Sursă de actualizare salvată';
 
   @override
-  String get updateSourceInvalid => 'Introduce un URL http(s) valid';
+  String get updateSourceInvalid => 'Introduce un URL https valid';
+
+  @override
+  String get updateSourceHttpBlocked => 'Adresele HTTP nu sunt acceptate: aplicația blochează traficul necriptat. Folosește o adresă https://…';
 
   @override
   String get showEqualizerTooltip => 'Afișează egalizatorul în locul versurilor';

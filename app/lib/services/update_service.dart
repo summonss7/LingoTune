@@ -57,6 +57,11 @@ class AppUpdate {
 /// ручная проверка должна честно отличать «актуальна» от «не удалось проверить».
 enum UpdateCheckStatus { updateAvailable, upToDate, sourceUnavailable }
 
+/// Вердикт валидации адреса в диалоге «Источник обновлений»:
+/// ok — принять, httpBlocked — http отклонён с пояснением (release-сборка
+/// режет cleartext), invalid — прочий мусор вместо URL.
+enum UpdateSourceValidation { ok, httpBlocked, invalid }
+
 @immutable
 class UpdateCheckResult {
   const UpdateCheckResult(this.status, [this.update]);
@@ -130,9 +135,10 @@ class UpdateService {
         _prefLastCheckMs, DateTime.now().millisecondsSinceEpoch);
   }
 
-  /// Пользовательский адрес манифеста (вариант «б» из пожелания: любой
+  /// Пользовательский адрес манифеста (вариант «б» из пожелания: свой
   /// источник — JSON `{"version","downloadUrl",...}`, манифест v2 или GitHub
-  /// API). `null` — адрес не задан, используется цепочка по умолчанию.
+  /// API; только https, http — лишь в debug, lingotune-009). `null` — адрес
+  /// не задан, используется цепочка по умолчанию.
   static Future<String?> getCustomManifestUrl() async {
     final prefs = await SharedPreferences.getInstance();
     final custom = prefs.getString(_prefManifestUrl);
@@ -159,7 +165,7 @@ class UpdateService {
   /// [UpdateCheckStatus.sourceUnavailable] (не исключение: автоЧек тихий).
   Future<UpdateCheckResult> checkForUpdate() async {
     final custom = await getCustomManifestUrl();
-    final customUri = _parseHttpUri(custom);
+    final customUri = parseCustomManifestUri(custom);
     final urls = <Uri>[
       if (customUri != null) customUri,
       Uri.parse(ailaManifestUrl),
@@ -191,14 +197,36 @@ class UpdateService {
     return const UpdateCheckResult(UpdateCheckStatus.sourceUnavailable);
   }
 
-  static Uri? _parseHttpUri(String? raw) {
+  /// Разбирает пользовательский адрес манифеста. Только https: release-сборка
+  /// Android запрещает незашифрованный трафик (targetSdk 35, cleartext
+  /// без network security config), http-источник всегда отвечал бы «не
+  /// удалось проверить». http оставлен для debug-сборок — LAN-тесты,
+  /// cleartext там разрешён debug-манифестом (вариант Б, lingotune-009).
+  static Uri? parseCustomManifestUri(String? raw, {bool? allowHttp}) {
     if (raw == null) return null;
-    final parsed = Uri.tryParse(raw);
-    if (parsed != null &&
-        (parsed.isScheme('http') || parsed.isScheme('https'))) {
+    final parsed = Uri.tryParse(raw.trim());
+    if (parsed == null) return null;
+    final httpOk = allowHttp ?? !kReleaseMode;
+    if (parsed.isScheme('https') || (httpOk && parsed.isScheme('http'))) {
       return parsed;
     }
     return null;
+  }
+
+  /// Валидация ввода диалога «Источник обновлений»: пустая строка — законный
+  /// сброс на дефолт, https — ок, http — [UpdateSourceValidation.httpBlocked]
+  /// (снекбар с пояснением вместо бессмысленного «не удалось проверить»).
+  static UpdateSourceValidation validateCustomManifestUrl(String value,
+      {bool? allowHttp}) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return UpdateSourceValidation.ok;
+    if (parseCustomManifestUri(trimmed, allowHttp: allowHttp) != null) {
+      return UpdateSourceValidation.ok;
+    }
+    final isHttp = Uri.tryParse(trimmed)?.isScheme('http') ?? false;
+    return isHttp
+        ? UpdateSourceValidation.httpBlocked
+        : UpdateSourceValidation.invalid;
   }
 
   /// GET + декод JSON; `null` — любая недоступность (нет сети, таймаут,

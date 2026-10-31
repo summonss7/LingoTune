@@ -2310,7 +2310,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get updateSource => 'مصدر التحديث';
 
   @override
-  String get updateSourceSubtitle => 'الافتراضي: مركز تحديثات Aila مع GitHub Releases كاحتياطي؛ أو أي عنوان بيانات تحديث (JSON يحتوي على الإصدار ورابط APK)';
+  String get updateSourceSubtitle => 'الافتراضي: مركز تحديثات Aila مع GitHub Releases كاحتياطي؛ أو عنوان بيانات تحديث خاص (JSON يحتوي على الإصدار ورابط APK) — https فقط';
 
   @override
   String get updateSourceDefault => 'مركز تحديثات Aila (افتراضي)';
@@ -2328,7 +2328,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get updateSourceSaved => 'تم حفظ مصدر التحديث';
 
   @override
-  String get updateSourceInvalid => 'أدخل عنوان http(s) صحيحًا';
+  String get updateSourceInvalid => 'أدخل عنوان https صحيحًا';
+
+  @override
+  String get updateSourceHttpBlocked => 'عناوين HTTP غير مدعومة: التطبيق يحجب حركة المرور غير المشفرة. استخدم عنوان https://…';
 
   @override
   String get showEqualizerTooltip => 'عرض المعادل بدلاً من الكلمات';

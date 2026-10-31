@@ -2310,7 +2310,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get updateSource => 'Источник обновлений';
 
   @override
-  String get updateSourceSubtitle => 'По умолчанию — центр обновлений Aila, GitHub Releases — запасной канал; здесь можно указать любой адрес манифеста (JSON с версией и ссылкой на APK)';
+  String get updateSourceSubtitle => 'По умолчанию — центр обновлений Aila, GitHub Releases — запасной канал; можно указать свой адрес манифеста (JSON с версией и ссылкой на APK) — только https';
 
   @override
   String get updateSourceDefault => 'Центр обновлений Aila (по умолчанию)';
@@ -2328,7 +2328,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get updateSourceSaved => 'Источник обновлений сохранён';
 
   @override
-  String get updateSourceInvalid => 'Введите корректный http(s)-адрес';
+  String get updateSourceInvalid => 'Введите корректный https-адрес';
+
+  @override
+  String get updateSourceHttpBlocked => 'HTTP-адреса не поддерживаются: сборка блокирует незашифрованный трафик. Используйте https://…';
 
   @override
   String get showEqualizerTooltip => 'Показать эквалайзер вместо текста';

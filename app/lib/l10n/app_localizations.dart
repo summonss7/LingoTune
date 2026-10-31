@@ -4393,9 +4393,15 @@ abstract class AppLocalizations {
 
   /// No description provided for @updateSourceInvalid.
   ///
-  /// In en, this message translates to:
-  /// **'Enter a valid http(s) URL'**
+  /// In app_en, this message translates to:
+  /// **'Enter a valid https URL'**
   String get updateSourceInvalid;
+
+  /// No description provided for @updateSourceHttpBlocked.
+  ///
+  /// In app_en, this message translates to:
+  /// **'HTTP URLs are not supported: the app blocks unencrypted traffic. Use an https://… address'**
+  String get updateSourceHttpBlocked;
 
   /// No description provided for @showEqualizerTooltip.
   ///

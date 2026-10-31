@@ -408,6 +408,86 @@ void main() {
     });
   });
 
+  group('parseCustomManifestUri — только https (lingotune-009)', () {
+    test('https принимается в любом режиме', () {
+      const url = 'https://example.com/manifest.json';
+      expect(UpdateService.parseCustomManifestUri(url, allowHttp: false),
+          isNotNull);
+      expect(UpdateService.parseCustomManifestUri(url, allowHttp: true),
+          isNotNull);
+    });
+
+    test('release-постура: http отклоняется (allowHttp: false)', () {
+      expect(
+          UpdateService.parseCustomManifestUri(
+              'http://192.168.1.10/manifest.json',
+              allowHttp: false),
+          isNull);
+      expect(
+          UpdateService.validateCustomManifestUrl('http://192.168.1.10/m.json',
+              allowHttp: false),
+          UpdateSourceValidation.httpBlocked);
+    });
+
+    test('debug: http разрешён для LAN-тестов (allowHttp: true)', () {
+      expect(
+          UpdateService.parseCustomManifestUri(
+              'http://192.168.1.10/manifest.json',
+              allowHttp: true),
+          isNotNull);
+      expect(
+          UpdateService.validateCustomManifestUrl('http://192.168.1.10/m.json',
+              allowHttp: true),
+          UpdateSourceValidation.ok);
+    });
+
+    test('валидация диалога: пусто — сброс, мусор — invalid', () {
+      expect(UpdateService.validateCustomManifestUrl('   ', allowHttp: false),
+          UpdateSourceValidation.ok);
+      expect(UpdateService.validateCustomManifestUrl('не url', allowHttp: false),
+          UpdateSourceValidation.invalid);
+      expect(
+          UpdateService.validateCustomManifestUrl('ftp://example.com/m.json',
+              allowHttp: false),
+          UpdateSourceValidation.invalid);
+    });
+
+    test('сохранённый http-URL в debug участвует в цепочке (LAN-тесты)', () async {
+      // flutter test исполняется в debug-режиме: http по умолчанию разрешён,
+      // сохранённый адрес дёргается первым — как на debug-сборке.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+          'updateManifestUrl', 'http://192.168.1.10/manifest.json');
+      final seen = <Uri>[];
+      final service = UpdateService(
+        client: MockClient((request) async {
+          seen.add(request.url);
+          return http.Response('Not Found', 404);
+        }),
+      );
+
+      final result = await service.checkForUpdate();
+
+      expect(seen.first.host, '192.168.1.10');
+      expect(result.status, UpdateCheckStatus.sourceUnavailable);
+    });
+  });
+
+  group('cleartext-постура манифестов Android (lingotune-009)', () {
+    test('release-манифест не разрешает cleartext', () {
+      final main =
+          File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+      expect(main.contains('usesCleartextTraffic'), isFalse,
+          reason: 'release-сборка должна резать http (вариант Б)');
+    });
+
+    test('debug-манифест разрешает cleartext для LAN-тестов', () {
+      final debug =
+          File('android/app/src/debug/AndroidManifest.xml').readAsStringSync();
+      expect(debug.contains('usesCleartextTraffic="true"'), isTrue);
+    });
+  });
+
   group('custom manifest url accessors (v5.10.0)', () {
     test('null by default, round-trips through set', () async {
       expect(await UpdateService.getCustomManifestUrl(), isNull);
