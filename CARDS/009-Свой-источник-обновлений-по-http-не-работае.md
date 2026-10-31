@@ -1,11 +1,14 @@
 ---
 id: lingotune-009
 title: Свой источник обновлений по http:// не работает в release-сборках (платформа блокирует cleartext)
-status: todo
+status: blocked
 priority: 6
 created: 2026-10-31
 updated: 2026-10-31
 session: ""
+src: TASK
+wish: w_lt009http20261031
+wait: lingotune009_q_20261031
 ---
 ## Задача
 Выявлено при полевой проверке самообновления (карточка lingotune-008).
@@ -33,3 +36,13 @@ session: ""
 
 ## Журнал
 - 31.10.2026: карточка создана по итогам E2E-проверки lingotune-008.
+
+
+- 31.10.2026, 14:27:24: диспетчер взял задачу в работу (новый запуск).
+- 31.10.2026, 14:29: диагностика по коду подтверждена: валидация принимает http/https
+  (`settings_screen.dart:192`, `update_service.dart:198`), в `app/android` нет ни
+  `usesCleartextTraffic`, ни network security config — release режет cleartext.
+  Карточка зарегистрирована в хабе пожеланий (w_lt009http20261031). В «Хаб ИИ» отправлен
+  вопрос Артёму с вариантами А/Б/В (id lingotune009_q_20261031, рекомендован Б —
+  только https, http отклонять с пояснением; в debug — cleartext через debug-overrides).
+  Карточка в ожидании ответа — wait: lingotune009_q_20261031.
