@@ -103,7 +103,13 @@ class UpdateService {
   static const String _prefLastCheckMs = 'lastUpdateCheckMs';
 
   /// Как часто автоматическая проверка повторяется при запусках приложения.
-  static const Duration autoCheckInterval = Duration(hours: 24);
+  ///
+  /// Час, а не сутки (v5.12.1, карточка lingotune-008): ожидание Артёма —
+  /// «захожу в программу — она пишет, что есть новая версия». С суточным
+  /// окном релиз, опубликованный через час после прошлого запуска, мог
+  /// молчать до следующих суток. Один GET крошечного манифеста в час —
+  /// бесплатно даже для семейного сервера.
+  static const Duration autoCheckInterval = Duration(hours: 1);
 
   final http.Client _client;
 

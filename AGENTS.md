@@ -2,7 +2,7 @@
 
 This is a hybrid Flutter/Dart + Python project for language learning through music.
 
-**Current version: 5.12.0** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
+**Current version: 5.12.1** (see `app/pubspec.yaml`, `app/lib/app_info.dart`,
 `app/android/app/build.gradle`). Release history: `docs/CHANGELOG.md`
 (consolidated) and `CHANGELOG_v*.dart` in the project root (per-release detail,
 the release ritual).
@@ -599,8 +599,15 @@ void main() {
   update dialog / green «✓ You have the latest version» (`noUpdatesAvailable`)
   / red «failed to check» when ALL sources are unreachable. Auto-check:
   `MainScreen.initState` post-frame + 5 s delay → `UpdateFlow.maybeAutoCheck`
-  (throttled to once per 24 h via `lastUpdateCheckMs`), silent on everything
-  except an available update.
+  (throttled to once per HOUR via `lastUpdateCheckMs`, v5.12.1 — was 24 h;
+  the mark is set only when a source ANSWERED, so a failed check retries on
+  the next launch), silent on everything except an available update.
+  Field-verified end-to-end on an emulator (v5.12.1, card lingotune-008):
+  auto banner on launch → download (sha256 ok) → system installer →
+  the app updated itself 5.12.0/244 → 5.12.1/245. Known limitation: a
+  custom `http://` source cannot work in release builds (cleartext blocked
+  by the platform since targetSdk 28; the app only allows https) — separate
+  card filed.
 - Download: streamed `http` into `<externalStorageDir>/updates/
   LingoTune-v<version>.apk` (app-specific dir, no storage permission), progress
   dialog with cancel (`UpdateService.cancelDownload`); the dialog closes only

@@ -8,8 +8,9 @@ import '../app_info.dart';
 import '../l10n/app_localizations.dart';
 import 'update_service.dart';
 
-/// Оркестрация проверки обновлений: авто-чек при запуске (раз в сутки),
-/// ручная проверка из настроек, диалог «доступна новая версия», скачивание
+/// Оркестрация проверки обновлений: авто-чек при старте (не чаще раза в час,
+/// при сбое источника — повтор при следующем запуске), ручная проверка из
+/// настроек, диалог «доступна новая версия», скачивание
 /// с прогрессом и запуск установки APK.
 ///
 /// Источник по умолчанию — центр обновлений Aila (манифест v2), GitHub
@@ -24,19 +25,27 @@ import 'update_service.dart';
 class UpdateFlow {
   static bool _dialogOpen = false;
 
-  /// Автоматическая проверка при старте приложения (не чаще раза в сутки).
+  /// Автоматическая проверка при старте приложения (не чаще раза в час).
   /// Тихая: нет обновления или источник недоступен — ничего не показываем.
   static Future<void> maybeAutoCheck(BuildContext context) async {
     if (!await UpdateService.autoCheckDue()) return;
-    await UpdateService.markAutoCheckDone();
 
     final service = UpdateService();
     UpdateCheckResult result;
     try {
       result = await service.checkForUpdate();
     } catch (e) {
+      // Источник не ответил — проверку НЕ «сжигаем» (v5.12.1, lingotune-008):
+      // раньше метка ставилась до чека, и временный сбой сервера молчал
+      // следующие сутки. Теперь повторим при следующем запуске.
       debugPrint('ℹ UpdateFlow: auto check failed: $e');
       return;
+    }
+    // «Сжигаем» проверку только когда источник ОТВЕТИЛ (обновление есть /
+    // версия актуальна) — иначе временный сбой сервера молчал бы до
+    // следующего окна (v5.12.1, lingotune-008).
+    if (result.status != UpdateCheckStatus.sourceUnavailable) {
+      await UpdateService.markAutoCheckDone();
     }
     if (!context.mounted) return;
     if (result.status == UpdateCheckStatus.updateAvailable &&
