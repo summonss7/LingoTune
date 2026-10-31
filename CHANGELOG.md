@@ -370,4 +370,7 @@
   - публичный манифест канала: versionName 5.12.1, versionCode 245,
     assets[0].sha256 = c0225bb21917d8ee… (совпадает с локальным APK), размер
     225 663 437 байт; HEAD APK-урла — HTTP 200, Content-Length совпадает.
-- Коммит: <указан ниже, после пуша>
+- Коммит: 7644d5c «Release LingoTune v5.12.1: self-update finally works in the field —
+    hourly auto-check, no burn on source failure, first full E2E verify
+    (banner→download→sha256→installer→5.12.1/245); cards lingotune-009/010 filed
+    (card lingotune-008)» — запушен в github.com/summonss7/LingoTune (main).
