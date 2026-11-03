@@ -337,7 +337,11 @@ class OfflineTtsEngine extends TtsEngine {
       // _interruptCurrent, и КАЖДЫЙ следующий speak зависает ещё до движка
       // (гарантированный watchdog-timeout и глушение речи до конца песни).
       // Следующий speak всё равно пересоздаст источник через setFilePath.
-      await _player.stop().timeout(const Duration(seconds: 2));
+      // 750 мс вместо 2 с (v5.12.2, lingotune-011): этот drain сидит ВНУТРИ
+      // окна TTS-watchdog следующего speak (координатор Await'ит engine.stop
+      // перед speak) — каждая сэкономленная здесь секунда снижает риск
+      // ложного «зависания» первого speak после прерывания.
+      await _player.stop().timeout(const Duration(milliseconds: 750));
     } catch (_) {}
     if (c != null && !c.isCompleted) c.complete();
   }

@@ -468,6 +468,50 @@ void main() {
 
 ---
 
+## Interruption policy: звонок vs beep сообщения (v5.12.2, lingotune-011)
+
+Симптомы «на замкнутом телефоне в наушниках: после SMS перестаёт говорить перевод;
+звонок + SMS — песня застревает, через минуту играет новую» — это два независимых
+глюка в `BackgroundAudioHandler` + `StudyModeService`. Политика v5.12.2:
+
+**Пауза по прерыванию** (`_handleCallPause(fromPhoneDetector:)`) помнит источник:
+
+- `fromPhoneDetector: true` — нативный детектор звонка (реальный звонок) → порог
+  залипания 20 с;
+- `false` — interruption-событие `audio_session` (beep SMS/уведомления) → 12 с
+  (`_staleBeepPauseTimeout`);
+- **echo-suspect** — begin пришёл в окне 5 с после недавнего resume И слушатель
+  слышит звук (`_player.playing || wasPlayingRecently`): раньше такое эхо просто
+  игнорировалось, и парный end оставался no-op'ом → плеер, паузнутый самим
+  just_audio, никто не возобновлял. Теперь beep в окне эха принимается, но с
+  порогом самолечения 6 с (`_staleEchoSuspectTimeout`). В тишине эхо по-прежнему
+  игнорируется. Пороги — `stalePauseThresholdFor()` (`@visibleForTesting`,
+  тестируется в `app/test/interruption_policy_test.dart`).
+
+**Sweep-самолечение середины песни** (`_startCallPauseSweep`): тик каждые 2 с, пока
+висит `_pausedForCall`; пауза старше порога + линия подтверждённо свободна
+(`_confirmedNoCall`: детектор idle ИЛИ MODE_NORMAL) → штатный `_handleCallResume`
+(песня продолжается С ТОЙ ЖЕ строки, с переводом). До v5.12.2 залипший begin без
+end лечился только completion-watchdog'ом (вооружается при завершении песни —
+отсюда «застряла, через ~минуту играет новую») и `_revalidateAfterIdle` (только при
+возврате из фона — на замкнутом телефоне не случается).
+
+**interruption-end во время звонка**: beep, пришедший ВО ВРЕМЯ разговора, присылает
+свой end, пока линия занята. `_handleCallResume(fromPhoneDetector: false)` теперь
+сначала ждёт `_confirmedNoCall()` и при занятой линии игнорирует end («возобновит
+настоящий отбой»). Иначе музыка включалась бы посреди разговора, а настоящий отбой
+потом был бы no-op.
+
+**Грейс-окно TTS-watchdog** (`StudyModeService.ttsWatchdogSeconds`): первый speak
+после resume/старта сессии (`_resumedAt`, окно 20 с) легитимно медленный — drain
+движка (engine.stop), синтез офлайн-модели, реактивация аудиосессии на замкнутом
+телефоне. Запас watchdog'а для него +8 с (кап 16) вместо +3 (кап 12); два «ложных
+зависания» подряд раньше защёлкивали cooldown-глушение перевода на 20–120 с.
+Поддержка: drain-таймауты движков укорочены (`OfflineTtsEngine.stop` 750 мс,
+`SystemTtsEngine.stop` 1 с) — они сидят внутри окна watchdog'а следующего speak.
+
+---
+
 ## Car Detection (`CarDetectionService` + `CarAlertService`)
 
 - On-device FFT analysis of microphone input (`utils/fft.dart`, `record` plugin, PCM 16 kHz)

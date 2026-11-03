@@ -173,6 +173,20 @@ class StudyModeService extends ChangeNotifier {
   static const Duration _speakCooldownInitial = Duration(seconds: 20);
   static const Duration _speakCooldownMax = Duration(seconds: 120);
 
+  // Момент последнего resume сессии после прерывания (звонок/beep) или старта
+  // новой сессии (v5.12.2, lingotune-011). Первый speak после этого легитимно
+  // медленный: drain engine.stop (до 1-2 с на зомби-плеере), синтез офлайн-
+  // модели, реактивация деактивированной аудиосессии, setFilePath — всё это
+  // идёт ВНУТРИ окна TTS-watchdog и на замкнутом/доз-режиме не влезает в
+  // обычный запас (+3 с). Ложное «зависание» два раза подряд защёлкивало
+  // cooldown-глушение на 20-120 с — «после сообщения перестаёт говорить
+  // перевод». Грейс-окно расширяет запас watchdog'а для speaks в первые
+  // [_speakGraceWindow] после resume.
+  DateTime? _resumedAt;
+  static const Duration _speakGraceWindow = Duration(seconds: 20);
+  static const int _speakGraceExtraSeconds = 8;
+  static const int _speakWatchdogMaxSeconds = 16;
+
   // All TTS engines reported by the system (via getEngines). Populated in
   // _initTts(). On Android 11+ requires the TTS_SERVICE <queries> declaration
   // in AndroidManifest, otherwise this stays empty (the engine is "invisible").
@@ -507,6 +521,20 @@ class StudyModeService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Окно TTS-watchdog для фразы с оценкой [estSeconds] (v5.12.2). Обычный
+  /// запас — +3 с (кап 12). В грейс-окне после resume/start сессии
+  /// ([afterInterruption]) первый speak легитимно медленный (drain движка,
+  /// синтез, реактивация аудиосессии на замкнутом телефоне) — запас +8 с,
+  /// кап 16. Единая точка правды для _speak и тестов.
+  @visibleForTesting
+  static int ttsWatchdogSeconds({
+    required int estSeconds,
+    required bool afterInterruption,
+  }) {
+    return (estSeconds + (afterInterruption ? _speakGraceExtraSeconds : 3))
+        .clamp(5, afterInterruption ? _speakWatchdogMaxSeconds : 12);
+  }
+
   /// Speaks [text] and resolves when speech finishes, errors out, or is stopped.
   Future<void> _speak(String text) async {
     // Segments-only mode: skip TTS entirely so the runner keeps advancing
@@ -529,7 +557,13 @@ class StudyModeService extends ChangeNotifier {
     // детекции машин НЕ прервёт этот speak (координатор сам отложит/пропустит
     // alert).
     final estSeconds = (text.length / 8).ceil().clamp(4, 9);
-    final watchdogSeconds = (estSeconds + 3).clamp(5, 12);
+    final resumedAt = _resumedAt;
+    final inGraceWindow = resumedAt != null &&
+        DateTime.now().difference(resumedAt) < _speakGraceWindow;
+    final watchdogSeconds = ttsWatchdogSeconds(
+      estSeconds: estSeconds,
+      afterInterruption: inGraceWindow,
+    );
 
     var timedOut = false;
     var engineFailed = false;
@@ -698,6 +732,10 @@ class StudyModeService extends ChangeNotifier {
     _isUserPaused = false;
     _currentIndex = idx;
     _phase = StudyPhase.idle;
+    // Грейс-окно watchdog'а (v5.12.2): первый speak новой сессии бывает
+    // запущен сразу после прерывания (самолечение залипшей паузы, смена
+    // песни у конца трека) — даём ему расширенный запас (см. _resumedAt).
+    _resumedAt = DateTime.now();
     notifyListeners();
 
     debugPrint(
@@ -1352,6 +1390,11 @@ class StudyModeService extends ChangeNotifier {
     if (!_isActive || !_isUserPaused || _disposed) return;
     _pauseGen++; // остановить зависший хвост паузы, если он ещё жив
     _isUserPaused = false;
+    // Грейс-окно watchdog'а для первого speak после прерывания (v5.12.2,
+    // lingotune-011): он собирает на себе drain движка и реактивацию
+    // аудиосессии — без запаса два «ложных зависания» подряд глушат перевод
+    // на cooldown 20-120 с («после сообщения перестаёт говорить перевод»).
+    _resumedAt = DateTime.now();
     // Watchdog мог выключить TTS (первый speak после прерывания зависает на
     // деактивированной аудиосессии) — даём речи второй шанс в ЭТОЙ же песне,
     // иначе перевод молчал бы до конца трека и восстанавливался только на
@@ -1381,6 +1424,7 @@ class StudyModeService extends ChangeNotifier {
     _isSpeaking = false;
     _phase = StudyPhase.idle;
     _currentIndex = -1;
+    _resumedAt = null; // грейс-окно не переносится на следующую песню
     // Стрик сбоев не переносится на следующую песню (v5.8.11): зависший
     // стрик=1 мгновенно лочил _speakDisabled при ПЕРВОМ же сбое новой песни.
     _ttsFailStreak = 0;

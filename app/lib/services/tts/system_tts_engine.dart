@@ -279,7 +279,10 @@ class SystemTtsEngine extends TtsEngine {
     try {
       // Таймаут (v5.8.5): зависший stop() блокирует TtsCoordinator.
       // _interruptCurrent → каждый следующий speak виснет до study-watchdog.
-      await _tts.stop().timeout(const Duration(seconds: 2));
+      // 1 с вместо 2 с (v5.12.2, lingotune-011): drain сидит внутри окна
+      // TTS-watchdog следующего speak — короче таймаут, меньше риск ложного
+      // «зависания» первого speak после прерывания.
+      await _tts.stop().timeout(const Duration(seconds: 1));
     } catch (_) {}
   }
 

@@ -26,7 +26,10 @@ todo | in_progress | review | done | blocked.
    проверь КАЖДЫЙ критерий готовности по факту и отметь [x]; все отмечены — status: done;
    упёрся в блокер — status: blocked с причиной в журнале.
 3. Других больших задач вне карточки не начинай; выявленные работы — отдельными карточками
-   в CARDS/ (status: todo, с конкретными критериями готовности).
+   в CARDS/ (status: todo, с конкретными критериями готовности). Номер и id новой карточки
+   (id: <проект>-NNN) — по факту папки: МАКСИМАЛЬНЫЙ номер в CARDS/ + 1; «номер родителя
+   + 1» и номера из старых планов дают дубль id — он роняет «Все задания» Aila (aila-274),
+   диспетчер перенумеровывает такие дубли сам.
 4. Нужен ответ хозяина — вопрос в «Хаб ИИ» Aila (JSON-строка kind:question в
    D:\Aila\server\data\ai-outbox.jsonl, протокол — в шапке ai-hub.md), в шапке карточки
    wait: <id вопроса> и status: blocked — диспетчер сам подшьёт ответ Артёма в «Журнал»
@@ -36,7 +39,7 @@ todo | in_progress | review | done | blocked.
 ## Карта проекта
 
 - LingoTune — Flutter/Dart 3.0+ приложение для изучения языков через музыку + Python-утилиты.
-  Версия 5.12.1: `app/pubspec.yaml`, `app/lib/app_info.dart`, `app/android/app/build.gradle`.
+  Версия 5.12.2: `app/pubspec.yaml`, `app/lib/app_info.dart`, `app/android/app/build.gradle`.
 - Папки: `app/` (Flutter), `scripts/` (Python), `input/`+`output/` (песни), `docs/`
   (ARCHITECTURE, CONTENT_PIPELINE, CHANGELOG, SETUP, DATA_FORMATS, TROUBLESHOOTING, plans/,
   archive/), `CARDS/` (карточки), `builds/` (релизные APK, только сюда).

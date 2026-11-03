@@ -175,7 +175,12 @@ class _MainScreenState extends State<MainScreen> {
         config: audio_pkg.AudioServiceConfig(
           androidNotificationChannelId: 'com.lingotune.app.channel.audio',
           androidNotificationChannelName: 'LingoTune Music',
-          androidNotificationOngoing: true,
+          // androidNotificationOngoing убран (v5.12.2, lingotune-011): флаг
+          // игнорируется при androidStopForegroundOnPause: false (сервис
+          // остаётся foreground и на паузе — уведомление и так ongoing), но
+          // его assert валил AudioService.init в DEBUG-сборках с первого
+          // коммита: BackgroundAudioHandler не создавался, фоновое
+          // воспроизведение и обработка звонков/beep'ов были мертвы.
           androidShowNotificationBadge: true,
           androidNotificationIcon: 'mipmap/ic_launcher',
           fastForwardInterval: const Duration(seconds: 10),
