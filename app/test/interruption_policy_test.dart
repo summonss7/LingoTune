@@ -36,6 +36,100 @@ void main() {
     });
   });
 
+  group('BackgroundAudioHandler.voipLineWatchDecision', () {
+    // v5.12.3, карточка lingotune-013: мессенджерский (VoIP) звонок — Viber
+    // и др. — невидим для TelephonyManager, а ROM-дакинг не присылает
+    // interruption-событие: музыка «лёгким фоном» играла весь разговор.
+    // Наблюдатель режима линии должен ставить паузу, держать её весь разговор
+    // и снимать только «свою» — не трогая beep-паузы (сообщение линию не
+    // занимает, режим остаётся normal).
+    test('линия занята, паузы нет, звук звучал → пауза', () {
+      expect(
+        BackgroundAudioHandler.voipLineWatchDecision(
+            lineIdleKnown: true,
+            lineIdle: false,
+            pausedForCall: false,
+            voipPauseActive: false,
+            audible: true),
+        VoipLineWatchAction.startPause,
+      );
+    });
+
+    test('линия занята, но тишина (слушатель давно на паузе) → ничего', () {
+      expect(
+        BackgroundAudioHandler.voipLineWatchDecision(
+            lineIdleKnown: true,
+            lineIdle: false,
+            pausedForCall: false,
+            voipPauseActive: false,
+            audible: false),
+        VoipLineWatchAction.none,
+      );
+    });
+
+    test('линия занята, пауза чужая (детектор/beep) → усыновить для быстрого '
+        'resume по освобождению линии', () {
+      expect(
+        BackgroundAudioHandler.voipLineWatchDecision(
+            lineIdleKnown: true,
+            lineIdle: false,
+            pausedForCall: true,
+            voipPauseActive: false,
+            audible: true),
+        VoipLineWatchAction.adoptPause,
+      );
+      // уже усыновленная — повторно не усыновляем
+      expect(
+        BackgroundAudioHandler.voipLineWatchDecision(
+            lineIdleKnown: true,
+            lineIdle: false,
+            pausedForCall: true,
+            voipPauseActive: true,
+            audible: true),
+        VoipLineWatchAction.none,
+      );
+    });
+
+    test('линия освободилась, пауза «наша» → resume', () {
+      expect(
+        BackgroundAudioHandler.voipLineWatchDecision(
+            lineIdleKnown: true,
+            lineIdle: true,
+            pausedForCall: true,
+            voipPauseActive: true,
+            audible: false),
+        VoipLineWatchAction.resume,
+      );
+    });
+
+    test('линия свободна, пауза ЧУЖАЯ (beep) → НЕ снимаем (lingotune-011)', () {
+      // Сообщение не занимает линию: beep-пауза живёт при idle-режиме.
+      // Мгновенное снятие играло бы музыку поверх звука уведомления —
+      // этим по-прежнему заведуют audio_session-end и sweep с порогами.
+      expect(
+        BackgroundAudioHandler.voipLineWatchDecision(
+            lineIdleKnown: true,
+            lineIdle: true,
+            pausedForCall: true,
+            voipPauseActive: false,
+            audible: true),
+        VoipLineWatchAction.none,
+      );
+    });
+
+    test('режим линии недоступен (null) → полное no-op, прежняя политика', () {
+      expect(
+        BackgroundAudioHandler.voipLineWatchDecision(
+            lineIdleKnown: false,
+            lineIdle: false,
+            pausedForCall: false,
+            voipPauseActive: false,
+            audible: true),
+        VoipLineWatchAction.none,
+      );
+    });
+  });
+
   group('StudyModeService.ttsWatchdogSeconds', () {
     test('обычное окно — как до фикса: est+3, пол 5, кап 12', () {
       expect(

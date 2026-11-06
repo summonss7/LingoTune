@@ -10,6 +10,25 @@ import 'audio_mode_service.dart';
 import 'becoming_noisy_service.dart';
 import 'phone_call_service.dart';
 
+/// Действие наблюдателя VoIP-линии по одному опросу режима линии — см.
+/// [BackgroundAudioHandler.voipLineWatchDecision].
+enum VoipLineWatchAction {
+  /// Ничего не делать (линия свободна и пауза не «наша» / режим недоступен /
+  /// нечего паузить).
+  none,
+
+  /// Начать call-паузу: линия занята, паузы нет, звук звучал.
+  startPause,
+
+  /// «Усыновить» уже висящую call-паузу (поставленную детектором звонка или
+  /// interruption-событием) — линия подтверждённо занята, armed resume.
+  adoptPause,
+
+  /// Снять «нашу» call-паузу: линия освободилась (мессенджерский звонок
+  /// закончился).
+  resume,
+}
+
 class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player;
   LoopMode _loopMode = LoopMode.off;
@@ -118,6 +137,44 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   /// запоздалое эхо отбоя, а не новое прерывание) — тогда порог ещё короче
   /// ([_staleEchoSuspectTimeout]).
   bool _pauseEchoSuspect = false;
+
+  /// Идёт ли сейчас (по данным наблюдателя VoIP-линии, [_pollVoipLine])
+  /// подтверждённая занятость аудио-линии, из-за которой висит call-пауза.
+  /// Ставится когда наблюдатель сам начал паузу или «усыновил» уже висящую
+  /// (от детектора / interruption-события); только в этом состоянии
+  /// наблюдатель имеет право снять паузу по освобождению линии. Без флага
+  /// beep-пауза (сообщение НЕ занимает линию: режим остаётся normal)
+  /// снималась бы мгновенно и музыка играла бы поверх звука уведомления.
+  /// Сбрасывается в [_handleCallResume] / [_clearCallPauseFlags] — снимает
+  /// паузу кто угодно (детектор, audio_session-end, sweep), не только
+  /// наблюдатель.
+  bool _voipPauseActive = false;
+
+  /// Периодический опрос режима аудио-линии (v5.12.3, карточка
+  /// lingotune-013): пока звучит (или звучало недавно) — AudioManager.getMode()
+  /// через [AudioModeService] каждую секунду. Режим in_call/in_communication/
+  /// ringtone ставит мессенджерский (VoIP) звонок — Viber и др., которых
+  /// TelephonyManager ([PhoneCallService]) не видит, а ROM-дакинг на этих
+  /// устройствах не присылает interruption-событие → музыка «лёгким фоном»
+  /// играла весь разговор. Пауза/резюм идут через ЕДИНЫЕ существующие пути
+  /// [_handleCallPause]/[_handleCallResume] — вся остальная логика звонков
+  /// (study-хендофф, дедупликация, echo-дебаунс, sweep) не меняется.
+  Timer? _voipWatchTimer;
+  bool _voipWatchInFlight = false;
+
+  /// Сколько подряд опросов линии не ответили (null — канал недоступен: не
+  /// Android / плагин не зарегистрирован). После [_voipWatchMaxFailures]
+  /// наблюдатель отключается до следующего старта воспроизведения — не
+  /// спамим лог ежесекундными ошибками.
+  int _voipWatchFailures = 0;
+
+  /// Интервал опроса режима линии в наблюдателе VoIP-звонков. 1 с: латентность
+  /// детекта звонка/отбоя ≤ ~1–2 с — заметно быстрее, чем человек начинает
+  /// говорить; сам опрос — дешёвый локальный getSystemService-вызов.
+  static const _voipWatchInterval = Duration(seconds: 1);
+
+  /// Порог отключения наблюдателя при недоступности канала режима линии.
+  static const _voipWatchMaxFailures = 3;
 
   Function(bool)? onShuffleToggled;
   Function(LoopMode)? onLoopToggled;
@@ -392,6 +449,9 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     }
     _pausedForCall = false;
     _callPauseStartedAt = null;
+    // VoIP-пауза снята (кем бы ни был инициирован resume) — наблюдатель
+    // больше не «владеет» паузой и не имеет права снимать следующую чужую.
+    _voipPauseActive = false;
     _callPauseSweepTimer?.cancel();
     _callPauseSweepTimer = null;
     // Момент resume — для дебаунса эха в [_handleCallPause] (см. там).
@@ -438,10 +498,128 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     _callPauseStartedAt = null;
     _userPausedDuringCall = false;
     _wasPlayingBeforeInterruption = false;
+    _voipPauseActive = false;
     _lastResumeAt = DateTime.now();
     _callPauseSweepTimer?.cancel();
     _callPauseSweepTimer = null;
     unawaited(AudioModeService.instance.isLineIdle());
+  }
+
+  /// Запускает наблюдатель VoIP-линии (идемпотентно). Стартует при первом
+  /// `playing=true` плеера; сам останавливается, когда ничего не звучит
+  /// (и нет активной VoIP call-паузы) — см. [_pollVoipLine].
+  void _startVoipWatch() {
+    if (_voipWatchTimer != null) return;
+    _voipWatchFailures = 0;
+    _voipWatchTimer = Timer.periodic(_voipWatchInterval, (_) => _pollVoipLine());
+    debugPrint('📞 BackgroundAudioHandler: VoIP line watcher started');
+  }
+
+  void _stopVoipWatch() {
+    _voipWatchTimer?.cancel();
+    _voipWatchTimer = null;
+    _voipWatchInFlight = false;
+  }
+
+  /// Один тик наблюдателя VoIP-линии: свежий [AudioModeService.isLineIdle] и
+  /// решение [voipLineWatchDecision]. Кэш режима инвалидируется — наблюдателю
+  /// нужен ответ «сейчас», а не двухсекундной давности (мог остаться с
+  /// момента ДО начала звонка). Побочно кэш греется для остальных путей
+  /// (echo-дебаунс, sweep).
+  Future<void> _pollVoipLine() async {
+    // Нечего охранять: музыка давно молчит и VoIP call-паузы нет —
+    // останавливаемся до следующего запуска воспроизведения.
+    if (!_player.playing && !wasPlayingRecently && !_voipPauseActive) {
+      _stopVoipWatch();
+      return;
+    }
+    if (_voipWatchInFlight) return;
+    _voipWatchInFlight = true;
+    try {
+      AudioModeService.instance.invalidateCache();
+      final lineIdle = await AudioModeService.instance.isLineIdle();
+      if (lineIdle != null) {
+        _voipWatchFailures = 0; // канал жив — серия отказов разорвана
+      }
+      final action = voipLineWatchDecision(
+        lineIdleKnown: lineIdle != null,
+        lineIdle: lineIdle ?? false,
+        pausedForCall: _pausedForCall,
+        voipPauseActive: _voipPauseActive,
+        audible: _player.playing || wasPlayingRecently,
+      );
+      switch (action) {
+        case VoipLineWatchAction.startPause:
+          debugPrint('📞 BackgroundAudioHandler: line busy (audio mode) — '
+              'VoIP/messenger call → pauseForCall');
+          _handleCallPause(fromPhoneDetector: true);
+          // Пауза могла быть отвергнута echo-дебаунсом — «усыновляем» только
+          // реально вставшую, иначе фантомный флаг держал бы наблюдателя
+          // вечно и ложно резюмировал чужие паузы.
+          _voipPauseActive = _pausedForCall;
+          break;
+        case VoipLineWatchAction.adoptPause:
+          debugPrint('📞 BackgroundAudioHandler: line busy — adopting '
+              'existing call pause (VoIP-aware resume armed)');
+          _voipPauseActive = true;
+          break;
+        case VoipLineWatchAction.resume:
+          debugPrint('📞 BackgroundAudioHandler: line idle (audio mode) — '
+              'VoIP/messenger call ended → resume');
+          // fromPhoneDetector: true — линию только что проверили свежим
+          // опросом, повторное подтверждение в _handleCallResume не нужно.
+          resumeAfterCall();
+          break;
+        case VoipLineWatchAction.none:
+          if (lineIdle == null) {
+            // Канал недоступен (не Android / плагин умер): после серии
+            // отказов отключаемся, поведение сводится к прежней политике.
+            if (++_voipWatchFailures >= _voipWatchMaxFailures) {
+              debugPrint('📞 BackgroundAudioHandler: VoIP watcher disabled '
+                  '(audio mode channel unavailable)');
+              _stopVoipWatch();
+            }
+          }
+          break;
+      }
+    } finally {
+      _voipWatchInFlight = false;
+    }
+  }
+
+  /// Решение наблюдателя VoIP-линии по одному опросу режима линии (v5.12.3).
+  /// Чистая функция — тайминги/побочные эффекты живут в [_pollVoipLine]:
+  /// - линия занята, паузы нет, звук звучал → [VoipLineWatchAction.startPause]
+  ///   (мессенджерский звонок невидим для TelephonyManager и ROM-дакинг не
+  ///   присылает interruption — ставим паузу сами);
+  /// - линия занята, пауза уже висит (от детектора/audio-события) →
+  ///   [VoipLineWatchAction.adoptPause]: armed быстрый resume по освобождению
+  ///   линии и честное удержание паузы весь разговор;
+  /// - линия свободна, пауза «наша» (VoIP-подтверждённая) →
+  ///   [VoipLineWatchAction.resume]; ЧУЖАЯ пауза (beep сообщения: линия всё
+  ///   время была свободна) НЕ снимается — этим по-прежнему заведуют
+  ///   audio_session-end и sweep со своими порогами (lingotune-011);
+  /// - режим недоступен (null) → [VoipLineWatchAction.none] — политика
+  ///   полностью откатывается к прежнему поведению.
+  @visibleForTesting
+  static VoipLineWatchAction voipLineWatchDecision({
+    required bool lineIdleKnown,
+    required bool lineIdle,
+    required bool pausedForCall,
+    required bool voipPauseActive,
+    required bool audible,
+  }) {
+    if (!lineIdleKnown) return VoipLineWatchAction.none;
+    if (!lineIdle) {
+      if (pausedForCall) {
+        return voipPauseActive
+            ? VoipLineWatchAction.none
+            : VoipLineWatchAction.adoptPause;
+      }
+      return audible ? VoipLineWatchAction.startPause : VoipLineWatchAction.none;
+    }
+    if (voipPauseActive && pausedForCall) return VoipLineWatchAction.resume;
+    return VoipLineWatchAction.none;
   }
 
   /// Пауза при отключении наушников. Основной путь — нативный
@@ -672,18 +850,35 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
   }
 
   /// Подтверждено ли независимыми источниками, что звонка НЕТ (v5.8.11):
-  /// работающий TelephonyManager-детектор ([PhoneCallService], idle) ИЛИ
-  /// режим аудио-линии NORMAL ([AudioModeService] → AudioManager.getMode(),
-  /// без всяких разрешений). До v5.8.11 требовался ТОЛЬКО детектор: нет
-  /// READ_PHONE_STATE / детектор молча умер (заморозка приложения ROM-ом,
-  /// async-ошибка канала) — и залипший beep нельзя было отличить от
-  /// разговора, самолечение отключалось навсегда («замерло — спасал только
-  /// стоп+плей»). AudioManager.getMode() видит и VoIP-звонки, которые
-  /// TelephonyManager не видит.
+  /// TelephonyManager-детектор ([PhoneCallService]) idle И режим аудио-линии
+  /// NORMAL ([AudioModeService] → AudioManager.getMode(), без разрешений).
+  /// До v5.8.11 требовался ТОЛЬКО детектор: нет READ_PHONE_STATE / детектор
+  /// молча умер (заморозка приложения ROM-ом, async-ошибка канала) — и
+  /// залипший beep нельзя было отличить от разговора, самолечение
+  /// отключалось навсегда («замерло — спасал только стоп+плей»).
+  ///
+  /// v5.12.3 (lingotune-013): idle детектора больше НЕ достаточно —
+  /// TelephonyManager не видит мессенджерские VoIP-звонки (Viber и др.) и
+  /// честно отвечает idle весь разговор. Раньше это не проявлялось (VoIP
+  /// вообще не ставил паузу), но с наблюдателем VoIP-линии [_pollVoipLine]
+  /// пауза появилась — и sweep/[_handleCallResume] сняли бы её через
+  /// [_staleCallPauseTimeout], запустив музыку посреди разговора. Теперь
+  /// решение всегда сверяется со СВЕЖИМ режимом линии (кэш инвалидируется):
+  /// in_call/in_communication — «занято», включая VoIP. Ответ null (канал
+  /// недоступен) сохраняет прежнюю семантику — детектор решает сам.
   Future<bool> _confirmedNoCall() async {
     final phone = PhoneCallService.instance;
-    if (phone.isListening && phone.current == CallState.idle) return true;
-    return await AudioModeService.instance.isLineIdle() == true;
+    final detectorState = phone.isListening ? phone.current : null;
+    if (detectorState == CallState.ringing ||
+        detectorState == CallState.offhook) {
+      return false; // сотовый звонок подтверждён детектором
+    }
+    AudioModeService.instance.invalidateCache();
+    final lineIdle = await AudioModeService.instance.isLineIdle();
+    if (lineIdle == false) return false; // линия занята (включая VoIP)
+    // Режим недоступен → прежняя семантика (детектор сам по себе); иначе
+    // «свободно» подтверждают либо режим линии, либо idle-детектор.
+    return lineIdle == true || detectorState == CallState.idle;
   }
 
   void _initializeState() {
@@ -739,6 +934,9 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
     _playingSubscription = _player.playingStream.listen((playing) {
       if (playing) {
         _lastPlayingAt = DateTime.now();
+        // Пока звучит — следим за режимом линии (мессенджерские VoIP-звонки:
+        // Viber и др.). Наблюдатель сам остановится, когда всё замолчит.
+        _startVoipWatch();
       }
       _syncPlaybackState();
     });
@@ -1152,6 +1350,8 @@ class BackgroundAudioHandler extends BaseAudioHandler with QueueHandler, SeekHan
 
       _callPauseSweepTimer?.cancel();
       _callPauseSweepTimer = null;
+      _stopVoipWatch();
+      _voipPauseActive = false;
       await _playbackEventSubscription?.cancel();
       await _positionSubscription?.cancel();
       await _playingSubscription?.cancel();

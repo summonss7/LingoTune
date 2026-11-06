@@ -39,7 +39,7 @@ todo | in_progress | review | done | blocked.
 ## Карта проекта
 
 - LingoTune — Flutter/Dart 3.0+ приложение для изучения языков через музыку + Python-утилиты.
-  Версия 5.12.2: `app/pubspec.yaml`, `app/lib/app_info.dart`, `app/android/app/build.gradle`.
+  Версия 5.12.3: `app/pubspec.yaml`, `app/lib/app_info.dart`, `app/android/app/build.gradle`.
 - Папки: `app/` (Flutter), `scripts/` (Python), `input/`+`output/` (песни), `docs/`
   (ARCHITECTURE, CONTENT_PIPELINE, CHANGELOG, SETUP, DATA_FORMATS, TROUBLESHOOTING, plans/,
   archive/), `CARDS/` (карточки), `builds/` (релизные APK, только сюда).

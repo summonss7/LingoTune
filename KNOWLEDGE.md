@@ -465,6 +465,14 @@ void main() {
   detector-idle OR MODE_NORMAL; "unknown" (channel unavailable) is treated conservatively
   as "call possible". This keeps stuck-beep self-healing alive when the permission is
   missing/revoked or the detector silently died while the ROM froze the app.
+- **VoIP line watcher** (v5.12.3, lingotune-013): while audio is (or was recently)
+  audible, `BackgroundAudioHandler` polls a FRESH audio mode every second — messenger
+  calls (Viber etc.) set in_call/in_communication while staying invisible to
+  `TelephonyManager`, and ROM ducking delivers no interruption event (the song kept
+  playing quietly through the whole conversation). Pause/resume go through the SAME
+  `_handleCallPause`/`_handleCallResume` machinery; `_confirmedNoCall()` now requires
+  detector-idle AND fresh MODE_NORMAL (detector alone would let the sweep resume music
+  mid-VoIP-call after 20 s). See the "Interruption policy" section below for details.
 
 ---
 
@@ -490,11 +498,30 @@ void main() {
 
 **Sweep-самолечение середины песни** (`_startCallPauseSweep`): тик каждые 2 с, пока
 висит `_pausedForCall`; пауза старше порога + линия подтверждённо свободна
-(`_confirmedNoCall`: детектор idle ИЛИ MODE_NORMAL) → штатный `_handleCallResume`
-(песня продолжается С ТОЙ ЖЕ строки, с переводом). До v5.12.2 залипший begin без
-end лечился только completion-watchdog'ом (вооружается при завершении песни —
-отсюда «застряла, через ~минуту играет новую») и `_revalidateAfterIdle` (только при
-возврате из фона — на замкнутом телефоне не случается).
+(`_confirmedNoCall`: детектор idle И свежий MODE_NORMAL — v5.12.3, раньше было
+«ИЛИ»; детектор не видит VoIP и честно отвечает idle весь мессенджерский разговор)
+→ штатный `_handleCallResume` (песня продолжается С ТОЙ ЖЕ строки, с переводом).
+До v5.12.2 залипший begin без end лечился только completion-watchdog'ом
+(вооружается при завершении песни — отсюда «застряла, через ~минуту играет новую»)
+и `_revalidateAfterIdle` (только при возврате из фона — на замкнутом телефоне
+не случается). Ответ канала режима «неизвестно» (null) сохраняет прежнюю семантику
+— решает детектор.
+
+**Наблюдатель VoIP-линии** (v5.12.3, lingotune-013): мессенджерский звонок (Viber и
+др.) невидим для TelephonyManager, а ROM-дакинг не присылает interruption-событие —
+музыка «лёгким фоном» играла весь разговор. Пока звук звучал (или звучал за
+последние ~2 мин — `wasPlayingRecently`), таймер раз в секунду опрашивает СВЕЖИЙ
+`AudioModeService.isLineIdle()` (кэш инвалидируется): линия занята
+(in_call/in_communication/ringtone) → `_handleCallPause(fromPhoneDetector: true)`
+тем же единым путём (study-хендофф, дедупликация, sweep; порог 20 с); уже висящую
+паузу наблюдатель «усыновляет» (`_voipPauseActive`); линия освободилась →
+`resumeAfterCall()` — но только «свою»/усыновлённую паузу: beep-пауза (сообщение
+линию НЕ занимает, режим остаётся normal) по-прежнему живёт по своим порогам
+audio_session-end + sweep — политика lingotune-011 не тронута. Канал режима
+недоступен (не Android / плагин умер) → после 3 отказов наблюдатель отключается,
+поведение полностью откатывается к прежнему. Решение — чистая функция
+`voipLineWatchDecision()` (`@visibleForTesting`, тестируется в
+`app/test/interruption_policy_test.dart`).
 
 **interruption-end во время звонка**: beep, пришедший ВО ВРЕМЯ разговора, присылает
 свой end, пока линия занята. `_handleCallResume(fromPhoneDetector: false)` теперь
