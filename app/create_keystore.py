@@ -38,6 +38,12 @@ def create_keystore():
 
     print(f"🔧 Используем keytool: {keytool_path}")
 
+    # Пароль — из переменной окружения (или ввод вручную); в коде не хранится
+    password = os.environ.get("LINGOTUNE_KEYSTORE_PASSWORD")
+    if not password:
+        import getpass
+        password = getpass.getpass("🔐 Пароль для нового keystore: ")
+
     # Параметры для создания keystore
     command = [
         keytool_path,
@@ -48,8 +54,8 @@ def create_keystore():
         "-keysize", "2048",
         "-validity", "10000",
         "-alias", "lingotune",
-        "-storepass", "lingotune123",
-        "-keypass", "lingotune123",
+        "-storepass", password,
+        "-keypass", password,
         "-dname", "CN=LingoTune, OU=Development, O=LingoTune, L=City, S=State, C=US"
     ]
 
@@ -63,7 +69,7 @@ def create_keystore():
         )
         print("✅ Keystore успешно создан!")
         print(f"📍 Путь: {keystore_path}")
-        print(f"🔐 Пароль: lingotune123")
+        print("🔐 Пароль: задан через LINGOTUNE_KEYSTORE_PASSWORD или ввод (не выводится)")
         print(f"🔑 Alias: lingotune")
         return keystore_path
 

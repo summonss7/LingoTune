@@ -3,6 +3,12 @@
 **Версия:** 5.12.3 (versionCode 247) · **Платформа:** Android (Flutter 3.0+) ·
 **Разработчики:** Z.AI GLM & Цимбалов Артем
 
+> **English:** LingoTune is an Android app (Flutter) for learning languages through
+> music — songs with line-synced lyrics, translations and phonetic transcription,
+> plus a study mode that speaks the translation of every line over the music (TTS).
+> A portfolio project of the human + AI freelance duo —
+> [duet.barter.pp.ua](https://duet.barter.pp.ua).
+
 LingoTune — приложение для изучения иностранных языков через музыку: слушайте
 песни с синхронизированным построчным текстом, переводами и транскрипцией,
 а в режиме изучения приложение озвучивает перевод каждой строки (TTS) поверх
