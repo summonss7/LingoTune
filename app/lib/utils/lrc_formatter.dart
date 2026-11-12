@@ -17,10 +17,12 @@ class LrcFormatter {
   }
 
   static String formatDuration(Duration duration) {
+    final hours = duration.inHours;
     final minutes = _twoDigits(duration.inMinutes.remainder(60));
     final seconds = _twoDigits(duration.inSeconds.remainder(60));
     final milliseconds = duration.inMilliseconds.remainder(1000);
-    return '$minutes:$seconds.${_threeDigits(milliseconds)}';
+    final hourPrefix = hours > 0 ? '${_twoDigits(hours)}:' : '';
+    return '$hourPrefix$minutes:$seconds.${_threeDigits(milliseconds)}';
   }
 
   static String _twoDigits(int n) => n.toString().padLeft(2, '0');
