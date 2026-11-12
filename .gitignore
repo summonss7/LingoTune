@@ -103,3 +103,4 @@ app/assets/tts/*.tar.bz2
 app/assets/tts/*.tar.gz
 app/assets/tts/*.zip
 
+CARDS/
