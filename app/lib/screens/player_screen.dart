@@ -2307,8 +2307,12 @@ class _PlayerScreenState extends State<PlayerScreen>
         // только здесь (для LyricsService), slider/индикатор времени
         // используют честную widget.audioService.position. Отключаемая в
         // Настройках (timingCorrection, по умолчанию ВКЛ).
-        final rawPos = widget.audioService.position;
+        // rawPos — LIVE player.position (wall-clock), а не кэш _position из
+        // positionStream: кэш отстаёт на интервал потока (~80–200 мс), и
+        // подсветка опаздывала относительно меток, выставленных тапом по живой
+        // позиции (lingotune-017: разметка и подсветка — один домен времени).
         final player = widget.audioService.player;
+        final rawPos = player.position;
         Duration posForHighlight = rawPos;
         if (_settingsProvider?.timingCorrection ?? true) {
           final isReady = player.processingState == ProcessingState.ready;

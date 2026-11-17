@@ -226,11 +226,13 @@ void main() {
   (one-off ~550 ms hiccup pinned at 500–550 ms) is an artifact and heals back to raw after a
   10 s stability window, while a *growing* lead (real VBR drift) keeps the wall-clock trajectory
   (v5.8.4). Injectable clock → unit tests in `test/audio_position_corrector_test.dart`.
-- **Timestamp marks time-domain invariant**: the edit-mode tap writes the LIVE
-  `player.position` (just_audio computes it from wall-clock, not the ~5 Hz `positionStream`
-  cache which goes stale during edit bursts) through the SAME `AudioPositionCorrector`
-  instance the highlight uses — marks and line switching must never live in different
-  time domains (v5.8.4 fix: highlight switched early after manual re-timestamping).
+- **Timestamp marks time-domain invariant**: the edit-mode tap AND the 50 ms highlight
+  tick both feed the LIVE `player.position` (just_audio computes it from wall-clock, not
+  the ~5 Hz `positionStream` cache which goes stale during edit bursts) through the SAME
+  `AudioPositionCorrector` instance — marks and line switching must never live in different
+  time domains (v5.8.4 fixed the tap side: highlight switched early after manual
+  re-timestamping; lingotune-017 closed the loop: the highlight tick itself was still
+  reading the stale cache `_position`, so highlighting ran ~80–200 ms behind the marks).
 - **Zombie-state recovery**: after a TTS audio-session handoff (or a phone call), just_audio
   can report `playing == true` while the position never advances — or fail to restart after
   `completed`. `AudioService.ensurePlaybackAdvancing`, `StudyModeService._kickPlaybackAsync`,
