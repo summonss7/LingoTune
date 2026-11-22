@@ -68,7 +68,6 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
   final Map<String, Color> _buttonColorsCache = {};
 
   final ScrollController _scrollController = ScrollController();
-  bool _didInitialScroll = false;
 
   final SongImportHelper _songImportHelper = SongImportHelper();
   final CoverArtHelper _coverArtHelper = CoverArtHelper();
@@ -95,19 +94,41 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
     super.dispose();
   }
 
+  /// Выравнивает список на играющей песне (lingotune-018). Вызывается после
+  /// каждой загрузки списка: вход в библиотеку, возврат из плеера (песня за
+  /// время прослушивания могла уйти далеко вперёд), смена сортировки —
+  /// курсор всегда на текущей песне, не приходится листать вниз.
   void _scrollToCurrentSong() {
-    if (_didInitialScroll) return;
     final currentSongId = widget.audioService.currentSongIdNotifier.value;
     if (currentSongId == null || _songs.isEmpty) return;
     final index = _songs.indexWhere((s) => s.id == currentSongId);
     if (index < 0) return;
+    _scheduleScrollToIndex(index);
+  }
 
-    _didInitialScroll = true;
+  /// Прокручивает к строке index, повторяя несколько кадров, если список ещё
+  /// не построен (кадр со спиннером загрузки; didChangeDependencies гонит
+  /// _loadSongs дважды). Одноразовый флаг без повтора пропускал скролл,
+  /// и список открывался сверху.
+  void _scheduleScrollToIndex(int index, {int attemptsLeft = 12}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) return;
-      final maxExtent = _scrollController.position.maxScrollExtent;
-      if (maxExtent <= 0) return;
-      final avgHeight = maxExtent / _songs.length;
+      if (!mounted) return;
+      if (!_scrollController.hasClients ||
+          _scrollController.position.maxScrollExtent <= 0) {
+        if (attemptsLeft > 0) {
+          _scheduleScrollToIndex(index, attemptsLeft: attemptsLeft - 1);
+        }
+        return;
+      }
+      final position = _scrollController.position;
+      final maxExtent = position.maxScrollExtent;
+      // Средняя высота строки = весь контент (maxExtent уже урезан на
+      // вьюпорт — возвращаем его), а не maxExtent/N, что занижало высоту
+      // и уводило текущую песню к низу экрана на длинных списках.
+      final avgHeight =
+          (maxExtent + position.viewportDimension) / _songs.length;
+      // Текущая песня — примерно на две строки ниже верха, чтобы был виден
+      // контекст сверху.
       final target = (index * avgHeight - 2 * avgHeight).clamp(0.0, maxExtent);
       _scrollController.jumpTo(target);
     });
@@ -119,6 +140,12 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
     setState(() {
       _sortBy = prefs.getString('librarySortBy') ?? 'default';
     });
+    // Префы могли прийти позже списка — пересортировываем показанный порядок
+    // и заново выравниваем курсор на текущей песне в новом порядке.
+    if (_songs.isNotEmpty && _sortBy != 'default') {
+      setState(_applySorting);
+      _scrollToCurrentSong();
+    }
   }
 
   Future<void> _loadSongs() async {
@@ -2068,6 +2095,8 @@ class _SongLibraryScreenState extends State<SongLibraryScreen> {
       _loadSongs();
     } else {
       _applySorting();
+      // Песня сместилась в новом порядке — выравниваем курсор на ней.
+      _scrollToCurrentSong();
     }
   }
 
