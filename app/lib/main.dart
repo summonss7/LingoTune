@@ -75,12 +75,16 @@ class LingoTuneApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()..loadSettings()),
-        ChangeNotifierProvider(create: (_) => SettingsProvider()..loadSettings()),
+        ChangeNotifierProvider(
+            create: (_) => SettingsProvider()..loadSettings()),
       ],
       child: Consumer2<ThemeProvider, SettingsProvider>(
         builder: (context, themeProvider, settingsProvider, _) {
-          final fontFamily = settingsProvider.fontFamily.isEmpty ? null : settingsProvider.fontFamily;
-          final textTheme = _buildTextTheme(settingsProvider.fontSize, fontFamily);
+          final fontFamily = settingsProvider.fontFamily.isEmpty
+              ? null
+              : settingsProvider.fontFamily;
+          final textTheme =
+              _buildTextTheme(settingsProvider.fontSize, fontFamily);
           final isAmethyst = themeProvider.isAmethystSkin;
 
           return MaterialApp(
@@ -88,12 +92,18 @@ class LingoTuneApp extends StatelessWidget {
             title: AppInfo.appName,
             theme: isAmethyst
                 ? AmethystPalette.buildTheme(
-                    darkVariant: false, textTheme: textTheme, fontFamily: fontFamily)
-                : _seededTheme(themeProvider.seedColor, Brightness.light, textTheme, fontFamily),
+                    darkVariant: false,
+                    textTheme: textTheme,
+                    fontFamily: fontFamily)
+                : _seededTheme(themeProvider.seedColor, Brightness.light,
+                    textTheme, fontFamily),
             darkTheme: isAmethyst
                 ? AmethystPalette.buildTheme(
-                    darkVariant: true, textTheme: textTheme, fontFamily: fontFamily)
-                : _seededTheme(themeProvider.seedColor, Brightness.dark, textTheme, fontFamily),
+                    darkVariant: true,
+                    textTheme: textTheme,
+                    fontFamily: fontFamily)
+                : _seededTheme(themeProvider.seedColor, Brightness.dark,
+                    textTheme, fontFamily),
             // Тема «Аметист»: один полноэкранный градиент за всеми экранами —
             // Scaffold'ы прозрачны, фон течёт от статус-бара до нав-бара
             // (как full-screen Box в Ai-LeCards). Остальные темы — без обёртки.
@@ -136,11 +146,11 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<bool> _requestNotificationPermission() async {
     if (!mounted) return false;
-    
+
     try {
       final permissionStatus = await Permission.notification.status;
       debugPrint('Notification permission status: $permissionStatus');
-      
+
       if (permissionStatus.isDenied || permissionStatus.isPermanentlyDenied) {
         final result = await Permission.notification.request();
         debugPrint('Notification permission request result: $result');
@@ -149,7 +159,8 @@ class _MainScreenState extends State<MainScreen> {
         debugPrint('✓ Notification permission already granted');
         return true;
       } else {
-        debugPrint('✗ Notification permission not available: $permissionStatus');
+        debugPrint(
+            '✗ Notification permission not available: $permissionStatus');
         return false;
       }
     } catch (e) {
@@ -160,16 +171,17 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _initBackgroundAudioService() async {
     if (_backgroundAudioInitialized) return;
-    
+
     try {
       debugPrint('=== MainScreen: Initializing background audio service ===');
-      
+
       final notificationGranted = await _requestNotificationPermission();
       debugPrint('Notification permission granted: $notificationGranted');
-      
+
       final prefs = await SharedPreferences.getInstance();
-      
-      debugPrint('✓ MainScreen: Initializing AudioService with notifications...');
+
+      debugPrint(
+          '✓ MainScreen: Initializing AudioService with notifications...');
       _backgroundHandler = await audio_pkg.AudioService.init(
         builder: () => BackgroundAudioHandler(_audioService.player),
         config: audio_pkg.AudioServiceConfig(
@@ -198,11 +210,11 @@ class _MainScreenState extends State<MainScreen> {
     } catch (e) {
       debugPrint('✗ Error initializing background audio service: $e');
       debugPrint('Stack trace: ${StackTrace.current}');
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('audioServiceInitialized', false);
       await prefs.setString('audioServiceError', e.toString());
-      
+
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (mounted) {
@@ -222,7 +234,9 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             const Icon(Icons.error_outline, color: Colors.red),
             const SizedBox(width: 12),
-            Text(l10n.errorAudioService, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            Text(l10n.errorAudioService,
+                style: const TextStyle(
+                    color: Colors.red, fontWeight: FontWeight.bold)),
           ],
         ),
         content: SingleChildScrollView(
@@ -234,7 +248,8 @@ class _MainScreenState extends State<MainScreen> {
               const SizedBox(height: 8),
               Text(l10n.notificationMayNotAppear),
               const SizedBox(height: 16),
-              Text(l10n.errorLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(l10n.errorLabel,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(error, style: TextStyle(fontSize: 12, color: Colors.grey)),
             ],
@@ -335,15 +350,29 @@ class _MainScreenState extends State<MainScreen> {
             ),
         ],
       ),
-      bottomNavigationBar: BottomAppBar(
-        height: 60,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(0, Icons.library_music, l10n.library),
-            _buildNavItem(1, Icons.playlist_play, l10n.playlists),
-            _buildNavItem(2, Icons.settings, l10n.settings),
-          ],
+      // Нижняя навигация (lingotune-019): раньше BottomAppBar с жёсткой
+      // height: 60 — внутри он сам добавляет вертикальный padding 12+12, и
+      // пункту «иконка 24 + подпись» оставалось 36px при потребных ~60 →
+      // на 420dpi debug-баннеры «BOTTOM OVERFLOWED BY 25/27 PIXELS».
+      // Заменено на саморазмерающуюся панель: высота = контенту при любом
+      // dpi/масштабе шрифта. Вид сохранён — цвет и elevation берутся из
+      // bottomAppBarTheme (у «Аметиста» — прозрачный bar над градиентом).
+      bottomNavigationBar: Material(
+        color: Theme.of(context).bottomAppBarTheme.color ??
+            Theme.of(context).colorScheme.surfaceContainer,
+        elevation: Theme.of(context).bottomAppBarTheme.elevation ?? 3.0,
+        child: SafeArea(
+          top: false,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Flexible(
+                  child: _buildNavItem(0, Icons.library_music, l10n.library)),
+              Flexible(
+                  child: _buildNavItem(1, Icons.playlist_play, l10n.playlists)),
+              Flexible(child: _buildNavItem(2, Icons.settings, l10n.settings)),
+            ],
+          ),
         ),
       ),
     );
@@ -352,7 +381,8 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _currentIndex == index;
     // «Аметист»: выбранный пункт — градиентная карточка темнее фона.
-    final skinCard = isSelected ? amethystCardDecoration(context, radius: 20) : null;
+    final skinCard =
+        isSelected ? amethystCardDecoration(context, radius: 20) : null;
     return InkWell(
       onTap: () {
         setState(() {
@@ -363,7 +393,12 @@ class _MainScreenState extends State<MainScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: skinCard ??
             BoxDecoration(
-              color: isSelected ? Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.5) : Colors.transparent,
+              color: isSelected
+                  ? Theme.of(context)
+                      .colorScheme
+                      .secondaryContainer
+                      .withValues(alpha: 0.5)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
             ),
         child: Column(
@@ -371,14 +406,20 @@ class _MainScreenState extends State<MainScreen> {
           children: [
             Icon(
               icon,
-              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 4),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12,
-                color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -417,7 +458,9 @@ class _MainScreenState extends State<MainScreen> {
       final updatedSong = await db.getSong(song.id);
       if (updatedSong == null) return;
 
-      if (_lyricsService.lyricLines.isEmpty && updatedSong.lrcPath != null && updatedSong.lrcPath!.isNotEmpty) {
+      if (_lyricsService.lyricLines.isEmpty &&
+          updatedSong.lrcPath != null &&
+          updatedSong.lrcPath!.isNotEmpty) {
         await _lyricsService.loadLrcFile(updatedSong.lrcPath!);
       }
 
@@ -439,8 +482,10 @@ class _MainScreenState extends State<MainScreen> {
                 for (final t in translations) {
                   final translationData = t as Map<String, dynamic>;
                   final lines = (translationData['lines'] as List?)
-                      ?.map((l) => LyricLine.fromJson(l as Map<String, dynamic>))
-                      .toList() ?? [];
+                          ?.map((l) =>
+                              LyricLine.fromJson(l as Map<String, dynamic>))
+                          .toList() ??
+                      [];
                   _translationService.addTranslation(Translation(
                     language: language,
                     languageName: languageName,

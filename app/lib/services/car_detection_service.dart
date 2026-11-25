@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/fft.dart';
 import 'calibration_profile.dart';
+import 'permission_gate.dart';
 
 /// Уровень уверенности детекции автомобиля.
 enum CarDetectionLevel { low, medium, high }
@@ -239,16 +240,15 @@ class CarDetectionService extends ChangeNotifier {
     _applySensitivity(sensitivity);
 
     try {
-      // Используем permission_handler для запроса доступа к микрофону
-      // (record 5.x не имеет отдельного метода запроса — только hasPermission).
-      var status = await Permission.microphone.status;
+      // RECORD_AUDIO — через [PermissionGate]: один общий диалог на все
+      // параллельные запросы (эквалайзер плеера + car detection могли
+      // стартовать одновременно и роняли permission_handler, lingotune-019).
+      // record 5.x не имеет отдельного метода запроса — только hasPermission.
+      final status = await PermissionGate.request(Permission.microphone);
       if (!status.isGranted) {
-        status = await Permission.microphone.request();
-        if (!status.isGranted) {
-          _statusLine = 'no permission';
-          debugPrint('✗ CarDetection: microphone permission denied');
-          return false;
-        }
+        _statusLine = 'no permission';
+        debugPrint('✗ CarDetection: microphone permission denied');
+        return false;
       }
 
       // ВАЖНО: audioInterruption: none → НЕ запрашивать Android audio focus.
@@ -300,7 +300,8 @@ class CarDetectionService extends ChangeNotifier {
       notifyListeners();
       return true;
     } on PlatformException catch (e) {
-      debugPrint('✗ CarDetection start PlatformException: ${e.code} ${e.message}');
+      debugPrint(
+          '✗ CarDetection start PlatformException: ${e.code} ${e.message}');
       _statusLine = 'err: ${e.code}';
       return false;
     } catch (e) {
@@ -399,7 +400,8 @@ class CarDetectionService extends ChangeNotifier {
 
     // PCM 16-bit LE → int16 samples.
     final int frameCount = bytes.length ~/ 2;
-    final ByteData byteData = bytes.buffer.asByteData(bytes.offsetInBytes, frameCount * 2);
+    final ByteData byteData =
+        bytes.buffer.asByteData(bytes.offsetInBytes, frameCount * 2);
     for (int i = 0; i < frameCount; i++) {
       _sampleBuffer.addLast(byteData.getInt16(i * 2, Endian.little));
     }
@@ -515,8 +517,9 @@ class CarDetectionService extends ChangeNotifier {
   void _thresholdFrame(SpectrumFeatures f) {
     // ---- Decision logic ----
     // 1. Доминирование НЧ: low должна быть больше mid и high с запасом.
-    final bool lowDom = f.lowBandEnergy > f.midBandEnergy * _lowDominanceRatio &&
-        f.lowBandEnergy > f.highBandEnergy * _lowDominanceRatio;
+    final bool lowDom =
+        f.lowBandEnergy > f.midBandEnergy * _lowDominanceRatio &&
+            f.lowBandEnergy > f.highBandEnergy * _lowDominanceRatio;
 
     // 2. Низкий центроид (преобладают НЧ).
     final bool lowCentroid = f.spectralCentroid < _maxCentroidHz;
@@ -525,7 +528,8 @@ class CarDetectionService extends ChangeNotifier {
     final bool peaked = f.spectralFlatness < _maxFlatnessForCar;
 
     // Нормированная сила НЧ относительно общего спектра (0..1).
-    final double totalE = f.lowBandEnergy + f.midBandEnergy + f.highBandEnergy + 1e-9;
+    final double totalE =
+        f.lowBandEnergy + f.midBandEnergy + f.highBandEnergy + 1e-9;
     final double lowFrac = (f.lowBandEnergy / totalE).clamp(0.0, 1.0);
 
     double score = 0.0;
@@ -689,7 +693,8 @@ class CarDetectionService extends ChangeNotifier {
       reason: reason,
     );
 
-    debugPrint('🚗 CarDetection ALERT: ${level.name} score=${score.toStringAsFixed(2)} '
+    debugPrint(
+        '🚗 CarDetection ALERT: ${level.name} score=${score.toStringAsFixed(2)} '
         'reason=$reason rms=${(f.rms * 1000).toStringAsFixed(1)}m '
         'cent=${f.spectralCentroid.toStringAsFixed(0)}Hz flat=${f.spectralFlatness.toStringAsFixed(2)}');
 

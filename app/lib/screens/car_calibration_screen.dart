@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/app_localizations.dart';
 import '../services/calibration_profile.dart';
 import '../services/car_detection_service.dart';
+import '../services/permission_gate.dart';
 import '../utils/fft.dart';
 
 /// Экран калибровки детектора машин: live-визуализация спектра, запись
@@ -50,8 +51,7 @@ class _CarCalibrationScreenState extends State<CarCalibrationScreen> {
   final List<SpectrumFeatures> _recordSamples = <SpectrumFeatures>[];
   Timer? _countdownTimer;
 
-  static const String _profilesPrefsKey =
-      CarDetectionService.profilesPrefsKey;
+  static const String _profilesPrefsKey = CarDetectionService.profilesPrefsKey;
 
   @override
   void initState() {
@@ -158,7 +158,10 @@ class _CarCalibrationScreenState extends State<CarCalibrationScreen> {
 
   Future<void> _startRecording() async {
     if (_isRecording) return;
-    if (!await Permission.microphone.request().isGranted) {
+    // RECORD_AUDIO — через PermissionGate (один общий диалог на все
+    // параллельные запросы, lingotune-019).
+    final status = await PermissionGate.request(Permission.microphone);
+    if (!status.isGranted) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -207,8 +210,8 @@ class _CarCalibrationScreenState extends State<CarCalibrationScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(
-                AppLocalizations.of(context)?.carCalibrationEmpty ?? 'No data')),
+            content: Text(AppLocalizations.of(context)?.carCalibrationEmpty ??
+                'No data')),
       );
       return;
     }
@@ -227,15 +230,14 @@ class _CarCalibrationScreenState extends State<CarCalibrationScreen> {
 
   Future<void> _deleteProfile(String id) async {
     final l10n = AppLocalizations.of(context);
-    final CalibrationProfile? p =
-        _profiles.firstWhereOrNull((p) => p.id == id);
+    final CalibrationProfile? p = _profiles.firstWhereOrNull((p) => p.id == id);
     if (p == null) return;
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n?.carCalibrationReset ?? 'Delete'),
-        content: Text(l10n?.carCalibrationDeleteConfirm(p.name) ??
-            'Delete "${p.name}"?'),
+        content: Text(
+            l10n?.carCalibrationDeleteConfirm(p.name) ?? 'Delete "${p.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -289,8 +291,8 @@ class _CarCalibrationScreenState extends State<CarCalibrationScreen> {
   Future<void> _loadDemo() async {
     final l10n = AppLocalizations.of(context);
     try {
-      final String raw =
-          await rootBundle.loadString('assets/calibration/default_profiles.json');
+      final String raw = await rootBundle
+          .loadString('assets/calibration/default_profiles.json');
       final Map<String, dynamic> data = jsonDecode(raw) as Map<String, dynamic>;
       final List<dynamic> list = data['profiles'] as List<dynamic>;
       final List<CalibrationProfile> demo = <CalibrationProfile>[];
@@ -305,7 +307,8 @@ class _CarCalibrationScreenState extends State<CarCalibrationScreen> {
         final ProfileClass cls = p.cls;
         demo.add(CalibrationProfile(
           id: 'demo-$now-${i++}-${rnd.nextInt(0xFFFFFF).toRadixString(16)}',
-          name: '${l10n?.carCalibrationDemoPrefix ?? "Demo"}: ${_classLabel(cls)}',
+          name:
+              '${l10n?.carCalibrationDemoPrefix ?? "Demo"}: ${_classLabel(cls)}',
           cls: cls,
           createdAt: DateTime.now(),
           lowMean: p.lowMean,
@@ -499,13 +502,13 @@ class _CarCalibrationScreenState extends State<CarCalibrationScreen> {
                 runSpacing: 4,
                 children: [
                   _MetricChip(
-                      label: 'flat', value: f.spectralFlatness.toStringAsFixed(2)),
+                      label: 'flat',
+                      value: f.spectralFlatness.toStringAsFixed(2)),
                   _MetricChip(
                       label: 'cent',
                       value: '${f.spectralCentroid.toStringAsFixed(0)}Hz'),
                   _MetricChip(
-                      label: 'rms',
-                      value: (f.rms * 1000).toStringAsFixed(1)),
+                      label: 'rms', value: (f.rms * 1000).toStringAsFixed(1)),
                   _MetricChip(
                       label: 'low/mid',
                       value: f.midBandEnergy > 1e-9
@@ -522,8 +525,8 @@ class _CarCalibrationScreenState extends State<CarCalibrationScreen> {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(statusText,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontFeatures: const [
+                  style:
+                      theme.textTheme.bodyMedium?.copyWith(fontFeatures: const [
                     FontFeature.tabularFigures(),
                   ])),
             ),
@@ -543,8 +546,8 @@ class _CarCalibrationScreenState extends State<CarCalibrationScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.fiber_manual_record, size: 18,
-                    color: Colors.red),
+                const Icon(Icons.fiber_manual_record,
+                    size: 18, color: Colors.red),
                 const SizedBox(width: 6),
                 Text(l10n?.carCalibrationRecordTitle ?? 'Record sample',
                     style: theme.textTheme.titleSmall),
@@ -688,9 +691,7 @@ class _CarCalibrationScreenState extends State<CarCalibrationScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: (_isRecording || _profiles.isEmpty)
-                ? null
-                : _resetAll,
+            onPressed: (_isRecording || _profiles.isEmpty) ? null : _resetAll,
             icon: const Icon(Icons.delete_sweep_outlined),
             label: Text(l10n?.carCalibrationReset ?? 'Reset all'),
           ),
@@ -725,18 +726,19 @@ class _SpectrumBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Container(
-              height: (maxH - 18).clamp(0.0, double.infinity) * value.clamp(0.0, 1.0),
+              height: (maxH - 18).clamp(0.0, double.infinity) *
+                  value.clamp(0.0, 1.0),
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(4)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(4)),
               ),
             ),
             const SizedBox(height: 4),
             Text(label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    )),
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                )),
           ],
         );
       },
@@ -759,8 +761,8 @@ class _MetricChip extends StatelessWidget {
       ),
       child: Text('$label=$value',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontFeatures: const [FontFeature.tabularFigures()],
-              )),
+            fontFeatures: const [FontFeature.tabularFigures()],
+          )),
     );
   }
 }

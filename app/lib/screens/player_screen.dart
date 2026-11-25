@@ -30,6 +30,7 @@ import '../services/export_import_service.dart';
 import '../services/database_service.dart';
 import '../services/folder_config_service.dart';
 import '../services/phone_call_service.dart';
+import '../services/permission_gate.dart';
 import '../services/tts_coordinator.dart';
 import '../services/tts/tts_engine.dart' show TtsSource;
 import '../widgets/lyric_line_widget.dart';
@@ -680,8 +681,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       //     переживает completed, звука нет) → полная перезагрузка песни.
       if (_loopMode == LoopMode.one) {
         final restarting =
-            widget.audioService.backgroundHandler?.isRestartingLoopOne ??
-                false;
+            widget.audioService.backgroundHandler?.isRestartingLoopOne ?? false;
         if (!completed) {
           // Рестарт снял completed. Либо всё играет (позиция двигается —
           // стихаем), либо это пауза/зомби.
@@ -698,7 +698,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           _watchdogLastPosMs = posMs;
           if (lastMs == null || posMs != lastMs) {
             _studyEvt('completion WATCHDOG loop-one: position advancing '
-              '(pos=$posMs ms) — restart took, standing down');
+                '(pos=$posMs ms) — restart took, standing down');
             _cancelCompletionWatchdog();
             return;
           }
@@ -2088,14 +2088,21 @@ class _PlayerScreenState extends State<PlayerScreen>
 
     if (!Platform.isAndroid) return;
 
-    PermissionStatus status = await Permission.phone.status;
-    if (!status.isGranted) {
-      status = await Permission.phone.request();
-      debugPrint('📞 PlayerScreen: READ_PHONE_STATE request -> ${status.name}');
-    }
-    if (!status.isGranted) {
-      debugPrint('📞 PlayerScreen: phone permission denied, '
-          'falling back to audio-focus interruption scheme');
+    // READ_PHONE_STATE — через PermissionGate (lingotune-019): раньше этот
+    // unawaited-запрос летел параллельно с микрофонным запросом эквалайзера
+    // при открытии плеера — permission_handler кидал «A request for
+    // permissions is already running» прямо в Unhandled Exception. Гейт
+    // выстраивает запросы в очередь и дедуплицирует диалоги.
+    try {
+      final status = await PermissionGate.request(Permission.phone);
+      debugPrint('📞 PlayerScreen: READ_PHONE_STATE -> ${status.name}');
+      if (!status.isGranted) {
+        debugPrint('📞 PlayerScreen: phone permission denied, '
+            'falling back to audio-focus interruption scheme');
+        return;
+      }
+    } catch (e) {
+      debugPrint('📞 PlayerScreen: phone permission request failed: $e');
       return;
     }
 
@@ -2414,7 +2421,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     // деградирует (теперь есть fallback на аудио-линию, но детектор надёжнее).
     final phone = PhoneCallService.instance;
     if (!phone.isListening && Platform.isAndroid) {
-      debugPrint('📞 PlayerScreen: phone detector dead after idle — restarting');
+      debugPrint(
+          '📞 PlayerScreen: phone detector dead after idle — restarting');
       phone.start();
     }
     // 3) Залипшая call-пауза от beep'а, пришедшего за время простоя: давнюю
@@ -3082,8 +3090,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             color: highlighted ? accent : null,
           ),
         ),
-        onPressed:
-            _studyModeService.isActive ? null : _onAbRepeatTap,
+        onPressed: _studyModeService.isActive ? null : _onAbRepeatTap,
         onLongPress: _onAbRepeatLongPress,
         tooltip: _studyModeService.isActive
             ? localizations.abRepeatUnavailableStudy
@@ -4109,7 +4116,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                       // Или текст есть, но пользователь переключился на
                       // эквалайзер кнопкой в шапке («надоело читать») —
                       // кроме режима редактирования меток.
-                      if (lines.isEmpty || (_showEqualizerView && !_isEditMode)) {
+                      if (lines.isEmpty ||
+                          (_showEqualizerView && !_isEditMode)) {
                         return AudioEqualizerWidget(
                           player: widget.audioService.player,
                           hint: lines.isEmpty
