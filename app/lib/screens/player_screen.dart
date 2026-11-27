@@ -36,6 +36,7 @@ import '../services/tts/tts_engine.dart' show TtsSource;
 import '../widgets/lyric_line_widget.dart';
 import '../widgets/audio_equalizer_widget.dart';
 import '../widgets/ab_repeat_slider_track.dart';
+import '../widgets/player_controls_metrics.dart';
 import '../widgets/settings/vertical_focus_offset_slider.dart';
 import 'translation_editor_screen.dart';
 import 'text_loader_dialog.dart';
@@ -2971,7 +2972,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  Widget _buildLoopButton(bool isLandscape, {double iconSize = 32.0}) {
+  Widget _buildLoopButton(bool isLandscape,
+      {double iconSize = 32.0, double? buttonSize}) {
     IconData icon;
     Color? color;
 
@@ -3036,6 +3038,15 @@ class _PlayerScreenState extends State<PlayerScreen>
                             ? localizations.repeatAllPlaylists
                             : localizations.repeatOff,
             iconSize: iconSize,
+            padding: const EdgeInsets.all(4.0),
+            constraints: buttonSize == null
+                ? null
+                : BoxConstraints.tightFor(
+                    width: buttonSize, height: buttonSize),
+            style: buttonSize == null
+                ? null
+                : IconButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap),
           ),
           if (_loopMode == LoopMode.allPlaylists)
             Positioned(
@@ -3057,7 +3068,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   /// Стиль повторяет кнопку loop: активное состояние подсвечено
   /// контейнером primaryContainer + рамкой. В study-режиме выключена —
   /// сегменты study и цикл отрезка конфликтуют за seek.
-  Widget _buildAbRepeatButton(bool isLandscape, {double iconSize = 32.0}) {
+  Widget _buildAbRepeatButton(bool isLandscape,
+      {double iconSize = 32.0, double? buttonSize}) {
     final ab = widget.audioService.abRepeat;
     final localizations = AppLocalizations.of(context)!;
     final active = ab.isActive;
@@ -3083,6 +3095,10 @@ class _PlayerScreenState extends State<PlayerScreen>
       child: IconButton(
         icon: Text(
           label,
+          // Метка — графический элемент кнопки, а не читаемый текст:
+          // при масштабе системного шрифта 2.0 она не раздувается и не
+          // ломает кнопку (lingotune-020).
+          textScaler: TextScaler.noScaling,
           style: TextStyle(
             fontSize: (iconSize * 0.42).clamp(9.0, 14.0),
             fontWeight: FontWeight.w800,
@@ -3097,6 +3113,13 @@ class _PlayerScreenState extends State<PlayerScreen>
             : tooltip,
         iconSize: iconSize,
         padding: const EdgeInsets.all(4.0),
+        constraints: buttonSize == null
+            ? null
+            : BoxConstraints.tightFor(width: buttonSize, height: buttonSize),
+        style: buttonSize == null
+            ? null
+            : IconButton.styleFrom(
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap),
       ),
     );
   }
@@ -4361,31 +4384,32 @@ class _PlayerScreenState extends State<PlayerScreen>
                 SizedBox(height: isLandscape ? 4.0 : 8.0),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final availableWidth = constraints.maxWidth;
-                    final baseIconSize = isLandscape ? 24.0 : 32.0;
-                    final baseFabSize = 56.0;
-                    final baseSpacing = isLandscape ? 8.0 : 16.0;
-                    final buttonCount = 8; // 7 кнопок + FAB (v5.12.0: +A–B)
-                    final fabVisualSize = baseFabSize;
-                    final totalSpacing = baseSpacing * 2;
-                    final totalButtonWidth = buttonCount * (baseIconSize + 16) +
-                        fabVisualSize +
-                        totalSpacing;
-                    double iconSize;
-                    double fabSize;
-                    double spacing;
-                    if (totalButtonWidth <= availableWidth) {
-                      iconSize = baseIconSize;
-                      fabSize = baseFabSize;
-                      spacing = baseSpacing;
-                    } else {
-                      final ratio = availableWidth / totalButtonWidth;
-                      iconSize =
-                          (baseIconSize * ratio).clamp(18.0, baseIconSize);
-                      fabSize = (baseFabSize * ratio).clamp(36.0, baseFabSize);
-                      spacing = (baseSpacing * ratio).clamp(4.0, baseSpacing);
-                    }
-                    final fabIconSize = (fabSize * 0.5).clamp(18.0, 28.0);
+                    // lingotune-020: размеры ряда — из PlayerControlsMetrics;
+                    // реальная ширина IconButton = iconSize + 8 (паддинг 4) и
+                    // закреплена tightFor-констрейнтами — Material иначе держит
+                    // минимум 48×48, сжатие иконок ряд не сжимает, и при
+                    // 1080×2400/420dpi (доступно ~379px) правый край ряда
+                    // переполнялся на ~3.4px. Старая оценка здесь считала
+                    // 48/кнопку + «спейсинги», которых в Row(spaceEvenly) нет.
+                    final fit = PlayerControlsMetrics.fit(
+                      constraints.maxWidth,
+                      isLandscape: isLandscape,
+                    );
+                    final iconSize = fit.iconSize;
+                    final buttonConstraints = BoxConstraints.tightFor(
+                      width: fit.buttonSize,
+                      height: fit.buttonSize,
+                    );
+                    // M3 IconButton расширяет кнопку до 48×48 через
+                    // _InputPadding (MaterialTapTargetSize.padded) —
+                    // это и держало ряд шире расчёта. shrinkWrap отдаёт
+                    // кнопке её расчётный размер; тап-зона чуть меньше
+                    // 48px, зато ряд гарантированно влезает.
+                    final buttonStyle = IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    );
+                    final fabSize = fit.fabSize;
+                    final fabIconSize = fit.fabIconSize;
                     return AnimatedBuilder(
                       animation: _studyModeService,
                       builder: (context, _) {
@@ -4421,6 +4445,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                                 tooltip: AppLocalizations.of(context)!.shuffle,
                                 iconSize: iconSize,
                                 padding: const EdgeInsets.all(4.0),
+                                constraints: buttonConstraints,
+                                style: buttonStyle,
                               ),
                             ),
                             IconButton(
@@ -4429,6 +4455,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                                   _canPlayPrevious() ? _playPreviousSong : null,
                               iconSize: iconSize,
                               padding: const EdgeInsets.all(4.0),
+                              constraints: buttonConstraints,
+                              style: buttonStyle,
                             ),
                             IconButton(
                               icon: const Icon(Icons.replay_10),
@@ -4442,6 +4470,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                               },
                               iconSize: iconSize,
                               padding: const EdgeInsets.all(4.0),
+                              constraints: buttonConstraints,
+                              style: buttonStyle,
                             ),
                             SizedBox(
                               width: fabSize,
@@ -4518,16 +4548,21 @@ class _PlayerScreenState extends State<PlayerScreen>
                               },
                               iconSize: iconSize,
                               padding: const EdgeInsets.all(4.0),
+                              constraints: buttonConstraints,
+                              style: buttonStyle,
                             ),
                             IconButton(
                               icon: const Icon(Icons.skip_next),
                               onPressed: _canPlayNext() ? _playNextSong : null,
                               iconSize: iconSize,
                               padding: const EdgeInsets.all(4.0),
+                              constraints: buttonConstraints,
+                              style: buttonStyle,
                             ),
-                            _buildLoopButton(isLandscape, iconSize: iconSize),
+                            _buildLoopButton(isLandscape,
+                                iconSize: iconSize, buttonSize: fit.buttonSize),
                             _buildAbRepeatButton(isLandscape,
-                                iconSize: iconSize),
+                                iconSize: iconSize, buttonSize: fit.buttonSize),
                           ],
                         );
                       },
